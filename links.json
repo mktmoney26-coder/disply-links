@@ -2,5 +2,9 @@
   "teste": {
     "image": "/img/teste.jpg",
     "destination": "https://prateleira10.shop"
+  },
+  "cinta": {
+    "image": "/img/teste.jpg",
+    "destination": "https://prateleira10.shop"
   }
 }
