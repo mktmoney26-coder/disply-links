@@ -45,9 +45,12 @@ module.exports = async (req, res) => {
   const dest = link.destination;
 
   // Título e descrição são opcionais: sem eles, a prévia mostra só a imagem e o domínio.
+  // "title" preenche os dois; "htmlTitle" e "ogTitle" permitem controlar cada um separadamente.
+  const htmlTitle = link.htmlTitle ?? link.title;
+  const ogTitle = link.ogTitle ?? link.title;
   const textTags = [
-    link.title ? `<title>${esc(link.title)}</title>` : '',
-    link.title ? `<meta property="og:title" content="${esc(link.title)}">` : '',
+    htmlTitle ? `<title>${esc(htmlTitle)}</title>` : '',
+    ogTitle ? `<meta property="og:title" content="${esc(ogTitle)}">` : '',
     link.description ? `<meta name="description" content="${esc(link.description)}">` : '',
     link.description ? `<meta property="og:description" content="${esc(link.description)}">` : ''
   ].filter(Boolean).join('\n');

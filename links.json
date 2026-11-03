@@ -16,5 +16,20 @@
     "title": "Prateleira 10",
     "image": "/img/teste.jpg",
     "destination": "https://prateleira10.shop"
+  },
+  "cinta4": {
+    "ogTitle": "disply-links.vercel.app",
+    "image": "/img/teste.jpg",
+    "destination": "https://prateleira10.shop"
+  },
+  "cinta5": {
+    "htmlTitle": "\u200e",
+    "image": "/img/teste.jpg",
+    "destination": "https://prateleira10.shop"
+  },
+  "cinta6": {
+    "htmlTitle": "disply-links.vercel.app",
+    "image": "/img/teste.jpg",
+    "destination": "https://prateleira10.shop"
   }
 }
