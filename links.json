@@ -6,5 +6,15 @@
   "cinta": {
     "image": "/img/teste.jpg",
     "destination": "https://prateleira10.shop"
+  },
+  "cinta2": {
+    "title": "\u200e",
+    "image": "/img/teste.jpg",
+    "destination": "https://prateleira10.shop"
+  },
+  "cinta3": {
+    "title": "Prateleira 10",
+    "image": "/img/teste.jpg",
+    "destination": "https://prateleira10.shop"
   }
 }
