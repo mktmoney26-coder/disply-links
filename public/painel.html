@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Disply – Cliques</title>
+<style>
+  :root{--bg:#F4F6F3;--card:#fff;--ink:#15201B;--muted:#4E5D56;--line:#DDE3DF;--accent:#0F6E5C}
+  @media (prefers-color-scheme:dark){:root{--bg:#0F1714;--card:#17221D;--ink:#E8EFEA;--muted:#A9B8B0;--line:#2A3A33;--accent:#5FD3A8}}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:32px 16px;display:flex;flex-direction:column;gap:20px}
+  h1{margin:0;font-size:28px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  form{display:flex;flex-wrap:wrap;gap:10px}
+  input{flex:1 1 220px;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+  button{font:inherit;font-weight:700;padding:11px 18px;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase}
+  .wrap{overflow-x:auto}
+  .muted{color:var(--muted);font-size:14px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Cliques nos links</h1>
+  <div class="card">
+    <form id="f">
+      <label for="k" class="muted" style="flex-basis:100%">Senha do painel (STATS_KEY)</label>
+      <input id="k" type="password" autocomplete="current-password" required>
+      <button type="submit">Ver cliques</button>
+    </form>
+    <p id="msg" class="muted"></p>
+  </div>
+  <div class="card wrap">
+    <table>
+      <thead><tr><th>Link</th><th>Cliques</th><th>Contatos únicos</th><th>Último clique</th></tr></thead>
+      <tbody id="links"><tr><td colspan="4" class="muted">Informe a senha.</td></tr></tbody>
+    </table>
+  </div>
+  <div class="card wrap" id="detalhe" hidden>
+    <h2 id="dt" style="margin:0 0 10px;font-size:18px"></h2>
+    <table>
+      <thead><tr><th>Código do contato</th><th>Cliques</th><th>Primeiro clique</th></tr></thead>
+      <tbody id="contatos"></tbody>
+    </table>
+  </div>
+</main>
+<script>
+  const fmt = (d) => d ? new Date(d).toLocaleString('pt-BR') : '—';
+  let key = '';
+  async function load(slug) {
+    const url = '/api/stats' + (slug ? '?slug=' + encodeURIComponent(slug) : '');
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + key } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.erro || 'Erro');
+    return data;
+  }
+  function cell(text) { const td = document.createElement('td'); td.textContent = text; return td; }
+  function renderLinks(rows) {
+    const tb = document.getElementById('links'); tb.innerHTML = '';
+    if (!rows.length) { const tr = document.createElement('tr'); const td = cell('Nenhum clique ainda.'); td.colSpan = 4; tr.append(td); tb.append(tr); return; }
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      const a = document.createElement('a'); a.href = '#'; a.textContent = '/' + r.slug;
+      a.onclick = (e) => { e.preventDefault(); showDetail(r.slug); };
+      td.append(a);
+      tr.append(td, cell(r.cliques), cell(r.contatos_unicos), cell(fmt(r.ultimo_clique)));
+      tb.append(tr);
+    }
+  }
+  async function showDetail(slug) {
+    const data = await load(slug);
+    document.getElementById('detalhe').hidden = false;
+    document.getElementById('dt').textContent = 'Contatos que clicaram em /' + slug;
+    const tb = document.getElementById('contatos'); tb.innerHTML = '';
+    if (!data.contatos.length) { const tr = document.createElement('tr'); const td = cell('Nenhum clique com código de contato.'); td.colSpan = 3; tr.append(td); tb.append(tr); return; }
+    for (const c of data.contatos) { const tr = document.createElement('tr'); tr.append(cell(c.contato), cell(c.cliques), cell(fmt(c.primeiro_clique))); tb.append(tr); }
+  }
+  document.getElementById('f').onsubmit = async (e) => {
+    e.preventDefault();
+    key = document.getElementById('k').value;
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Carregando…';
+    try { const data = await load(); renderLinks(data.porLink); msg.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR') + '.'; }
+    catch (err) { msg.textContent = err.message; }
+  };
+</script>
+</body>
+</html>

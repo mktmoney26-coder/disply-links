@@ -1,0 +1,12 @@
+{
+  "name": "disply-links",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Links com prévia no WhatsApp e contagem de cliques da Disply",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0"
+  }
+}
