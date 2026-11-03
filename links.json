@@ -1,8 +1,8 @@
 {
   "teste": {
-    "title": "Teste de link da Disply",
-    "description": "Toque para abrir a página de destino.",
-    "image": "/img/teste.png",
-    "destination": "https://example.com"
+    "title": "Cinta modeladora | Prateleira 10",
+    "description": "Toque para ver na loja.",
+    "image": "/img/teste.jpg",
+    "destination": "https://prateleira10.shop"
   }
 }
