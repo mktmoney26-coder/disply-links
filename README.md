@@ -48,6 +48,8 @@ No GitHub, edite `links.json` e adicione um bloco (o nome do link só pode ter l
 }
 ```
 
+`title` e `description` são opcionais: sem eles, a prévia mostra só a imagem e o domínio.
+
 Suba a imagem em `public/img/` e faça o commit. A Vercel publica sozinha em segundos.
 O destino precisa começar com `https://`.
 

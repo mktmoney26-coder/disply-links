@@ -44,18 +44,23 @@ module.exports = async (req, res) => {
   const image = /^https?:\/\//.test(link.image) ? link.image : base + link.image;
   const dest = link.destination;
 
+  // Título e descrição são opcionais: sem eles, a prévia mostra só a imagem e o domínio.
+  const textTags = [
+    link.title ? `<title>${esc(link.title)}</title>` : '',
+    link.title ? `<meta property="og:title" content="${esc(link.title)}">` : '',
+    link.description ? `<meta name="description" content="${esc(link.description)}">` : '',
+    link.description ? `<meta property="og:description" content="${esc(link.description)}">` : ''
+  ].filter(Boolean).join('\n');
+
   const html = `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(link.title)}</title>
-<meta name="description" content="${esc(link.description)}">
 <meta name="robots" content="noindex">
+${textTags}
 <meta property="og:type" content="website">
 <meta property="og:url" content="${esc(base + '/' + slug)}">
-<meta property="og:title" content="${esc(link.title)}">
-<meta property="og:description" content="${esc(link.description)}">
 <meta property="og:image" content="${esc(image)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
