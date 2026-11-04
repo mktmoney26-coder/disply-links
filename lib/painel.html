@@ -82,6 +82,27 @@
         <tbody id="domainRows"></tbody>
       </table>
     </div>
+    <div id="autoBox" style="margin-top:18px;padding:16px;border:1px solid var(--accent);border-radius:12px" hidden>
+      <strong>+ Nova BM automática</strong>
+      <p class="small muted" style="margin:4px 0 12px">Cria o projeto na Vercel, conecta o banco, publica e cadastra o domínio sozinho (cerca de 1 minuto).</p>
+      <form id="autoForm" class="row">
+        <div style="flex:2 1 220px">
+          <label for="aName">Nome do projeto (vira o domínio)</label>
+          <input id="aName" type="text" required placeholder="sorridi-ofertas" autocapitalize="off" spellcheck="false" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]">
+        </div>
+        <div style="flex:1 1 200px">
+          <label for="aLabel">BM / cliente</label>
+          <input id="aLabel" type="text" maxlength="80" placeholder="Sorridi Clínica">
+        </div>
+        <button class="btn primary" type="submit" id="btnAuto" style="align-self:flex-end">Criar BM</button>
+      </form>
+      <p class="small muted" style="margin:8px 0 0">Use letras minúsculas, números e hífen, sem “disply”. O domínio fica <code>nome.vercel.app</code> (ou parecido, se o nome já existir).</p>
+      <p id="autoMsg" class="small" role="status" style="margin:8px 0 0;font-weight:600"></p>
+    </div>
+    <p id="autoOff" class="small muted" style="margin:18px 0 0" hidden>Para criar BMs automaticamente, adicione a variável <code>VERCEL_TOKEN</code> no projeto principal (passo a passo no README).</p>
+
+    <details style="margin-top:16px">
+      <summary class="small" style="cursor:pointer;font-weight:700">Cadastrar domínio manualmente</summary>
     <form id="domainForm" class="row" style="margin-top:16px">
       <div style="flex:2 1 260px">
         <label for="dHost">Novo domínio</label>
@@ -94,6 +115,7 @@
       <button class="btn ghost" type="submit" style="align-self:flex-end">Adicionar domínio</button>
     </form>
     <p class="small muted" style="margin:10px 0 0">Antes de adicionar, crie o projeto da BM na Vercel e conecte o banco (passo a passo no README).</p>
+    </details>
     <p id="domainMsg" class="err" role="alert"></p>
   </section>
 
@@ -224,6 +246,7 @@
     try {
       await loadDomains();
       await loadLinks();
+      await loadAuto();
       store.set(k);
       $('loginCard').hidden = true;
       $('topActions').hidden = false;
@@ -261,6 +284,47 @@
     fillSelect($('host'), false);
     fillSelect($('filter'), true);
   }
+
+  // ---------- Nova BM automática ----------
+  async function loadAuto() {
+    let enabled = false;
+    try { enabled = (await api('/api/bms')).enabled; } catch (e) {}
+    $('autoBox').hidden = !enabled;
+    $('autoOff').hidden = enabled;
+  }
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const stateText = { QUEUED: 'Na fila para publicar…', INITIALIZING: 'Preparando…', BUILDING: 'Publicando…' };
+
+  $('autoForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const msg = $('autoMsg'); const btn = $('btnAuto');
+    msg.className = 'small'; msg.textContent = 'Criando o projeto na Vercel…';
+    btn.disabled = true;
+    try {
+      const label = $('aLabel').value;
+      const p = await api('/api/bms', { method: 'POST', body: JSON.stringify({ name: $('aName').value, label }) });
+      const q = '/api/bms?projectId=' + encodeURIComponent(p.projectId) + '&deploymentId=' + encodeURIComponent(p.deploymentId) + '&label=' + encodeURIComponent(label);
+      for (let i = 0; i < 60; i++) {
+        await wait(5000);
+        const s = await api(q);
+        if (s.erro) throw new Error(s.erro);
+        if (s.state === 'READY' && s.host) {
+          msg.textContent = 'Pronto! Domínio ' + s.host + ' cadastrado.';
+          $('aName').value = ''; $('aLabel').value = '';
+          await loadDomains();
+          $('host').value = s.host;
+          return;
+        }
+        msg.textContent = stateText[s.state] || 'Publicando…';
+      }
+      throw new Error('Está demorando mais que o normal. Confira o projeto em Deployments na Vercel e cadastre o domínio manualmente.');
+    } catch (err) {
+      msg.className = 'small err'; msg.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  };
 
   $('domainForm').onsubmit = async (e) => {
     e.preventDefault();

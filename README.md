@@ -56,7 +56,21 @@ continuam únicos, no projeto principal (`disply-links`).
   Não crie `STATS_KEY` nos projetos das BMs.
 - Nos domínios das BMs não aparece nada que ligue o endereço à Disply.
 
-### Adicionar uma BM nova (5 minutos)
+### Adicionar uma BM nova automaticamente (recomendado)
+No painel, em **Domínios → + Nova BM automática**, digite o nome do projeto e o cliente e clique
+em **Criar BM**. Em cerca de 1 minuto o sistema cria o projeto na Vercel, conecta o banco,
+publica e cadastra o domínio.
+
+Configuração (uma vez só):
+1. Na Vercel: foto do perfil → **Account Settings → Tokens → Create Token**.
+   Nome: `disply-painel` · Escopo: o time **MKT MONEY** · Validade: a que preferir. Copie o token.
+2. No projeto **disply-links** (o principal): **Settings → Environment Variables → Add**.
+   Key `VERCEL_TOKEN`, Value = o token, ambiente **Production**, marque **Sensitive**. Salve.
+3. **Deployments → ⋯ → Redeploy**.
+
+Nunca crie `VERCEL_TOKEN` nem `STATS_KEY` nos projetos das BMs.
+
+### Adicionar uma BM nova manualmente
 1. **Vercel → Add New → Project** → importe o mesmo repositório `disply-links`.
    Dê um nome que **não** tenha "disply" (ex.: `aurora-ofertas`). O endereço será `aurora-ofertas.vercel.app`.
 2. Clique em **Deploy**.
