@@ -1,7 +1,7 @@
 // Página de cada link: mostra a prévia no WhatsApp, registra o clique e redireciona.
 // Todo visitante recebe exatamente a mesma página e vai para o mesmo destino.
 const links = require('../links.json');
-const { getDb } = require('../lib/db');
+const { getDb, requestHost, PRIMARY_HOST } = require('../lib/db');
 
 // Robôs que só buscam a prévia do link. Eles recebem a mesma página,
 // apenas não contam como clique.
@@ -32,13 +32,15 @@ module.exports = async (req, res) => {
     console.error('Erro ao conectar no banco:', err);
   }
 
-  // 1) Links criados pelo painel (banco de dados)
+  const host = requestHost(req);
+
+  // 1) Links criados pelo painel (banco de dados), só no domínio ao qual o link pertence
   let link = null;
   if (sql) {
     try {
       const rows = await sql`
         select destination, active, updated_at, (image_b64 is not null) as has_image
-        from links where slug = ${slug}`;
+        from links where slug = ${slug} and host = ${host}`;
       if (rows.length) {
         if (!rows[0].active) return notFound(res);
         const version = new Date(rows[0].updated_at).getTime();
@@ -53,8 +55,8 @@ module.exports = async (req, res) => {
     }
   }
 
-  // 2) Links antigos do arquivo links.json
-  if (!link && Object.prototype.hasOwnProperty.call(links, slug)) link = links[slug];
+  // 2) Links antigos do arquivo links.json, só no domínio principal
+  if (!link && host === PRIMARY_HOST && Object.prototype.hasOwnProperty.call(links, slug)) link = links[slug];
 
   if (!link || !/^https:\/\//.test(link.destination || '')) return notFound(res);
 
@@ -71,7 +73,6 @@ module.exports = async (req, res) => {
     }
   }
 
-  const host = req.headers['x-forwarded-host'] || req.headers.host;
   const base = `https://${host}`;
   const dest = link.destination;
 

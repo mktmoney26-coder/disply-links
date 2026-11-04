@@ -1,12 +1,10 @@
 // Relatório de cliques por contato de um link, protegido pela senha do painel.
 const { getDb } = require('../lib/db');
-const { isAuthorized } = require('../lib/auth');
+const { guard } = require('../lib/auth');
 
 module.exports = async (req, res) => {
-  if (!isAuthorized(req)) {
-    res.status(401).json({ erro: 'Senha do painel inválida.' });
-    return;
-  }
+  res.setHeader('Cache-Control', 'no-store');
+  if (!guard(req, res)) return;
 
   const sql = await getDb();
   if (!sql) {
@@ -31,6 +29,5 @@ module.exports = async (req, res) => {
     ? await sql`select count(*)::int as cliques from clicks where slug = ${slug}`
     : [{ cliques: 0 }];
 
-  res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({ cliques: totais[0].cliques, contatos });
 };

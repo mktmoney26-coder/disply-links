@@ -73,12 +73,40 @@
     <p id="loginMsg" class="err" role="alert"></p>
   </section>
 
+  <!-- Domínios -->
+  <section class="card" id="domainsCard" aria-labelledby="tDomains" hidden>
+    <h2 id="tDomains">Domínios (um por BM)</h2>
+    <div class="wrap">
+      <table style="min-width:520px">
+        <thead><tr><th>Domínio</th><th>BM / cliente</th><th>Links</th></tr></thead>
+        <tbody id="domainRows"></tbody>
+      </table>
+    </div>
+    <form id="domainForm" class="row" style="margin-top:16px">
+      <div style="flex:2 1 260px">
+        <label for="dHost">Novo domínio</label>
+        <input id="dHost" type="text" required placeholder="aurora-ofertas.vercel.app" autocapitalize="off" spellcheck="false">
+      </div>
+      <div style="flex:1 1 200px">
+        <label for="dLabel">BM / cliente</label>
+        <input id="dLabel" type="text" maxlength="80" placeholder="Loja Aurora">
+      </div>
+      <button class="btn ghost" type="submit" style="align-self:flex-end">Adicionar domínio</button>
+    </form>
+    <p class="small muted" style="margin:10px 0 0">Antes de adicionar, crie o projeto da BM na Vercel e conecte o banco (passo a passo no README).</p>
+    <p id="domainMsg" class="err" role="alert"></p>
+  </section>
+
   <!-- Criar / editar -->
   <section class="card" id="formCard" aria-labelledby="tForm" hidden>
     <h2 id="tForm">Novo link</h2>
     <form id="linkForm">
       <div class="grid">
         <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label for="host">Domínio da BM</label>
+            <select id="host" required></select>
+          </div>
           <div>
             <label for="label">Identificação (só para você)</label>
             <input id="label" type="text" maxlength="80" placeholder="Ex.: BM Loja Aurora – template promo">
@@ -131,7 +159,13 @@
 
   <!-- Lista -->
   <section class="card" id="listCard" aria-labelledby="tList" hidden>
-    <h2 id="tList">Seus links</h2>
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <h2 id="tList" style="margin:0">Seus links</h2>
+      <div style="flex:0 1 300px">
+        <label for="filter" class="small muted" style="font-weight:600">Mostrar</label>
+        <select id="filter"><option value="">Todos os domínios</option></select>
+      </div>
+    </div>
     <div class="wrap">
       <table>
         <thead><tr><th>Identificação</th><th>Link</th><th>Destino</th><th>Cliques</th><th>Status</th><th>Ações</th></tr></thead>
@@ -160,6 +194,9 @@
   let editing = null;      // slug em edição
   let imageData = null;    // dataURL da imagem processada
   let sourceImage = null;  // imagem original carregada
+  let domains = [];        // domínios cadastrados
+  let allLinks = [];       // links carregados
+  let lastHost = '';       // último domínio usado ao criar
 
   const store = {
     get() { try { return sessionStorage.getItem('disply_key') || ''; } catch (e) { return ''; } },
@@ -185,10 +222,12 @@
   async function login(k) {
     key = k;
     try {
+      await loadDomains();
       await loadLinks();
       store.set(k);
       $('loginCard').hidden = true;
       $('topActions').hidden = false;
+      $('domainsCard').hidden = false;
       $('listCard').hidden = false;
     } catch (err) {
       key = '';
@@ -199,25 +238,66 @@
   $('loginForm').onsubmit = (e) => { e.preventDefault(); $('loginMsg').textContent = ''; login($('key').value); };
   $('btnLogout').onclick = () => { store.clear(); location.reload(); };
 
+  // ---------- Domínios ----------
+  const domainLabel = (host) => { const d = domains.find((x) => x.host === host); return d && d.label ? d.label + ' · ' + host : host; };
+
+  function fillSelect(sel, withAll) {
+    const current = sel.value;
+    sel.innerHTML = '';
+    if (withAll) { const o = document.createElement('option'); o.value = ''; o.textContent = 'Todos os domínios'; sel.append(o); }
+    for (const d of domains) { const o = document.createElement('option'); o.value = d.host; o.textContent = domainLabel(d.host); sel.append(o); }
+    if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+  }
+
+  async function loadDomains() {
+    domains = (await api('/api/domains')).domains;
+    const tb = $('domainRows'); tb.innerHTML = '';
+    for (const d of domains) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td'); const c = document.createElement('code'); c.textContent = d.host; td.append(c);
+      tr.append(td, cell(d.label || '—'), cell(String(d.links)));
+      tb.append(tr);
+    }
+    fillSelect($('host'), false);
+    fillSelect($('filter'), true);
+  }
+
+  $('domainForm').onsubmit = async (e) => {
+    e.preventDefault();
+    $('domainMsg').textContent = '';
+    try {
+      await api('/api/domains', { method: 'POST', body: JSON.stringify({ host: $('dHost').value, label: $('dLabel').value }) });
+      $('dHost').value = ''; $('dLabel').value = '';
+      await loadDomains();
+    } catch (err) { $('domainMsg').textContent = err.message; }
+  };
+
   // ---------- Lista ----------
   async function loadLinks() {
-    const data = await api('/api/links');
+    allLinks = (await api('/api/links')).links;
+    renderLinks();
+  }
+  $('filter').onchange = () => renderLinks();
+
+  function renderLinks() {
+    const f = $('filter').value;
+    const list = f ? allLinks.filter((l) => l.host === f) : allLinks;
     const tb = $('rows'); tb.innerHTML = '';
-    if (!data.links.length) {
+    if (!list.length) {
       const tr = document.createElement('tr'); const td = cell('Nenhum link ainda. Clique em “+ Novo link”.', 'muted'); td.colSpan = 6; tr.append(td); tb.append(tr);
       return;
     }
-    for (const l of data.links) {
+    for (const l of list) {
       const tr = document.createElement('tr');
       const idTd = document.createElement('td');
       const strong = document.createElement('strong'); strong.textContent = l.label || '(sem identificação)';
-      const sub = document.createElement('div'); sub.className = 'small muted'; sub.textContent = 'Criado ' + fmt(l.created_at) + (l.has_image ? ' · com prévia' : ' · sem prévia');
+      const sub = document.createElement('div'); sub.className = 'small muted'; sub.textContent = domainLabel(l.host) + ' · criado ' + fmt(l.created_at) + (l.has_image ? ' · com prévia' : ' · sem prévia');
       idTd.append(strong, sub);
 
       const linkTd = document.createElement('td');
-      const code = document.createElement('code'); code.textContent = '/' + l.slug;
+      const code = document.createElement('code'); code.textContent = l.host + '/' + l.slug;
       const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'link'; copy.textContent = 'Copiar';
-      copy.onclick = () => copyText(origin + '/' + l.slug, copy);
+      copy.onclick = () => copyText('https://' + l.host + '/' + l.slug, copy);
       linkTd.append(code, document.createElement('br'), copy);
 
       const statusTd = document.createElement('td');
@@ -235,7 +315,7 @@
       tb.append(tr);
     }
   }
-  $('btnRefresh').onclick = () => loadLinks().catch((e) => alertMsg(e));
+  $('btnRefresh').onclick = () => loadDomains().then(loadLinks).catch((e) => alertMsg(e));
 
   async function showDetail(slug) {
     const data = await api('/api/stats?slug=' + encodeURIComponent(slug));
@@ -261,6 +341,11 @@
     editing = link ? link.slug : null;
     $('tForm').textContent = link ? 'Editar /' + link.slug : 'Novo link';
     $('btnSave').textContent = link ? 'Salvar alterações' : 'Gerar link';
+    fillSelect($('host'), false);
+    if (link) $('host').value = link.host;
+    else if (lastHost) $('host').value = lastHost;
+    else if ($('filter').value) $('host').value = $('filter').value;
+    $('host').disabled = Boolean(link); // o domínio de um link não muda depois de criado
     $('label').value = link ? (link.label || '') : '';
     $('destination').value = link ? link.destination : '';
     $('image').value = '';
@@ -272,7 +357,7 @@
     if (link && link.has_image) {
       const box = $('previewBox'); box.innerHTML = '';
       const img = document.createElement('img'); img.alt = 'Imagem atual da prévia';
-      img.src = origin + '/i/' + link.slug + '.jpg?v=' + new Date(link.updated_at).getTime();
+      img.src = 'https://' + link.host + '/i/' + link.slug + '.jpg?v=' + new Date(link.updated_at).getTime();
       box.append(img);
     }
     $('resultCard').hidden = true;
@@ -318,18 +403,21 @@
     try {
       const payload = { label: $('label').value, destination: $('destination').value };
       if (imageData) payload.image = imageData;
-      let slug;
+      let saved;
       if (editing) {
         payload.slug = editing;
         payload.active = $('active').checked;
         if ($('removeImage').checked && !imageData) payload.removeImage = true;
-        await api('/api/links', { method: 'PATCH', body: JSON.stringify(payload) });
-        slug = editing;
+        saved = await api('/api/links', { method: 'PATCH', body: JSON.stringify(payload) });
       } else {
-        slug = (await api('/api/links', { method: 'POST', body: JSON.stringify(payload) })).slug;
+        payload.host = $('host').value;
+        if (!payload.host) throw new Error('Cadastre um domínio primeiro.');
+        saved = await api('/api/links', { method: 'POST', body: JSON.stringify(payload) });
+        lastHost = saved.host;
       }
       $('formCard').hidden = true; editing = null;
-      showResult(slug);
+      showResult(saved.slug, saved.host);
+      await loadDomains();
       await loadLinks();
     } catch (err) {
       $('formMsg').textContent = err.message;
@@ -338,9 +426,9 @@
     }
   };
 
-  function showResult(slug) {
-    $('rFull').textContent = origin + '/' + slug;
-    $('rBase').textContent = origin + '/{{1}}';
+  function showResult(slug, host) {
+    $('rFull').textContent = 'https://' + host + '/' + slug;
+    $('rBase').textContent = 'https://' + host + '/{{1}}';
     $('rSlug').textContent = slug;
     $('resultCard').hidden = false;
     $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });

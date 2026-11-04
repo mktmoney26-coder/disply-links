@@ -1,7 +1,7 @@
 // API do painel: listar, criar e editar links. Protegida pela senha do painel.
 const crypto = require('crypto');
 const { getDb } = require('../lib/db');
-const { isAuthorized } = require('../lib/auth');
+const { guard } = require('../lib/auth');
 
 const ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'; // sem letras/números que se confundem
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
@@ -40,11 +40,7 @@ function cleanLabel(value) {
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-
-  if (!isAuthorized(req)) {
-    res.status(401).json({ erro: 'Senha do painel inválida.' });
-    return;
-  }
+  if (!guard(req, res)) return;
 
   const sql = await getDb();
   if (!sql) {
@@ -56,7 +52,7 @@ module.exports = async (req, res) => {
 
   if (req.method === 'GET') {
     const rows = await sql`
-      select l.slug, l.label, l.destination, l.active, l.created_at, l.updated_at,
+      select l.slug, l.host, l.label, l.destination, l.active, l.created_at, l.updated_at,
              (l.image_b64 is not null) as has_image,
              coalesce(c.cliques, 0)::int as cliques,
              c.ultimo_clique
@@ -82,16 +78,22 @@ module.exports = async (req, res) => {
       if (image.erro) { res.status(400).json(image); return; }
     }
     const label = cleanLabel(body.label);
+    const host = typeof body.host === 'string' ? body.host.trim().toLowerCase() : '';
+    const known = host ? await sql`select host from domains where host = ${host}` : [];
+    if (!known.length) {
+      res.status(400).json({ erro: 'Escolha um domínio cadastrado para este link.' });
+      return;
+    }
 
     for (let attempt = 0; attempt < 5; attempt++) {
       const slug = newSlug();
       const rows = await sql`
-        insert into links (slug, label, destination, image_b64, image_type)
-        values (${slug}, ${label}, ${destination}, ${image ? image.b64 : null}, ${image ? image.type : null})
+        insert into links (slug, host, label, destination, image_b64, image_type)
+        values (${slug}, ${host}, ${label}, ${destination}, ${image ? image.b64 : null}, ${image ? image.type : null})
         on conflict (slug) do nothing
         returning slug`;
       if (rows.length) {
-        res.status(201).json({ slug });
+        res.status(201).json({ slug, host });
         return;
       }
     }
@@ -136,12 +138,12 @@ module.exports = async (req, res) => {
                            else image_type end,
         updated_at  = now()
       where slug = ${slug}
-      returning slug`;
+      returning slug, host`;
     if (!rows.length) {
       res.status(404).json({ erro: 'Link não encontrado.' });
       return;
     }
-    res.status(200).json({ slug });
+    res.status(200).json({ slug, host: rows[0].host });
     return;
   }
 

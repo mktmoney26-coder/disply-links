@@ -1,5 +1,5 @@
-// Entrega a imagem de prévia de um link criado pelo painel.
-const { getDb } = require('../lib/db');
+// Entrega a imagem de prévia de um link criado pelo painel, só no domínio do próprio link.
+const { getDb, requestHost } = require('../lib/db');
 
 module.exports = async (req, res) => {
   const slug = String(req.query.file || '').replace(/\.(jpe?g|png|webp)$/i, '').toLowerCase();
@@ -10,7 +10,8 @@ module.exports = async (req, res) => {
 
   const sql = await getDb();
   const rows = sql
-    ? await sql`select image_b64, image_type from links where slug = ${slug} and active and image_b64 is not null`
+    ? await sql`select image_b64, image_type from links
+        where slug = ${slug} and host = ${requestHost(req)} and active and image_b64 is not null`
     : [];
   if (!rows.length) {
     res.status(404).end();

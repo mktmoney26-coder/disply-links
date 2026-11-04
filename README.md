@@ -47,6 +47,29 @@ Abra `https://disply-links.vercel.app/painel` e entre com a senha (`STATS_KEY`).
 No template, use o botão de URL dinâmica `https://disply-links.vercel.app/{{1}}`
 e, em cada disparo, preencha `{{1}}` com o código do link.
 
+## Domínios separados por BM
+Cada BM usa o seu próprio projeto na Vercel (e o seu próprio endereço). O painel e o banco
+continuam únicos, no projeto principal (`disply-links`).
+
+- Um link criado para um domínio **só abre nele**: nos outros domínios ele não existe.
+- O painel (`/painel`) e a API só funcionam no projeto que tem a variável `STATS_KEY`.
+  Não crie `STATS_KEY` nos projetos das BMs.
+- Nos domínios das BMs não aparece nada que ligue o endereço à Disply.
+
+### Adicionar uma BM nova (5 minutos)
+1. **Vercel → Add New → Project** → importe o mesmo repositório `disply-links`.
+   Dê um nome que **não** tenha "disply" (ex.: `aurora-ofertas`). O endereço será `aurora-ofertas.vercel.app`.
+2. Clique em **Deploy**.
+3. No projeto novo: **Storage → Connect Database** → escolha o banco Neon que já existe → **Connect**.
+4. **Deployments → ⋯ → Redeploy**.
+5. No painel principal, em **Domínios**, adicione `aurora-ofertas.vercel.app` com o nome da BM.
+
+Depois é só criar os links escolhendo esse domínio. No template dessa BM, o botão fica
+`https://aurora-ofertas.vercel.app/{{1}}`.
+
+Observação: a cada atualização do código, todos os projetos publicam de novo. O plano
+gratuito permite até 100 deploys por dia, o que é suficiente para dezenas de BMs.
+
 ## Links antigos (arquivo links.json)
 Os links do arquivo continuam funcionando. Para novos, prefira o painel.
 
