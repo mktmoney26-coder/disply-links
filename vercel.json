@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/painel", "destination": "/painel.html" },
+    { "source": "/i/:file", "destination": "/api/img?file=:file" },
     { "source": "/:slug([a-z0-9-]+)", "destination": "/api/go?slug=:slug" }
   ]
 }

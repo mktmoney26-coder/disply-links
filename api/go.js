@@ -7,33 +7,65 @@ const { getDb } = require('../lib/db');
 // apenas não contam como clique.
 const PREVIEW_FETCHERS = /(WhatsApp|facebookexternalhit|Facebot|TelegramBot|Twitterbot|Slackbot|LinkedInBot|Discordbot|SkypeUriPreview|Googlebot|bingbot)/i;
 
+// Título invisível: no teste, foi o formato que mostrou só a imagem e o domínio.
+const INVISIBLE_TITLE = '‎';
+
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
 
+function notFound(res) {
+  res.status(404).setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.end('Link não encontrado.');
+}
+
 module.exports = async (req, res) => {
   const slug = String(req.query.slug || '').toLowerCase();
-  const link = Object.prototype.hasOwnProperty.call(links, slug) ? links[slug] : null;
+  if (!/^[a-z0-9-]{1,64}$/.test(slug)) return notFound(res);
 
-  if (!link || !/^https:\/\//.test(link.destination || '')) {
-    res.status(404).setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.end('Link não encontrado.');
-    return;
+  let sql = null;
+  try {
+    sql = await getDb();
+  } catch (err) {
+    console.error('Erro ao conectar no banco:', err);
   }
+
+  // 1) Links criados pelo painel (banco de dados)
+  let link = null;
+  if (sql) {
+    try {
+      const rows = await sql`
+        select destination, active, updated_at, (image_b64 is not null) as has_image
+        from links where slug = ${slug}`;
+      if (rows.length) {
+        if (!rows[0].active) return notFound(res);
+        const version = new Date(rows[0].updated_at).getTime();
+        link = {
+          title: INVISIBLE_TITLE,
+          destination: rows[0].destination,
+          image: rows[0].has_image ? `/i/${slug}.jpg?v=${version}` : null
+        };
+      }
+    } catch (err) {
+      console.error('Erro ao buscar link:', err);
+    }
+  }
+
+  // 2) Links antigos do arquivo links.json
+  if (!link && Object.prototype.hasOwnProperty.call(links, slug)) link = links[slug];
+
+  if (!link || !/^https:\/\//.test(link.destination || '')) return notFound(res);
 
   const userAgent = String(req.headers['user-agent'] || '');
   const isPreview = PREVIEW_FETCHERS.test(userAgent);
   const contact = typeof req.query.c === 'string' ? req.query.c.slice(0, 64) : null;
 
-  if (!isPreview) {
+  if (!isPreview && sql) {
     try {
-      const sql = await getDb();
-      if (sql) {
-        await sql`insert into clicks (slug, contact, country, user_agent)
-          values (${slug}, ${contact}, ${req.headers['x-vercel-ip-country'] || null}, ${userAgent.slice(0, 300)})`;
-      }
+      await sql`insert into clicks (slug, contact, country, user_agent)
+        values (${slug}, ${contact}, ${req.headers['x-vercel-ip-country'] || null}, ${userAgent.slice(0, 300)})`;
     } catch (err) {
       console.error('Erro ao registrar clique:', err);
     }
@@ -41,18 +73,23 @@ module.exports = async (req, res) => {
 
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const base = `https://${host}`;
-  const image = /^https?:\/\//.test(link.image) ? link.image : base + link.image;
   const dest = link.destination;
 
   // Título e descrição são opcionais: sem eles, a prévia mostra só a imagem e o domínio.
   // "title" preenche os dois; "htmlTitle" e "ogTitle" permitem controlar cada um separadamente.
   const htmlTitle = link.htmlTitle ?? link.title;
   const ogTitle = link.ogTitle ?? link.title;
-  const textTags = [
+  const image = link.image ? (/^https?:\/\//.test(link.image) ? link.image : base + link.image) : null;
+
+  const headTags = [
     htmlTitle ? `<title>${esc(htmlTitle)}</title>` : '',
     ogTitle ? `<meta property="og:title" content="${esc(ogTitle)}">` : '',
     link.description ? `<meta name="description" content="${esc(link.description)}">` : '',
-    link.description ? `<meta property="og:description" content="${esc(link.description)}">` : ''
+    link.description ? `<meta property="og:description" content="${esc(link.description)}">` : '',
+    image ? `<meta property="og:image" content="${esc(image)}">` : '',
+    image ? '<meta property="og:image:width" content="1200">' : '',
+    image ? '<meta property="og:image:height" content="630">' : '',
+    image ? '<meta name="twitter:card" content="summary_large_image">' : ''
   ].filter(Boolean).join('\n');
 
   const html = `<!doctype html>
@@ -61,13 +98,9 @@ module.exports = async (req, res) => {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-${textTags}
+${headTags}
 <meta property="og:type" content="website">
 <meta property="og:url" content="${esc(base + '/' + slug)}">
-<meta property="og:image" content="${esc(image)}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
 <meta http-equiv="refresh" content="0; url=${esc(dest)}">
 <style>body{font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:16px;text-align:center}a{color:#0F6E5C;font-weight:700}</style>
 </head>

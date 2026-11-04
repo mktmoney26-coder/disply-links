@@ -1,17 +1,9 @@
-// Relatório de cliques, protegido pela senha definida em STATS_KEY.
-const crypto = require('crypto');
+// Relatório de cliques por contato de um link, protegido pela senha do painel.
 const { getDb } = require('../lib/db');
-
-function sameKey(a, b) {
-  const x = Buffer.from(String(a));
-  const y = Buffer.from(String(b));
-  return x.length === y.length && crypto.timingSafeEqual(x, y);
-}
+const { isAuthorized } = require('../lib/auth');
 
 module.exports = async (req, res) => {
-  const expected = process.env.STATS_KEY;
-  const given = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (!expected || !sameKey(given, expected)) {
+  if (!isAuthorized(req)) {
     res.status(401).json({ erro: 'Senha do painel inválida.' });
     return;
   }
@@ -22,28 +14,23 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const porLink = await sql`
-    select slug,
-           count(*)::int as cliques,
-           count(distinct contact)::int as contatos_unicos,
-           max(created_at) as ultimo_clique
-    from clicks
-    group by slug
-    order by cliques desc`;
+  const slug = typeof req.query.slug === 'string' ? req.query.slug : '';
+  const contatos = slug
+    ? await sql`
+        select contact as contato,
+               count(*)::int as cliques,
+               min(created_at) as primeiro_clique
+        from clicks
+        where slug = ${slug} and contact is not null
+        group by contact
+        order by primeiro_clique desc
+        limit 1000`
+    : [];
 
-  let contatos = [];
-  if (typeof req.query.slug === 'string' && req.query.slug) {
-    contatos = await sql`
-      select contact as contato,
-             count(*)::int as cliques,
-             min(created_at) as primeiro_clique
-      from clicks
-      where slug = ${req.query.slug} and contact is not null
-      group by contact
-      order by primeiro_clique desc
-      limit 1000`;
-  }
+  const totais = slug
+    ? await sql`select count(*)::int as cliques from clicks where slug = ${slug}`
+    : [{ cliques: 0 }];
 
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ porLink, contatos });
+  res.status(200).json({ cliques: totais[0].cliques, contatos });
 };

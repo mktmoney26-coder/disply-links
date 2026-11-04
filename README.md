@@ -36,7 +36,21 @@ Cada link (ex.: `https://SEU-PROJETO.vercel.app/teste`):
 - Abra `https://SEU-PROJETO.vercel.app/painel`, digite a senha → o clique aparece.
 - Para saber **quem** clicou, use um código no final: `/teste?c=CODIGO_DO_CONTATO`.
 
-## Criar um link novo
+## Painel de links (jeito recomendado)
+Abra `https://disply-links.vercel.app/painel` e entre com a senha (`STATS_KEY`).
+
+- **+ Novo link**: cole a URL de destino e, se quiser, uma imagem. O painel gera o link
+  (ex.: `/hzvccf`) e já ajusta a imagem para 1200×630.
+- **Editar**: troca destino, imagem ou identificação, ou pausa o link (pausado = página não encontrada).
+- **Ver cliques**: total e lista de contatos que clicaram (links com `?c=CODIGO`).
+
+No template, use o botão de URL dinâmica `https://disply-links.vercel.app/{{1}}`
+e, em cada disparo, preencha `{{1}}` com o código do link.
+
+## Links antigos (arquivo links.json)
+Os links do arquivo continuam funcionando. Para novos, prefira o painel.
+
+### Criar um link pelo arquivo (opcional)
 No GitHub, edite `links.json` e adicione um bloco (o nome do link só pode ter letras minúsculas, números e hífen):
 
 ```json
