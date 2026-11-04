@@ -81,7 +81,8 @@ module.exports = async (req, res) => {
   const ogTitle = link.ogTitle ?? link.title;
   const image = link.image ? (/^https?:\/\//.test(link.image) ? link.image : base + link.image) : null;
 
-  const headTags = [
+  // Sem imagem = sem prévia: a página não manda nenhuma informação para o WhatsApp montar o cartão.
+  const headTags = !image ? '' : [
     htmlTitle ? `<title>${esc(htmlTitle)}</title>` : '',
     ogTitle ? `<meta property="og:title" content="${esc(ogTitle)}">` : '',
     link.description ? `<meta name="description" content="${esc(link.description)}">` : '',
@@ -98,9 +99,9 @@ module.exports = async (req, res) => {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-${headTags}
+${headTags}${image ? `
 <meta property="og:type" content="website">
-<meta property="og:url" content="${esc(base + '/' + slug)}">
+<meta property="og:url" content="${esc(base + '/' + slug)}">` : ''}
 <meta http-equiv="refresh" content="0; url=${esc(dest)}">
 <style>body{font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:16px;text-align:center}a{color:#0F6E5C;font-weight:700}</style>
 </head>

@@ -90,7 +90,7 @@
           <div>
             <label for="image">Imagem da prévia (opcional)</label>
             <input id="image" type="file" accept="image/jpeg,image/png,image/webp">
-            <p class="small muted" style="margin:6px 0 0">Ajustada automaticamente para 1200×630.</p>
+            <p class="small muted" style="margin:6px 0 0">Ajustada automaticamente para 1200×630. Sem imagem, o link vai sem prévia.</p>
           </div>
           <div>
             <label for="fit">Encaixe da imagem</label>
@@ -108,7 +108,7 @@
         </div>
         <div>
           <span class="small muted" style="display:block;font-weight:600;margin-bottom:6px">Prévia da imagem</span>
-          <div class="preview" id="previewBox"><span class="small muted">Sem imagem</span></div>
+          <div class="preview" id="previewBox"><span class="small muted">Sem imagem: o link vai sem prévia</span></div>
         </div>
       </div>
       <div class="row" style="margin-top:18px">
@@ -211,7 +211,7 @@
       const tr = document.createElement('tr');
       const idTd = document.createElement('td');
       const strong = document.createElement('strong'); strong.textContent = l.label || '(sem identificação)';
-      const sub = document.createElement('div'); sub.className = 'small muted'; sub.textContent = 'Criado ' + fmt(l.created_at) + (l.has_image ? ' · com imagem' : ' · sem imagem');
+      const sub = document.createElement('div'); sub.className = 'small muted'; sub.textContent = 'Criado ' + fmt(l.created_at) + (l.has_image ? ' · com prévia' : ' · sem prévia');
       idTd.append(strong, sub);
 
       const linkTd = document.createElement('td');
@@ -254,7 +254,7 @@
   function resetPreview() {
     imageData = null; sourceImage = null;
     const box = $('previewBox'); box.innerHTML = '';
-    const s = document.createElement('span'); s.className = 'small muted'; s.textContent = 'Sem imagem'; box.append(s);
+    const s = document.createElement('span'); s.className = 'small muted'; s.textContent = 'Sem imagem: o link vai sem prévia'; box.append(s);
   }
 
   function openForm(link) {
