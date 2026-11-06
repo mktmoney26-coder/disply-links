@@ -289,6 +289,76 @@ async function ops(sql, req, body, a) {
   throw new HttpError(405, 'Método não permitido.');
 }
 
+// ---------------- Inbox ----------------
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+async function inbox(sql, req, body, a) {
+  if (req.method === 'GET' && a === 'thread') {
+    const instanceId = int(req.query.instance);
+    const phone = meta.normalizePhone(req.query.phone) || str(req.query.phone, 20);
+    const inbound = await sql`select id, name, text, msg_type, created_at from wa_inbound
+      where instance_id = ${instanceId} and phone = ${phone} order by created_at desc limit 300`;
+    const outbound = await sql`select id, text, status, error, created_at from wa_outbound
+      where instance_id = ${instanceId} and phone = ${phone} order by created_at desc limit 300`;
+    const campaigns = await sql`select r.id, r.status, r.error, r.sent_at as created_at, o.name as operation_name, t.name as template_name,
+        o.body_vars, r.name as contact_name
+      from wa_recipients r join wa_operations o on o.id = r.operation_id left join wa_templates t on t.id = o.template_id
+      where o.instance_id = ${instanceId} and r.phone = ${phone} and r.sent_at is not null order by r.sent_at desc limit 50`;
+    await sql`update wa_inbound set is_read = true where instance_id = ${instanceId} and phone = ${phone} and not is_read`;
+    const items = [
+      ...inbound.map((m) => ({ dir: 'in', id: 'i' + m.id, text: m.text, type: m.msg_type, at: m.created_at })),
+      ...outbound.map((m) => ({ dir: 'out', id: 'o' + m.id, text: m.text, status: m.status, error: m.error, at: m.created_at })),
+      ...campaigns.map((c) => ({ dir: 'out', kind: 'template', id: 'c' + c.id, text: `Template ${c.template_name || ''} · operação “${c.operation_name}”`, status: c.status, error: c.error, at: c.created_at }))
+    ].sort((x, y) => new Date(x.at) - new Date(y.at));
+    const lastIn = inbound[0] ? new Date(inbound[0].created_at).getTime() : 0;
+    const optout = (await sql`select 1 from wa_optouts where phone = ${phone}`).length > 0;
+    return {
+      phone, name: (inbound.find((m) => m.name) || {}).name || (campaigns[0] && campaigns[0].contact_name) || null,
+      items, optout, window_open: lastIn > 0 && Date.now() - lastIn < WINDOW_MS,
+      window_closes_at: lastIn ? new Date(lastIn + WINDOW_MS) : null
+    };
+  }
+  if (req.method === 'GET') {
+    const instanceId = int(req.query.instance);
+    const q = str(req.query.q, 60).toLowerCase();
+    const rows = instanceId
+      ? await sql`select instance_id, phone, name, text, created_at, is_read from wa_inbound where instance_id = ${instanceId} order by created_at desc limit 5000`
+      : await sql`select instance_id, phone, name, text, created_at, is_read from wa_inbound order by created_at desc limit 5000`;
+    const convs = new Map();
+    for (const m of rows) {
+      const k = m.instance_id + ':' + m.phone;
+      let c = convs.get(k);
+      if (!c) { c = { instance_id: m.instance_id, phone: m.phone, name: m.name, last_text: m.text, last_at: m.created_at, unread: 0, total: 0 }; convs.set(k, c); }
+      if (!c.name && m.name) c.name = m.name;
+      c.total++; if (!m.is_read) c.unread++;
+    }
+    let list = [...convs.values()];
+    if (q) list = list.filter((c) => c.phone.includes(q.replace(/\D/g, '') || '§') || String(c.name || '').toLowerCase().includes(q));
+    if (req.query.unread === '1') list = list.filter((c) => c.unread > 0);
+    const unreadTotal = [...convs.values()].reduce((s, c) => s + c.unread, 0);
+    return { conversations: list.slice(0, 300), unread: unreadTotal };
+  }
+  if (a === 'reply') {
+    const instanceId = int(body.instance_id);
+    const phone = meta.normalizePhone(body.phone);
+    const text = typeof body.text === 'string' ? body.text.trim().slice(0, 4096) : '';
+    if (!phone) bad('Telefone inválido.');
+    if (!text) bad('Escreva a mensagem.');
+    const last = await sql`select created_at from wa_inbound where instance_id = ${instanceId} and phone = ${phone} order by created_at desc limit 1`;
+    if (!last.length || Date.now() - new Date(last[0].created_at).getTime() >= WINDOW_MS) {
+      bad('A janela de 24 horas está fechada: o cliente não manda mensagem há mais de 24h. Para falar com ele, use um template em uma operação.');
+    }
+    const inst = await getInstance(sql, instanceId);
+    let r;
+    try { r = await meta.sendText(inst.phone_number_id, decrypt(inst.token_enc), phone, text); }
+    catch (err) { bad('A Meta recusou a mensagem: ' + err.message); }
+    const wamid = r.messages && r.messages[0] && r.messages[0].id;
+    await sql`insert into wa_outbound (instance_id, phone, text, wamid) values (${instanceId}, ${phone}, ${text}, ${wamid || null})`;
+    return { ok: true };
+  }
+  throw new HttpError(405, 'Método não permitido.');
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (!guard(req, res)) return;
@@ -303,6 +373,7 @@ module.exports = async (req, res) => {
     else if (r === 'lists') out = await lists(sql, req, body, a);
     else if (r === 'media' && req.method === 'POST') out = await media(sql, req, body);
     else if (r === 'ops') out = await ops(sql, req, body, a);
+    else if (r === 'inbox') out = await inbox(sql, req, body, a);
     else if (r === 'webhook-info') out = { callback: webhookUrl(req), verify_token: verifyToken() };
     else throw new HttpError(404, 'Recurso não encontrado.');
     res.status(200).json(out);

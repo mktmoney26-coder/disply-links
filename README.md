@@ -114,6 +114,8 @@ Página no projeto principal: `https://disply-links.vercel.app/disparos` (mesma 
 - **Listas:** CSV ou Excel com colunas de nome e telefone. Duplicados e inválidos são ignorados.
 - **Operações:** instância → template → mídia → variáveis com `{nome}` / `{primeiro_nome}` → lista → teste → iniciar.
   Acompanhe enviadas, entregues, lidas e falhas; pause, retome, cancele e exporte as falhas.
+- **Inbox:** conversas de todos os números, com o template que a pessoa recebeu e as respostas.
+  Dá para responder em até 24h depois da última mensagem do cliente (regra da Meta).
 - **SAIR:** quem responder SAIR (ou PARAR, STOP…) é bloqueado em todas as listas.
 
 ### Webhook (para entregue/lido, respostas e SAIR)
@@ -122,4 +124,5 @@ Em **Instâncias** aparecem a URL de callback e o token de verificação. Cole o
 Depois clique em **Assinar webhook** na instância.
 
 Limites desta versão: uma instância por operação; vídeo e documento só por link público;
-templates de carrossel ainda não são suportados.
+templates de carrossel ainda não são suportados; no Inbox, imagens e áudios recebidos aparecem
+como descrição (sem abrir o arquivo).

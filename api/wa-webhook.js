@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const { getDispatchDb } = require('../lib/dispatch-db');
 const { decrypt, verifyToken } = require('../lib/secrets');
+const { normalizePhone } = require('../lib/meta');
 
 const RANK = { sending: 0, sent: 1, delivered: 2, read: 3 };
 const OPT_OUT = /^\s*(sair|parar|pare|stop|cancelar|descadastrar|n[aã]o quero mais)\s*[.!]*\s*$/i;
@@ -16,6 +17,21 @@ function readRaw(req) {
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+// Texto legível de qualquer tipo de mensagem recebida.
+function describeMessage(m) {
+  const t = String(m.type || '');
+  if (t === 'text') return (m.text && m.text.body) || '';
+  if (t === 'button') return (m.button && m.button.text) || '[botão]';
+  if (t === 'interactive') {
+    const i = m.interactive || {};
+    return (i.button_reply && i.button_reply.title) || (i.list_reply && i.list_reply.title) || '[resposta interativa]';
+  }
+  const labels = { image: 'Imagem', video: 'Vídeo', audio: 'Áudio', voice: 'Áudio', document: 'Documento', sticker: 'Figurinha', location: 'Localização', contacts: 'Contato', reaction: 'Reação' };
+  const media = m[t] || {};
+  const extra = media.caption || media.filename || (t === 'reaction' ? media.emoji : '') || (t === 'location' ? [media.name, media.address].filter(Boolean).join(' – ') : '');
+  return `[${labels[t] || t || 'mensagem'}]${extra ? ' ' + extra : ''}`;
 }
 
 function validSignature(raw, header, secret) {
@@ -67,20 +83,23 @@ module.exports = async (req, res) => {
             const msg = `(#${e.code || '?'}) ${e.error_data && e.error_data.details || e.message || e.title || 'Falha na entrega'}`.slice(0, 400);
             await sql`update wa_recipients set status = 'failed', error = ${msg}, updated_at = now()
               where wamid = ${s.id} and status in ('sending','sent','delivered')`;
+            await sql`update wa_outbound set status = 'failed', error = ${msg} where wamid = ${s.id}`;
           } else if (RANK[status] !== undefined) {
             const lower = Object.keys(RANK).filter((k) => RANK[k] < RANK[status]);
             await sql`update wa_recipients set status = ${status}, updated_at = now()
               where wamid = ${s.id} and status = any(${lower}::text[])`;
+            await sql`update wa_outbound set status = ${status} where wamid = ${s.id} and status = any(${lower}::text[])`;
           }
         }
 
         const names = Object.fromEntries((value.contacts || []).map((c) => [c.wa_id, c.profile && c.profile.name]));
         for (const m of value.messages || []) {
-          const text = m.text ? m.text.body : m.button ? m.button.text : m.interactive ? JSON.stringify(m.interactive).slice(0, 500) : `[${m.type}]`;
-          await sql`insert into wa_inbound (instance_id, phone, name, text, wamid)
-            values (${inst.id}, ${m.from}, ${names[m.from] || null}, ${String(text || '').slice(0, 4000)}, ${m.id})`;
+          const phone = normalizePhone(m.from) || String(m.from); // mesmo formato das listas (com o nono dígito)
+          await sql`insert into wa_inbound (instance_id, phone, name, text, wamid, msg_type)
+            values (${inst.id}, ${phone}, ${names[m.from] || null}, ${describeMessage(m).slice(0, 4000)}, ${m.id}, ${String(m.type || 'text')})`;
+          const text = m.text ? m.text.body : m.button ? m.button.text : '';
           if (OPT_OUT.test(String(text || ''))) {
-            await sql`insert into wa_optouts (phone, instance_id) values (${m.from}, ${inst.id}) on conflict (phone) do nothing`;
+            await sql`insert into wa_optouts (phone, instance_id) values (${phone}, ${inst.id}) on conflict (phone) do nothing`;
           }
         }
       }
