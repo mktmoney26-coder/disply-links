@@ -1,10 +1,15 @@
 {
   "functions": {
-    "api/painel.js": { "includeFiles": "lib/painel.html" }
+    "api/painel.js": { "includeFiles": "lib/painel.html" },
+    "api/disparos-page.js": { "includeFiles": "lib/disparos.html" },
+    "api/disparos.js": { "maxDuration": 60 },
+    "api/links.js": { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/painel", "destination": "/api/painel" },
+    { "source": "/disparos", "destination": "/api/disparos-page" },
     { "source": "/i/:file", "destination": "/api/img?file=:file" },
+    { "source": "/m/:file", "destination": "/api/media?file=:file" },
     { "source": "/:slug([a-z0-9-]+)", "destination": "/api/go?slug=:slug" }
   ]
 }

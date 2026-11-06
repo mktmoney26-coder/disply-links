@@ -105,3 +105,21 @@ Suba a imagem em `public/img/` e faça o commit. A Vercel publica sozinha em seg
 O destino precisa começar com `https://`.
 
 Regra de ouro: a prévia mostra a oferta real e todo mundo vai para o mesmo destino.
+
+## Módulo de disparos (/disparos)
+Página no projeto principal: `https://disply-links.vercel.app/disparos` (mesma senha do painel).
+
+- **Instâncias:** conecte um número pela API oficial (WABA ID + token permanente). O token fica criptografado.
+- **Templates:** sincronizados da Meta. Criação e aprovação continuam no WhatsApp Manager.
+- **Listas:** CSV ou Excel com colunas de nome e telefone. Duplicados e inválidos são ignorados.
+- **Operações:** instância → template → mídia → variáveis com `{nome}` / `{primeiro_nome}` → lista → teste → iniciar.
+  Acompanhe enviadas, entregues, lidas e falhas; pause, retome, cancele e exporte as falhas.
+- **SAIR:** quem responder SAIR (ou PARAR, STOP…) é bloqueado em todas as listas.
+
+### Webhook (para entregue/lido, respostas e SAIR)
+Em **Instâncias** aparecem a URL de callback e o token de verificação. Cole os dois no app da Meta
+(WhatsApp → Configuração → Webhook), assine o campo `messages` e publique o app.
+Depois clique em **Assinar webhook** na instância.
+
+Limites desta versão: uma instância por operação; vídeo e documento só por link público;
+templates de carrossel ainda não são suportados.
