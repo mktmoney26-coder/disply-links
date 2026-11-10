@@ -1,6 +1,20 @@
-# Disply Links
+# Disply · Central
 
-Links de campanha com prévia clicável no WhatsApp e contagem de cliques.
+Sistema único da Disply em `https://app.disply.online` (ou `https://disply-links.vercel.app/app`),
+com menu lateral: **Visão geral · Disparos · Ativos Meta · Links · Configurações**. Mesma senha (`STATS_KEY`).
+Os endereços antigos `/painel` e `/disparos` levam para a tela certa do sistema.
+
+## Ativos Meta
+- **BMs:** cadastre perfil, nome, ID da BM, fornecedor, data de lançamento e o token do usuário do sistema
+  (permissões `whatsapp_business_management` e `business_management`). Contas, números e templates são descobertos sozinhos.
+- **Números:** qualidade, limite, envio (disponível/limitado/bloqueado e o motivo), status, enviadas em 30 dias e
+  dias parado (dados da própria Meta, incluindo envios de outras plataformas).
+- **Alertas:** gerados só quando algo muda (bloqueio, banimento, qualidade, template pausado/reprovado, falha de consulta).
+  Podem ser enviados em JSON para um webhook (Configurações).
+- **Consulta automática:** a cada 5 min com o sistema aberto; 1x por dia pela Vercel; ou a cada 5 min por um
+  agendador externo usando a URL mostrada em Configurações.
+
+## Links
 
 Cada link (ex.: `https://SEU-PROJETO.vercel.app/teste`):
 1. mostra no WhatsApp um cartão com imagem, título e descrição;
@@ -14,7 +28,8 @@ Cada link (ex.: `https://SEU-PROJETO.vercel.app/teste`):
 | `public/img/` | Imagens das prévias (ideal: 1200×630 px) |
 | `api/go.js` | Página de cada link: prévia, registro do clique e redirecionamento |
 | `api/stats.js` | Relatório de cliques (protegido por senha) |
-| `public/painel.html` | Painel para ver os cliques (`/painel`) |
+| `lib/app.html` | O sistema inteiro (menu lateral e todas as telas) |
+| `api/ativos.js`, `lib/assets-monitor.js` | Monitoramento das BMs, números e templates |
 | `lib/db.js` | Conexão com o banco; cria a tabela sozinho |
 
 ## Colocar no ar (uma vez só)
@@ -37,7 +52,7 @@ Cada link (ex.: `https://SEU-PROJETO.vercel.app/teste`):
 - Para saber **quem** clicou, use um código no final: `/teste?c=CODIGO_DO_CONTATO`.
 
 ## Painel de links (jeito recomendado)
-Abra `https://disply-links.vercel.app/painel` e entre com a senha (`STATS_KEY`).
+No sistema, menu **Links**.
 
 - **+ Novo link**: cole a URL de destino e, se quiser, uma imagem. O painel gera o link
   (ex.: `/hzvccf`) e já ajusta a imagem para 1200×630.
@@ -107,7 +122,7 @@ O destino precisa começar com `https://`.
 Regra de ouro: a prévia mostra a oferta real e todo mundo vai para o mesmo destino.
 
 ## Módulo de disparos (/disparos)
-Página no projeto principal: `https://disply-links.vercel.app/disparos` (mesma senha do painel).
+No sistema, grupo **Disparos** do menu.
 
 - **Instâncias:** conecte um número pela API oficial (WABA ID + token permanente). O token fica criptografado.
 - **Templates:** sincronizados da Meta. Criação e aprovação continuam no WhatsApp Manager.
