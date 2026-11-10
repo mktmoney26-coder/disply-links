@@ -367,8 +367,11 @@ const WINDOW_MS = 24 * 60 * 60 * 1000;
 async function templatePreviews(sql, opIds) {
   const map = new Map();
   if (!opIds.length) return map;
-  const ops = await sql`select o.id, o.name, o.body_vars, o.name_fallback, t.components
+  let ops = [];
+  try {
+    ops = await sql`select o.id, o.name, o.body_vars, o.name_fallback, t.components
     from wa_operations o left join wa_templates t on t.id = o.template_id where o.id = any(${opIds}::int[])`;
+  } catch (err) { console.error('prévia do template:', err.message); }
   for (const o of ops) {
     let vars = {}; try { vars = JSON.parse(o.body_vars || '{}'); } catch {}
     map.set(o.id, { name: o.name, info: meta.describeTemplate(o.components), op: { body_vars_obj: vars, name_fallback: o.name_fallback } });
@@ -426,7 +429,7 @@ async function inbox(sql, req, body, a) {
     // Envios dos disparos (últimas 48h): aparecem na hora em que saem, com o status atualizado pelo webhook.
     const withSends = req.query.sends !== '0';
     let live = [];
-    if (withSends) {
+    if (withSends) try {
       const sends = instanceId
         ? await sql`select r.operation_id, o.instance_id, r.phone, r.name, r.status, r.sent_at from wa_recipients r join wa_operations o on o.id = r.operation_id
             where r.sent_at > now() - interval '48 hours' and o.instance_id = ${instanceId} order by r.sent_at desc limit 3000`
@@ -461,7 +464,7 @@ async function inbox(sql, req, body, a) {
           where i.instance_id = ${o.instance_id} and i.created_at >= r.sent_at`;
         o.respostas = x ? x.n : 0;
       }
-    }
+    } catch (err) { console.error('inbox ao vivo:', err.message); }
     let list = [...convs.values()].sort((x, y) => new Date(y.last_at) - new Date(x.last_at));
     if (q) list = list.filter((c) => c.phone.includes(q.replace(/\D/g, '') || '§') || String(c.name || '').toLowerCase().includes(q));
     if (req.query.unread === '1') list = list.filter((c) => c.unread > 0);
