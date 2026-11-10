@@ -70,6 +70,22 @@ async function instances(sql, req, body, a) {
     return { numbers: await meta.listNumbers(waba, token) };
   }
   if (a === 'sync') return { synced: await syncTemplates(sql, int(body.id)) };
+  if (a === 'profile') {
+    const inst = await getInstance(sql, int(body.id || req.query.id));
+    const pr = await meta.getProfile(inst.phone_number_id, decrypt(inst.token_enc));
+    return { photo: pr.profile_picture_url || null, about: pr.about || '', description: pr.description || '' };
+  }
+  if (a === 'photo') {
+    const inst = await getInstance(sql, int(body.id));
+    const m = /^data:(image\/(?:jpeg|png));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.data || ''));
+    if (!m) bad('Envie uma imagem JPG ou PNG.');
+    const buf = Buffer.from(m[2], 'base64');
+    if (buf.length > 5 * 1024 * 1024) bad('Imagem muito grande (máximo 5 MB).');
+    try { await meta.setProfilePhoto(inst.phone_number_id, decrypt(inst.token_enc), buf, m[1]); }
+    catch (err) { throw new HttpError(400, 'A Meta não aceitou a foto: ' + err.message); }
+    const pr = await meta.getProfile(inst.phone_number_id, decrypt(inst.token_enc)).catch(() => ({}));
+    return { ok: true, photo: pr.profile_picture_url || null };
+  }
   if (a === 'subscribe') {
     const inst = await getInstance(sql, int(body.id));
     const r = await meta.subscribeApp(inst.waba_id, decrypt(inst.token_enc), body.override ? webhookUrl(req) : null, verifyToken());

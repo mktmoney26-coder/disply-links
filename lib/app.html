@@ -275,6 +275,15 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
             <div><label for="opInst">Instância (número que envia)</label><select id="opInst"></select></div>
             <div><label for="opTpl">Template aprovado</label><select id="opTpl"></select></div>
           </div>
+          <div id="opProfile" class="row" style="gap:14px;padding:12px;border:1px solid var(--line);border-radius:10px" hidden>
+            <div id="opPhoto" style="width:64px;height:64px;border-radius:99px;background:var(--soft);overflow:hidden;flex:0 0 64px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">sem foto</div>
+            <div style="flex:1 1 220px">
+              <strong>Foto de perfil do número</strong>
+              <p class="small muted" style="margin:2px 0 8px">É a foto que o cliente vê no WhatsApp. Quadrada, JPG ou PNG (ajustada para 640×640).</p>
+              <label class="btn ghost" style="margin:0;display:inline-flex">Trocar foto<input id="opPhotoFile" type="file" accept="image/jpeg,image/png" style="display:none"></label>
+              <span id="opPhotoMsg" class="small" role="status" style="margin-left:8px"></span>
+            </div>
+          </div>
           <p id="opTplInfo" class="small muted" style="margin:0"></p>
 
           <div id="opMediaBox" class="stack" hidden>
@@ -924,7 +933,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40';
     state.tpl = null; state.mediaUrl = ''; $('opVars').innerHTML = '';
     ['opMsg', 'opTestMsg', 'opMediaMsg'].forEach((x) => { $(x).textContent = ''; });
-    $('btnStartConfirm').hidden = true; $('btnStart').hidden = false;
+    $('btnStartConfirm').hidden = true; $('btnStart').hidden = false; $('opProfile').hidden = true;
     $('opTpl').innerHTML = '<option value="">Escolha a instância</option>';
     applyTemplate();
   }
@@ -947,8 +956,48 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     finally { sel.disabled = false; }
   }
 
+  // ---------- Foto de perfil do número ----------
+  function showPhoto(url) {
+    const box = $('opPhoto'); box.innerHTML = '';
+    if (url) box.append(el('img', { src: url, alt: 'Foto de perfil atual', style: 'width:100%;height:100%;object-fit:cover' }));
+    else box.textContent = 'sem foto';
+  }
+  async function loadProfile(id) {
+    $('opProfile').hidden = !id; setMsg('opPhotoMsg', '');
+    if (!id) return;
+    showPhoto(null);
+    try { const p = await post('r=instances&a=profile', { id: Number(id) }); showPhoto(p.photo); }
+    catch (err) { setMsg('opPhotoMsg', 'Não consegui ler o perfil: ' + err.message); }
+  }
+  function squareJpeg(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file); const img = new Image();
+      img.onload = () => {
+        const S = 640; const c = document.createElement('canvas'); c.width = S; c.height = S;
+        const k = Math.min(img.naturalWidth, img.naturalHeight);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, S, S);
+        ctx.drawImage(img, (img.naturalWidth - k) / 2, (img.naturalHeight - k) / 2, k, k, 0, 0, S, S);
+        URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não consegui ler essa imagem.')); };
+      img.src = url;
+    });
+  }
+  $('opPhotoFile').onchange = async () => {
+    const f = $('opPhotoFile').files[0]; const id = $('opInst').value; if (!f || !id) return;
+    try {
+      const data = await squareJpeg(f);
+      showPhoto(data); setMsg('opPhotoMsg', 'Enviando para a Meta…', true);
+      const r = await post('r=instances&a=photo', { id: Number(id), data });
+      if (r.photo) showPhoto(r.photo);
+      setMsg('opPhotoMsg', 'Foto trocada. Pode levar alguns minutos para aparecer para os clientes.', true);
+    } catch (err) { setMsg('opPhotoMsg', err.message); loadProfile(id); }
+    finally { $('opPhotoFile').value = ''; }
+  };
+
   $('opInst').onchange = async () => {
     if (!(await ensureInstance($('opInst'), 'opMsg'))) return;
+    loadProfile($('opInst').value);
     state.templates = []; const id = $('opInst').value; const sel = $('opTpl'); sel.innerHTML = '';
     if (!id) { sel.append(el('option', { value: '', text: 'Escolha a instância' })); applyTemplate(); return; }
     const { templates } = await api('r=templates&instance=' + encodeURIComponent(id));
