@@ -463,6 +463,13 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           <thead><tr><th>Perfil</th><th>BM</th><th>Fornecedor</th><th>Lançada em</th><th>Contas</th><th>Números</th><th>Última consulta</th><th>Situação</th><th>Ações</th></tr></thead>
           <tbody id="bmRows"><tr><td colspan="9" class="muted">Carregando…</td></tr></tbody>
         </table></div><p id="bmListMsg" class="small" role="status"></p></div>
+        <div class="card" id="bmDiag" hidden>
+          <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0" id="bmDiagTitle">Diagnóstico</h2>
+            <div class="row"><button class="btn ghost" type="button" data-copy="bmDiagRaw">Copiar diagnóstico</button><button class="btn ghost" type="button" id="bmDiagClose">Fechar</button></div></div>
+          <p class="small muted" style="margin:0 0 8px">O que o token desta BM consegue ver na Meta. O token em si não aparece aqui.</p>
+          <div id="bmDiagBody"></div>
+          <pre id="bmDiagRaw" hidden></pre>
+        </div>
       </div>
 
       <!-- ================= ATIVOS: NÚMEROS ================= -->
@@ -1698,13 +1705,31 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       else sit = badge('OK', 'ok');
       const acts = tdn(
         el('button', { class: 'link', type: 'button', text: 'Editar', onclick: () => openBmForm(b) }),
-        el('button', { class: 'link', type: 'button', text: 'Consultar', onclick: async (e) => { e.target.disabled = true; setMsg('bmListMsg', 'Consultando ' + b.name + '…', true); try { const r = await post('r=check', { id: b.id }); setMsg('bmListMsg', 'Consulta feita' + (r.alerts ? ': ' + r.alerts + ' alerta(s) novo(s).' : ', nada mudou.'), true); } catch (err) { setMsg('bmListMsg', err.message); } loadBms(); refreshBadges(); } }),
+        el('button', { class: 'link', type: 'button', text: 'Consultar', onclick: async (e) => { e.target.disabled = true; setMsg('bmListMsg', 'Consultando ' + b.name + '…', true); try { const r = await post('r=check', { id: b.id }); await loadBms(); const now = bmList.find((x) => x.id === b.id); if (now && now.last_error) setMsg('bmListMsg', 'A consulta de ' + b.name + ' falhou. Veja a coluna Situação ou clique em Diagnóstico.'); else setMsg('bmListMsg', 'Consulta feita' + (r.alerts ? ': ' + r.alerts + ' alerta(s) novo(s).' : '. Nenhuma mudança desde a última consulta.'), true); } catch (err) { setMsg('bmListMsg', err.message); } refreshBadges(); } }),
+        el('button', { class: 'link', type: 'button', text: 'Diagnóstico', onclick: () => diagBm(b) }),
         el('button', { class: 'link', type: 'button', text: b.active ? 'Pausar' : 'Reativar', onclick: async () => { await post('r=bms', { id: b.id, active: !b.active }, 'PATCH'); loadBms(); refreshBadges(); } }),
         removeButton(b)
       );
       tb.append(el('tr', {}, td(b.profile || '—'), name, td(b.supplier || '—'), td(fmtDate(b.launched_at)), td(b.contas), td(b.numeros), td(fmt(b.last_check)), tdn(sit), acts));
     }
   }
+  async function diagBm(b) {
+    const box = $('bmDiag'); box.hidden = false; $('bmDiagTitle').textContent = 'Diagnóstico: ' + b.name;
+    const body = $('bmDiagBody'); body.innerHTML = ''; body.append(el('p', { class: 'muted', text: 'Consultando a Meta…' }));
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try {
+      const d = await post('r=bms&a=diag', { id: b.id }, 'PATCH');
+      body.innerHTML = '';
+      for (const e of d.etapas) {
+        const det = e.ok ? JSON.stringify(e.resultado, null, 2) : e.erro;
+        body.append(el('div', { class: 'alert-item' }, el('span', { class: 'dot ' + (e.ok ? 'ok' : 'bad') }),
+          el('div', { class: 'body' }, el('strong', { text: e.etapa }), el('pre', { text: det }))));
+      }
+      $('bmDiagRaw').textContent = 'Diagnóstico ' + b.name + ' (BM ' + b.bm_id + ')\n' + d.etapas.map((e) => (e.ok ? '✓ ' : '✗ ') + e.etapa + '\n' + (e.ok ? JSON.stringify(e.resultado) : e.erro)).join('\n');
+    } catch (err) { body.innerHTML = ''; body.append(el('p', { class: 'err', text: err.message })); }
+  }
+  $('bmDiagClose').onclick = () => { $('bmDiag').hidden = true; };
+
   function removeButton(b) {
     const btn = el('button', { class: 'link bad', type: 'button', text: 'Remover' });
     let armed = false; let t;

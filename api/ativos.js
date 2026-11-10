@@ -3,7 +3,7 @@
 const { guard } = require('../lib/auth');
 const { encrypt } = require('../lib/secrets');
 const { graph } = require('../lib/meta');
-const { getAssetsDb, runCheck, notify, getSetting, setSetting, logActivity } = require('../lib/assets-monitor');
+const { diagnose, getAssetsDb, runCheck, notify, getSetting, setSetting, logActivity } = require('../lib/assets-monitor');
 const { cronKey } = require('./ativos-cron');
 
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
@@ -97,6 +97,7 @@ async function bms(sql, req, body, a) {
     const id = Number(body.id);
     const [bm] = await sql`select * from as_bms where id = ${id}`;
     if (!bm) throw new HttpError(404, 'BM não encontrada.');
+    if (a === 'diag') return { bm: bm.name, etapas: await diagnose(bm) };
     if (a === 'delete') {
       await sql`delete from as_templates where bm_ref = ${id}`;
       await sql`delete from as_numbers where bm_ref = ${id}`;
