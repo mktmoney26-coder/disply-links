@@ -444,7 +444,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
               <div><label for="bId">ID da BM</label><input id="bId" type="text" inputmode="numeric" maxlength="25" required placeholder="Só números"></div>
               <div><label for="bSupplier">Fornecedor</label><input id="bSupplier" type="text" maxlength="120" placeholder="De quem veio a BM"></div>
               <div><label for="bLaunched">Lançada em</label><input id="bLaunched" type="date"></div>
-              <div><label for="bWabas">IDs das contas do WhatsApp (opcional)</label><input id="bWabas" type="text" maxlength="500" placeholder="Em branco = descobrir sozinho"></div>
+              <div><label for="bWabas">IDs das contas do WhatsApp (opcional)</label><input id="bWabas" type="text" maxlength="500" placeholder="Em branco = descobrir sozinho"><span class="small muted" style="display:block;margin-top:4px">Na Meta: Configurações → Contas do WhatsApp → abra a conta → “Identificação”.</span></div>
             </div>
             <div><label for="bToken" id="bTokenLabel">Token do usuário do sistema</label><input id="bToken" type="password" autocomplete="off" placeholder="EAAB..."></div>
             <details class="small muted"><summary style="cursor:pointer;font-weight:600">Como gerar o token</summary>
@@ -1804,7 +1804,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const h = HEALTH[n.health];
       const s = STATUS[n.status] || [n.status || '—', 'off'];
       const envio = tdn(h ? badge(h[0], h[1]) : el('span', { class: 'muted', text: '—' }));
-      if (n.health_detail) envio.append(el('div', { class: 'small muted', style: 'max-width:280px;margin-top:4px;white-space:pre-wrap', text: n.health_detail }));
+      if (n.health_detail && n.health !== 'AVAILABLE') envio.append(el('div', { class: 'small muted', style: 'max-width:280px;margin-top:4px;white-space:pre-wrap', text: n.health_detail }));
       const parado = n.dias_parado == null ? el('span', { class: 'badge b-warn', text: '30+ dias' }) : n.dias_parado >= 7 ? badge(n.dias_parado + ' dias', 'warn') : el('span', { text: n.dias_parado === 0 ? 'Hoje' : n.dias_parado + (n.dias_parado === 1 ? ' dia' : ' dias') });
       const disp = n.instance_id ? badge('Em uso', 'info')
         : el('button', { class: 'link', type: 'button', text: 'Conectar', onclick: () => { location.hash = 'inst'; setTimeout(() => { const b = $('btnNewInst'); if (b) b.click(); const w = $('iWaba'); if (w) w.value = n.waba_id; const nm = $('iName'); if (nm && !nm.value) nm.value = (n.bm + ' – ' + (n.display_phone || '')).slice(0, 80); }, 50); } });
