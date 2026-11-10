@@ -189,6 +189,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .wa-rail{background:var(--wa-head);border-right:1px solid var(--wa-line);display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 0;overflow-y:auto}
   .wa-rail-item{position:relative;border:0;background:transparent;padding:3px;border-radius:50%;cursor:pointer;min-width:44px;min-height:44px}
   .wa-rail-item[aria-pressed=true] .wa-av{box-shadow:0 0 0 3px var(--wa-panel),0 0 0 5px var(--wa-green)}
+  .wa-rail .wa-av.sm{width:44px;height:44px;font-size:12px;letter-spacing:-.02em}
   .wa-rail-badge{position:absolute;top:-2px;right:-4px;background:#ffd23f;color:#111;font-size:10px;font-weight:800;border-radius:99px;padding:1px 5px;min-width:18px;text-align:center;border:2px solid var(--wa-head)}
   .wa-av{--av:#25d366;position:relative;flex:0 0 auto;width:46px;height:46px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;background:var(--av);letter-spacing:.02em}
   .wa-av.sm{width:38px;height:38px;font-size:13px}
@@ -1804,10 +1805,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     };
     const total = Object.values(per || {}).reduce((a, b) => a + b, 0);
     rail.append(item('', '✱', 'Todos os números', total));
-    // Ícone de cada número: inicial da BM + final do telefone (ex.: L76), para diferenciar números da mesma BM.
+    // Ícone de cada número: iniciais da BM + final do telefone (ex.: LL76), para diferenciar números da mesma BM.
     for (const i of state.instances.filter((x) => x.active)) {
       const tail = String(i.display_phone || '').replace(/\D/g, '').slice(-2);
-      rail.append(item(String(i.id), (initials(i.bm || i.name)[0] || '#') + tail, i.name, (per || {})[i.id] || 0, 'i' + i.id));
+      rail.append(item(String(i.id), initials(i.bm || i.name) + tail, i.name, (per || {})[i.id] || 0, 'i' + i.id));
     }
   }
 
