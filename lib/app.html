@@ -1804,7 +1804,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     };
     const total = Object.values(per || {}).reduce((a, b) => a + b, 0);
     rail.append(item('', '✱', 'Todos os números', total));
-    for (const i of state.instances.filter((x) => x.active)) rail.append(item(String(i.id), initials(i.bm || i.name), i.name, (per || {})[i.id] || 0, 'i' + i.id));
+    // Ícone de cada número: inicial da BM + final do telefone (ex.: L76), para diferenciar números da mesma BM.
+    for (const i of state.instances.filter((x) => x.active)) {
+      const tail = String(i.display_phone || '').replace(/\D/g, '').slice(-2);
+      rail.append(item(String(i.id), (initials(i.bm || i.name)[0] || '#') + tail, i.name, (per || {})[i.id] || 0, 'i' + i.id));
+    }
   }
 
   async function loadConvs() {
