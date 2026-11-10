@@ -447,7 +447,15 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
               <div><label for="bWabas">IDs das contas do WhatsApp (opcional)</label><input id="bWabas" type="text" maxlength="500" placeholder="Em branco = descobrir sozinho"></div>
             </div>
             <div><label for="bToken" id="bTokenLabel">Token do usuário do sistema</label><input id="bToken" type="password" autocomplete="off" placeholder="EAAB..."></div>
-            <p class="small muted" style="margin:0">Em Configurações do negócio → Usuários do sistema → Gerar token, com as permissões <code>whatsapp_business_management</code> e <code>business_management</code>.</p>
+            <details class="small muted"><summary style="cursor:pointer;font-weight:600">Como gerar o token</summary>
+              <ol style="margin:8px 0 0;padding-left:20px;line-height:1.6">
+                <li>Em <b>business.facebook.com</b>, abra a BM e clique na engrenagem <b>Configurações</b>.</li>
+                <li>Vá em <b>Usuários → Usuários do sistema</b> e escolha um usuário (ou <b>+ Adicionar</b>, função <b>Administrador</b>).</li>
+                <li>Clique em <b>Atribuir ativos</b>: em <b>Apps</b>, dê controle total do app; em <b>Contas do WhatsApp</b>, dê controle total das contas.</li>
+                <li>Clique em <b>Gerar novo token</b>, escolha o app e, em validade, <b>Nunca</b>.</li>
+                <li>Marque as permissões <code>business_management</code>, <code>whatsapp_business_management</code> e <code>whatsapp_business_messaging</code> e gere.</li>
+                <li>Copie o token e cole no campo acima. A Meta só mostra ele uma vez.</li>
+              </ol></details>
             <div class="row"><button class="btn primary" type="submit" id="btnBmSave">Salvar e consultar</button><button class="btn ghost" type="button" id="btnBmCancel">Cancelar</button><span id="bmMsg" class="err" role="alert"></span></div>
           </form>
         </div>

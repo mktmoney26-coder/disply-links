@@ -6,7 +6,7 @@ Os endereços antigos `/painel` e `/disparos` levam para a tela certa do sistema
 
 ## Ativos Meta
 - **BMs:** cadastre perfil, nome, ID da BM, fornecedor, data de lançamento e o token do usuário do sistema
-  (permissões `whatsapp_business_management` e `business_management`). Contas, números e templates são descobertos sozinhos.
+  (permissões `business_management`, `whatsapp_business_management` e `whatsapp_business_messaging`; passo a passo na própria tela). Contas, números e templates são descobertos sozinhos.
 - **Números:** qualidade, limite, envio (disponível/limitado/bloqueado e o motivo), status, enviadas em 30 dias e
   dias parado (dados da própria Meta, incluindo envios de outras plataformas).
 - **Alertas:** gerados só quando algo muda (bloqueio, banimento, qualidade, template pausado/reprovado, falha de consulta).
