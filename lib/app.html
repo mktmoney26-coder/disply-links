@@ -1099,7 +1099,21 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   $('btnTest').onclick = async () => {
     setMsg('opTestMsg', 'Enviando teste…', true);
     try { await post('r=ops&a=test', { ...opPayload(), phone: $('opTestPhone').value, sample: state.sample || {} }); setMsg('opTestMsg', 'Teste aceito pela Meta. Confira no seu WhatsApp.', true); }
-    catch (err) { setMsg('opTestMsg', err.message); }
+    catch (err) {
+      setMsg('opTestMsg', err.message);
+      // Número adicionado mas ainda não ativado na API oficial: oferece ativar na hora.
+      if (/133010|not registered/i.test(err.message)) {
+        const m = $('opTestMsg');
+        m.textContent = 'Este número ainda não foi ativado na API oficial (a Meta respondeu "Account not registered"). ';
+        m.append(el('button', { class: 'link', type: 'button', text: 'Ativar número agora', onclick: async (ev) => {
+          ev.target.disabled = true; ev.target.textContent = 'Ativando…';
+          try {
+            const r = await post('r=instances&a=register', { id: Number($('opInst').value) });
+            setMsg('opTestMsg', 'Número ativado. Guarde o PIN de verificação em duas etapas: ' + r.pin + '. Agora envie o teste de novo.', true);
+          } catch (e2) { setMsg('opTestMsg', e2.message); }
+        } }));
+      }
+    }
   };
   $('btnStart').onclick = () => {
     $('opMsg').textContent = '';
