@@ -1311,6 +1311,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   // ---------- Dividir entre vários números ----------
   const split = { sel: new Map(), tpl: new Map() };
   function tierLimit(t) {
+    if (/^\d+$/.test(String(t || ''))) return Number(t);
     const m = /TIER_(\d+)(K)?/i.exec(String(t || ''));
     if (m) return Number(m[1]) * (m[2] ? 1000 : 1);
     return /UNLIMITED/i.test(String(t || '')) ? 100000 : null;
