@@ -181,7 +181,91 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .modal-bg[hidden]{display:none}
   .modal{background:var(--card);color:var(--ink);border-radius:14px;padding:18px;width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
   body.present main{max-width:none} body.present #ibHint{display:none}
-  body.present .inbox .convs{max-height:calc(100vh - 230px)} body.present .msgs{max-height:calc(100vh - 330px)}
+  /* ---------- Inbox estilo WhatsApp ---------- */
+  .wa{--wa-panel:#fff;--wa-head:#f0f2f5;--wa-line:#e9edef;--wa-ink:#111b21;--wa-sub:#667781;--wa-chatbg:#efeae2;--wa-in:#fff;--wa-out:#d9fdd3;--wa-green:#00a884;--wa-hover:#f5f6f6;--wa-active:#f0f2f5;--wa-unread:#25d366;--wa-pill:#e7fce3;--wa-pill-ink:#008069;--wa-doodle:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' opacity='.07'%3E%3Ccircle cx='22' cy='24' r='8'/%3E%3Cpath d='M60 18h22v14H60zM66 32v6l6-6'/%3E%3Cpath d='M120 20l8 8-8 8-8-8z'/%3E%3Cpath d='M20 78c6-10 18-10 24 0'/%3E%3Ccircle cx='86' cy='80' r='3'/%3E%3Ccircle cx='98' cy='74' r='3'/%3E%3Cpath d='M130 70l10 16h-20z'/%3E%3Cpath d='M18 128h16M26 120v16'/%3E%3Cpath d='M64 122c0-6 10-6 10 0s10 6 10 0'/%3E%3Crect x='112' y='116' width='22' height='16' rx='4'/%3E%3C/svg%3E");
+    display:grid;grid-template-columns:68px minmax(280px,380px) 1fr;height:max(560px,calc(100vh - 190px));border:1px solid var(--wa-line);border-radius:14px;overflow:hidden;background:var(--wa-panel);color:var(--wa-ink)}
+  :root[data-theme=dark] .wa{--wa-panel:#111b21;--wa-head:#202c33;--wa-line:#222d34;--wa-ink:#e9edef;--wa-sub:#8696a0;--wa-chatbg:#0b141a;--wa-in:#202c33;--wa-out:#005c4b;--wa-hover:#202c33;--wa-active:#2a3942;--wa-pill:#0a332c;--wa-pill-ink:#00d9a6;--wa-doodle:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' fill='none' stroke='%23fff' stroke-width='1.4' stroke-linecap='round' opacity='.05'%3E%3Ccircle cx='22' cy='24' r='8'/%3E%3Cpath d='M60 18h22v14H60zM66 32v6l6-6'/%3E%3Cpath d='M120 20l8 8-8 8-8-8z'/%3E%3Cpath d='M20 78c6-10 18-10 24 0'/%3E%3Ccircle cx='86' cy='80' r='3'/%3E%3Ccircle cx='98' cy='74' r='3'/%3E%3Cpath d='M130 70l10 16h-20z'/%3E%3Cpath d='M18 128h16M26 120v16'/%3E%3Cpath d='M64 122c0-6 10-6 10 0s10 6 10 0'/%3E%3Crect x='112' y='116' width='22' height='16' rx='4'/%3E%3C/svg%3E")}
+  .wa .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .wa-rail{background:var(--wa-head);border-right:1px solid var(--wa-line);display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 0;overflow-y:auto}
+  .wa-rail-item{position:relative;border:0;background:transparent;padding:3px;border-radius:50%;cursor:pointer;min-width:44px;min-height:44px}
+  .wa-rail-item[aria-pressed=true] .wa-av{box-shadow:0 0 0 3px var(--wa-panel),0 0 0 5px var(--wa-green)}
+  .wa-rail-badge{position:absolute;top:-2px;right:-4px;background:#ffd23f;color:#111;font-size:10px;font-weight:800;border-radius:99px;padding:1px 5px;min-width:18px;text-align:center;border:2px solid var(--wa-head)}
+  .wa-av{--av:#25d366;position:relative;flex:0 0 auto;width:46px;height:46px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;background:var(--av);letter-spacing:.02em}
+  .wa-av.sm{width:38px;height:38px;font-size:13px}
+  .wa-badge-wa{position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:50%;background:#25d366 url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 4a8 8 0 0 0-6.9 12l-1 3.8 3.9-1A8 8 0 1 0 12 4zm4.3 10.9c-.2.5-1 1-1.5 1-.4.1-.9.1-2.9-.7-2.4-1-4-3.5-4.1-3.7-.1-.2-1-1.3-1-2.5s.6-1.8.9-2c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.1.1.3 0 .5l-.3.4-.4.4c-.1.1-.3.3-.1.6.2.3.7 1.1 1.4 1.8 1 .9 1.8 1.1 2 1.3.3.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.8.9c.3.1.4.2.5.3.1.2.1.6-.1 1z'/%3E%3C/svg%3E") center/12px no-repeat;border:2px solid var(--wa-panel)}
+  .wa-list{display:flex;flex-direction:column;min-width:0;min-height:0;border-right:1px solid var(--wa-line);background:var(--wa-panel)}
+  .wa-list-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 14px 8px}
+  .wa-list-head strong{font-size:20px;letter-spacing:-.01em}
+  .wa-tools{display:flex;align-items:center;gap:4px}
+  .wa-icon{border:0;background:transparent;color:var(--wa-sub);width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px}
+  .wa-icon:hover{background:var(--wa-hover);color:var(--wa-ink)} .wa-icon[aria-pressed=true]{color:var(--wa-green)}
+  .wa-icon .off{display:none} #ibSound.is-off .on{display:none} #ibSound.is-off .off{display:inline} #ibMaskBtn.is-off .off{display:inline}
+  .wa-total{background:var(--wa-head);color:var(--wa-sub);font-weight:700;font-size:12px;border-radius:99px;padding:4px 10px;font-variant-numeric:tabular-nums}
+  .wa-search{display:flex;align-items:center;gap:8px;margin:0 12px 8px;padding:0 12px;background:var(--wa-head);border-radius:10px;height:40px;color:var(--wa-sub);cursor:text}
+  .wa-search input{border:0;background:transparent;color:var(--wa-ink);height:38px;padding:0;min-height:0;box-shadow:none;outline:0;flex:1;font-size:14px}
+  .wa-search:focus-within{box-shadow:0 0 0 2px var(--wa-green)}
+  .wa-tabs{display:flex;gap:6px;padding:0 12px 10px;overflow-x:auto;scrollbar-width:none}
+  .wa-tabs button{border:0;background:var(--wa-head);color:var(--wa-sub);font:inherit;font-size:13px;font-weight:600;border-radius:99px;padding:6px 12px;white-space:nowrap;cursor:pointer;min-height:32px}
+  .wa-tabs button[aria-pressed=true]{background:var(--wa-pill);color:var(--wa-pill-ink)}
+  .wa-tabs span{font-variant-numeric:tabular-nums;opacity:.85;margin-left:2px}
+  .wa-convs{flex:1;overflow-y:auto;border-top:1px solid var(--wa-line)}
+  .wa-none{color:var(--wa-sub);font-size:13px;padding:16px;text-align:center}
+  .wa-conv{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:transparent;color:var(--wa-ink);font:inherit;padding:10px 14px;cursor:pointer;min-height:72px;border-bottom:1px solid var(--wa-line)}
+  .wa-conv:hover{background:var(--wa-hover)} .wa-conv[aria-current=true]{background:var(--wa-active)}
+  .wa-c-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .wa-c-top,.wa-c-bot{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+  .wa-c-top b{font-weight:600;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wa-c-top time{font-size:12px;color:var(--wa-sub);flex:0 0 auto}
+  .wa-conv.has-unread .wa-c-top time{color:var(--wa-unread);font-weight:600}
+  .wa-last{font-size:13.5px;color:var(--wa-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .wa-c-sub{font-size:11.5px;color:var(--wa-sub);opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wa-unread{background:var(--wa-unread);color:#fff;font-size:11.5px;font-weight:700;border-radius:99px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  :root[data-theme=dark] .wa-unread{color:#111b21}
+  .wa-pin{font-size:12px;flex:0 0 auto}
+  .wa-conv.fresh{animation:wain 1.6s ease}
+  @keyframes wain{0%{background:var(--wa-pill);transform:translateY(-8px);opacity:.2}25%{opacity:1;transform:none}100%{background:transparent}}
+  .wa .tick{font-size:12px;font-weight:700;letter-spacing:-3px;color:var(--wa-sub);margin-right:6px} .wa .tick.read{color:#53bdeb} .wa .tick.fail{color:#f15c6d;letter-spacing:0} .wa .tick.wait{letter-spacing:0;font-size:10px}
+  .wa-chat{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--wa-chatbg) var(--wa-doodle) repeat;background-size:auto,300px}
+  .wa-chat-head{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--wa-head);border-bottom:1px solid var(--wa-line)}
+  .wa-h-info{flex:1;min-width:0;display:flex;flex-direction:column} .wa-h-info b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .wa-h-info span{font-size:12.5px;color:var(--wa-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wa-back{display:none}
+  .wa-chip{border:1px solid var(--wa-line);background:var(--wa-panel);color:var(--wa-ink);border-radius:99px;font:inherit;font-size:12.5px;font-weight:600;padding:5px 12px;cursor:pointer;min-height:32px}
+  .wa-chip.warn{background:#fff3c4;color:#7a5b00;border-color:transparent;cursor:default}
+  .wa-msgs{flex:1;overflow-y:auto;padding:16px 6%;display:flex;flex-direction:column;gap:3px}
+  .wa-empty{margin:auto;text-align:center;color:var(--wa-sub);display:flex;flex-direction:column;gap:6px;max-width:340px;background:var(--wa-panel);padding:18px 22px;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .wa-empty strong{color:var(--wa-ink);font-size:17px}
+  .wa-day{align-self:center;margin:10px 0 6px} .wa-day span{background:var(--wa-panel);color:var(--wa-sub);font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;box-shadow:0 1px .5px rgba(0,0,0,.13);text-transform:uppercase;letter-spacing:.02em}
+  .wa-bubble{position:relative;max-width:min(560px,80%);padding:6px 8px 6px 9px;border-radius:8px;font-size:14.2px;line-height:1.4;box-shadow:0 1px .5px rgba(0,0,0,.13);margin-top:4px;color:var(--wa-ink)}
+  .wa-bubble.in{align-self:flex-start;background:var(--wa-in);border-top-left-radius:0}
+  .wa-bubble.out{align-self:flex-end;background:var(--wa-out);border-top-right-radius:0}
+  .wa-bubble.in::before,.wa-bubble.out::before{content:"";position:absolute;top:0;width:8px;height:13px}
+  .wa-bubble.in::before{left:-8px;background:linear-gradient(to bottom right,transparent 50%,var(--wa-in) 50%)}
+  .wa-bubble.out::before{right:-8px;background:linear-gradient(to bottom left,transparent 50%,var(--wa-out) 50%)}
+  .wa-b-tag{display:block;font-size:11.5px;font-weight:700;color:var(--wa-green);margin-bottom:2px}
+  .wa-b-text{white-space:pre-wrap;word-wrap:break-word}
+  .wa-b-meta{float:right;margin:6px 0 -4px 12px;font-size:11px;color:var(--wa-sub);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .wa-b-meta .tick{margin:0}
+  .wa-b-err{display:block;clear:both;font-size:11.5px;color:#f15c6d;margin-top:4px}
+  .wa-note{margin:0;padding:4px 16px;font-size:12px;color:var(--wa-sub);text-align:center;background:transparent}
+  .wa-note:empty{display:none}
+  .wa-composer{display:flex;align-items:flex-end;gap:8px;padding:10px 14px;background:var(--wa-head)}
+  .wa-composer textarea{flex:1;border:0;border-radius:10px;background:var(--wa-panel);color:var(--wa-ink);padding:11px 14px;font:inherit;font-size:15px;resize:none;min-height:44px;max-height:140px;line-height:1.35;box-shadow:none}
+  .wa-composer textarea:focus{outline:2px solid var(--wa-green)}
+  .wa-composer textarea:disabled{opacity:.7}
+  .wa-send{border:0;width:44px;height:44px;border-radius:50%;background:var(--wa-green);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+  .wa-send:disabled{opacity:.45;cursor:not-allowed}
+  @media (max-width:820px){
+    .wa{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:calc(100vh - 120px)}
+    .wa.open{grid-template-rows:1fr}
+    .wa-rail{flex-direction:row;padding:8px 12px;overflow-x:auto;overflow-y:visible;border-right:0;border-bottom:1px solid var(--wa-line);min-height:60px}
+    .wa-rail-item{flex:0 0 auto}
+    .wa-list,.wa-chat{min-height:0}
+    .wa-chat{display:none} .wa.open .wa-chat{display:flex} .wa.open .wa-list,.wa.open .wa-rail{display:none}
+    .wa-back{display:inline-flex}
+    .wa-msgs{padding:12px 10px}
+  }
+  @media (prefers-reduced-motion:reduce){.wa-conv.fresh{animation:none}}
+  body.present .wa{height:calc(100vh - 56px - var(--livebar, 0px))}
   .composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);align-items:flex-end}
   .composer textarea{flex:1 1 auto;min-height:44px;max-height:160px}
 
@@ -398,32 +482,40 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
   <!-- ================= INBOX ================= -->
   <div class="view" id="view-inbox" hidden><section id="tab-inbox" class="stack">
-    <div class="row" style="justify-content:space-between">
-      <span></span>
-      <div class="row">
-        <div style="min-width:220px"><label for="ibInst" class="small">Instância</label><select id="ibInst"><option value="">Todas</option></select></div>
-        <div style="min-width:200px"><label for="ibSearch" class="small">Buscar</label><input id="ibSearch" type="text" placeholder="Nome ou telefone"></div>
-        <label class="row small" style="align-self:flex-end;margin:0 0 10px;font-weight:600"><input id="ibReplied" type="checkbox" style="width:18px;height:18px"> Só quem respondeu</label>
-        <label class="row small" style="align-self:flex-end;margin:0 0 10px;font-weight:600"><input id="ibUnread" type="checkbox" style="width:18px;height:18px"> Só não lidas</label>
-        <label class="row small" style="align-self:flex-end;margin:0 0 10px;font-weight:600"><input id="ibMask" type="checkbox" style="width:18px;height:18px"> Ocultar telefones</label>
-        <button type="button" class="btn ghost" id="ibPresent" style="align-self:flex-end;margin-bottom:6px">Modo apresentação</button>
-      </div>
-    </div>
     <div id="ibLive" class="livebar" hidden></div>
-    <p class="small muted" id="ibHint" style="margin:0">Os envios dos disparos aparecem aqui na hora em que saem, e o status muda sozinho (enviada → entregue → lida). Respostas chegam pelo webhook; você pode responder em até 24h depois da última mensagem do cliente.</p>
-    <div class="inbox">
-      <div class="card convs" id="ibConvs" aria-label="Conversas"></div>
-      <div class="card thread">
-        <div id="ibHead" style="padding:14px 16px;border-bottom:1px solid var(--line)"><span class="muted">Selecione uma conversa.</span></div>
-        <div class="msgs" id="ibMsgs" aria-live="polite"></div>
-        <form class="composer" id="ibForm" hidden>
-          <label for="ibText" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Mensagem</label>
-          <textarea id="ibText" maxlength="4096" placeholder="Escreva a resposta… (Enter envia, Shift+Enter quebra linha)"></textarea>
-          <button class="btn primary" type="submit" id="ibSend">Enviar</button>
+    <div class="wa" id="waBox">
+      <nav class="wa-rail" id="ibRail" aria-label="Números"></nav>
+      <div class="wa-list">
+        <div class="wa-list-head">
+          <strong>Conversas</strong>
+          <div class="wa-tools">
+            <button type="button" class="wa-icon" id="ibSound" aria-pressed="false" title="Som de nova mensagem" aria-label="Som de nova mensagem"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path class="on" d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/><path class="off" d="m16 9 6 6m0-6-6 6"/></svg></button>
+            <button type="button" class="wa-icon" id="ibMaskBtn" aria-pressed="false" title="Ocultar telefones" aria-label="Ocultar telefones"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="off" d="M3 3l18 18"/></svg></button>
+            <button type="button" class="wa-icon" id="ibPresent" aria-pressed="false" title="Modo apresentação (tela cheia para gravar)" aria-label="Modo apresentação"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+            <span class="wa-total" id="ibTotal" title="Conversas">0</span>
+          </div>
+        </div>
+        <label class="wa-search"><span class="wa-search-ico"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><input id="ibSearch" type="search" placeholder="Buscar nome, número ou mensagem…" aria-label="Buscar nome, número ou mensagem"></label>
+        <div class="wa-tabs" id="ibTabs" role="group" aria-label="Filtro">
+          <button type="button" data-f="" aria-pressed="true">Todas <span id="ibCntAll"></span></button>
+          <button type="button" data-f="unread" aria-pressed="false">Não lidas <span id="ibCntUnread"></span></button>
+          <button type="button" data-f="replied" aria-pressed="false">Respondidas <span id="ibCntReplied"></span></button>
+          <button type="button" data-f="pinned" aria-pressed="false">Fixadas <span id="ibCntPinned"></span></button>
+        </div>
+        <div class="wa-convs" id="ibConvs" aria-label="Conversas"></div>
+      </div>
+      <div class="wa-chat">
+        <div class="wa-chat-head" id="ibHead" hidden></div>
+        <div class="wa-msgs" id="ibMsgs" aria-live="polite"><div class="wa-empty"><strong>Selecione uma conversa</strong><span>Escolha um contato na lista ao lado. Os envios dos disparos e as respostas aparecem aqui ao vivo.</span></div></div>
+        <p id="ibMsg" class="wa-note" role="status"></p>
+        <form class="wa-composer" id="ibForm" hidden>
+          <label for="ibText" class="sr">Mensagem</label>
+          <textarea id="ibText" rows="1" maxlength="4096" placeholder="Digite uma mensagem"></textarea>
+          <button class="wa-send" type="submit" id="ibSend" aria-label="Enviar"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6l-.01 6.53L15 12 3.39 13.87z"/></svg></button>
         </form>
-        <p id="ibMsg" class="small" role="status" style="margin:0;padding:0 16px 12px"></p>
       </div>
     </div>
+    <select id="ibInst" hidden aria-hidden="true"><option value="">Todas</option></select>
   </section></div>
 
   <!-- ================= INSTÂNCIAS ================= -->
@@ -843,7 +935,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   async function start(k) { key = k; await loadAll(); refreshUnread(); }
   function showTab(name) {
     state.tab = name;
-    if (name !== 'inbox' && document.body.classList.contains('present')) { document.body.classList.remove('present'); $('ibPresent').textContent = 'Modo apresentação'; }
+    if (name !== 'inbox' && document.body.classList.contains('present')) { document.body.classList.remove('present'); $('ibPresent').setAttribute('aria-pressed', 'false'); }
     if (name === 'ops') loadOps();
     if (name === 'tpl') loadTemplatesTab();
     if (name === 'inbox') loadConvs();
@@ -1603,11 +1695,84 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     document.body.append(a); a.click(); a.remove();
   }
 
-  // ================= INBOX =================
-  const ib = { conv: null, listTimer: null, threadTimer: null, lastCount: -1, known: null };
-  const maskOn = () => $('ibMask').checked;
-  const TICK = { sent: ['✓', ''], delivered: ['✓✓', ''], read: ['✓✓', 'read'], failed: ['falhou', 'fail'], sending: ['…', ''], pending: ['…', ''] };
-  function tickEl(st) { const t = TICK[st]; return t ? el('span', { class: 'tick ' + t[1], text: t[0], title: ({ sent: 'Enviada', delivered: 'Entregue', read: 'Lida', failed: 'Falhou' })[st] || '' }) : null; }
+  // ================= INBOX (estilo WhatsApp) =================
+  const ib = { conv: null, listTimer: null, threadTimer: null, lastCount: -1, known: null, filter: '', mask: false, sound: false, lastUnread: null, gen: 0, convs: [] };
+  const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  let pins = lsGet('disply_pins', []);
+  ib.mask = lsGet('disply_mask2', false); ib.sound = lsGet('disply_sound', false);
+  const maskOn = () => ib.mask;
+  const convKey = (c) => c.instance_id + ':' + c.phone;
+  const TICK = { sent: ['✓', ''], delivered: ['✓✓', ''], read: ['✓✓', 'read'], failed: ['!', 'fail'], sending: ['🕓', 'wait'], pending: ['🕓', 'wait'] };
+  function tickEl(st) { const t = TICK[st]; return t ? el('span', { class: 'tick ' + t[1], text: t[0], title: ({ sent: 'Enviada', delivered: 'Entregue', read: 'Lida', failed: 'Falhou', pending: 'Na fila', sending: 'Enviando' })[st] || '' }) : null; }
+  const instName = (id) => { const i = state.instances.find((x) => x.id === id); return i ? i.name : 'Instância ' + id; };
+  const fmtPhone = (p) => {
+    const d = String(p || '');
+    if (d.length === 13) return maskOn() ? `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 5)}••••-${d.slice(9)}` : `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}`;
+    if (d.length === 12) return maskOn() ? `+${d.slice(0, 2)} ${d.slice(2, 4)} ••••-${d.slice(8)}` : `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 8)}-${d.slice(8)}`;
+    return maskOn() ? '+' + d.slice(0, 4) + '••••' + d.slice(-4) : '+' + d;
+  };
+  const sameDay = (a, b) => a.toDateString() === b.toDateString();
+  const timeLabel = (d) => {
+    const t = new Date(d), now = new Date(); const diff = now - t;
+    if (diff < 60000) return 'agora';
+    if (sameDay(t, now)) return t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const y = new Date(now); y.setDate(now.getDate() - 1);
+    if (sameDay(t, y)) return 'Ontem';
+    return t.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  };
+  const dayLabel = (d) => { const t = new Date(d), now = new Date(); const y = new Date(now); y.setDate(now.getDate() - 1);
+    return sameDay(t, now) ? 'Hoje' : sameDay(t, y) ? 'Ontem' : t.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); };
+  function initials(name, phone) {
+    const n = String(name || '').replace(/[^\p{L}\s]/gu, ' ').trim();
+    if (n) { const w = n.split(/\s+/); return ((w[0] || '')[0] + (w.length > 1 ? w[w.length - 1][0] : (w[0] || '')[1] || '')).toUpperCase(); }
+    const d = String(phone || ''); return d.length >= 4 ? d.slice(2, 4) : '#';
+  }
+  const AV_COLORS = ['#25d366', '#53bdeb', '#ffbc38', '#ff7eb6', '#a78bfa', '#7dd3c0', '#f97362', '#06cf9c'];
+  const avColor = (k) => { let h = 0; for (const ch of String(k)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AV_COLORS[h % AV_COLORS.length]; };
+  function avatar(name, phone, key, small) {
+    const a = el('span', { class: 'wa-av' + (small ? ' sm' : ''), 'aria-hidden': 'true', text: initials(name, phone) });
+    a.style.setProperty('--av', avColor(key || phone || name));
+    return a;
+  }
+  const shownName = (c) => c.name || fmtPhone(c.phone);
+
+  function setUnread(n) { const b = $('unreadBadge'); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n); }
+  async function refreshUnread() { try { const d = await api('r=inbox&sends=0'); setUnread(d.unread); } catch (e) {} }
+
+  // Som curto de mensagem nova (gerado no navegador, sem arquivo).
+  let audioCtx = null;
+  function ding() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const t0 = audioCtx.currentTime;
+      [[880, 0], [1320, 0.11]].forEach(([f, dt]) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(0.18, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.18);
+        o.start(t0 + dt); o.stop(t0 + dt + 0.2);
+      });
+    } catch (e) {}
+  }
+  function paintTools() {
+    $('ibSound').setAttribute('aria-pressed', String(ib.sound)); $('ibSound').classList.toggle('is-off', !ib.sound);
+    $('ibMaskBtn').setAttribute('aria-pressed', String(ib.mask)); $('ibMaskBtn').classList.toggle('is-off', ib.mask);
+    $('ibPresent').setAttribute('aria-pressed', String(document.body.classList.contains('present')));
+  }
+  $('ibSound').onclick = () => { ib.sound = !ib.sound; lsSet('disply_sound', ib.sound); paintTools(); if (ib.sound) ding(); };
+  $('ibMaskBtn').onclick = () => { ib.mask = !ib.mask; lsSet('disply_mask2', ib.mask); paintTools(); renderConvs(); if (ib.conv) loadThread(false); };
+  $('ibPresent').onclick = () => {
+    const on = !document.body.classList.contains('present');
+    document.body.classList.toggle('present', on);
+    if (on && !ib.mask) { ib.mask = true; lsSet('disply_mask2', true); renderConvs(); if (ib.conv) loadThread(false); }
+    paintTools();
+  };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('present') && !($('cardModal') && !$('cardModal').hidden)) $('ibPresent').click(); });
+  document.querySelectorAll('#ibTabs button').forEach((b) => { b.onclick = () => {
+    ib.filter = b.dataset.f; document.querySelectorAll('#ibTabs button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); loadConvs();
+  }; });
+  let searchT; $('ibSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(loadConvs, 300); };
+
   function renderLive(ops) {
     const bar = $('ibLive'); bar.innerHTML = '';
     bar.hidden = !ops || !ops.length;
@@ -1625,85 +1790,109 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       box.append(bar2, el('div', { class: 'small muted', style: 'margin-top:4px', text: `${num(o.enviadas + o.falhas)} de ${num(o.total)} (${pct}%)` }));
       bar.append(box);
     }
+    document.documentElement.style.setProperty('--livebar', (bar.hidden ? 0 : bar.offsetHeight + 18) + 'px');
   }
-  const instName = (id) => { const i = state.instances.find((x) => x.id === id); return i ? i.name : 'Instância ' + id; };
-  const fmtPhone = (p) => {
-    const d = String(p || '');
-    if (d.length === 13) return maskOn() ? `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 5)}••••-${d.slice(9)}` : `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}`;
-    return maskOn() ? '+' + d.slice(0, 4) + '••••' + d.slice(-4) : '+' + d;
-  };
-  const timeLabel = (d) => { const t = new Date(d); const today = new Date().toDateString() === t.toDateString(); return today ? t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : t.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); };
-
-  function setUnread(n) { const b = $('unreadBadge'); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n); }
-  async function refreshUnread() { try { const d = await api('r=inbox&sends=0'); setUnread(d.unread); } catch (e) {} }
+  function renderRail(per) {
+    const rail = $('ibRail'); rail.innerHTML = '';
+    const cur = $('ibInst').value;
+    const item = (id, label, title, n, key) => {
+      const b = el('button', { type: 'button', class: 'wa-rail-item', 'aria-pressed': String(cur === id), title, 'aria-label': title + (n ? ` (${n} não lidas)` : '') });
+      const av = el('span', { class: 'wa-av sm', text: label }); av.style.setProperty('--av', id ? avColor(key) : 'var(--wa-green)');
+      b.append(av); if (n) b.append(el('span', { class: 'wa-rail-badge', text: n > 99 ? '99+' : String(n) }));
+      b.onclick = () => { $('ibInst').value = id; ib.conv = null; showChat(false); loadConvs(); };
+      return b;
+    };
+    const total = Object.values(per || {}).reduce((a, b) => a + b, 0);
+    rail.append(item('', '✱', 'Todos os números', total));
+    for (const i of state.instances.filter((x) => x.active)) rail.append(item(String(i.id), initials(i.bm || i.name), i.name, (per || {})[i.id] || 0, 'i' + i.id));
+  }
 
   async function loadConvs() {
     clearTimeout(ib.listTimer);
     const qs = new URLSearchParams({ r: 'inbox' });
     if ($('ibInst').value) qs.set('instance', $('ibInst').value);
     if ($('ibSearch').value.trim()) qs.set('q', $('ibSearch').value.trim());
-    if ($('ibUnread').checked) qs.set('unread', '1');
-    if ($('ibReplied').checked) qs.set('replied', '1');
+    if (ib.filter === 'unread') qs.set('unread', '1');
+    if (ib.filter === 'replied') qs.set('replied', '1');
+    if (pins.length) qs.set('keys', pins.slice(0, 200).join(','));
     const gen = ib.gen = (ib.gen || 0) + 1;
     let d; try { d = await api(qs.toString()); } catch (err) { if (gen === ib.gen && state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, 5000); return; }
     if (gen !== ib.gen) return;
     setUnread(d.unread);
-    renderLive(d.live);
+    if (ib.sound && ib.lastUnread !== null && d.unread > ib.lastUnread) ding();
+    ib.lastUnread = d.unread;
+    renderLive(d.live); renderRail(d.per_instance);
+    const c = d.counts || {};
+    const cnt = (id, n) => { $(id).textContent = n ? num(n) : ''; };
+    cnt('ibCntAll', c.todas); cnt('ibCntUnread', c.nao_lidas); cnt('ibCntReplied', c.respondidas);
+    $('ibTotal').textContent = num(c.todas || d.conversations.length);
+    ib.convs = d.conversations;
+    renderConvs();
+    if (state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, document.hidden ? 15000 : 2500);
+  }
+  function renderConvs() {
     const box = $('ibConvs'); const scrollTop = box.scrollTop; box.innerHTML = '';
-    const sig = (c) => c.instance_id + ':' + c.phone + ':' + new Date(c.last_at).getTime();
+    const pinSet = new Set(pins);
+    let list = ib.convs.slice();
+    $('ibCntPinned').textContent = pinSet.size ? num(list.filter((c) => pinSet.has(convKey(c))).length) : '';
+    if (ib.filter === 'pinned') list = list.filter((c) => pinSet.has(convKey(c)));
+    else list = [...list.filter((c) => pinSet.has(convKey(c))), ...list.filter((c) => !pinSet.has(convKey(c)))];
+    const sig = (c) => convKey(c) + ':' + new Date(c.last_at).getTime();
     const first = ib.known === null; const known = new Set(ib.known || []);
-    if (!d.conversations.length) box.append(el('p', { class: 'muted small', style: 'padding:8px', text: 'Nada ainda. Os envios e as respostas aparecem aqui assim que acontecem.' }));
-    for (const c of d.conversations) {
-      const current = ib.conv && ib.conv.phone === c.phone && ib.conv.instance_id === c.instance_id;
-      const btn = el('button', { class: 'conv' + (!first && !known.has(sig(c)) ? ' fresh' : ''), type: 'button', 'aria-current': String(Boolean(current)), onclick: () => openConv(c) });
-      const top = el('div', { class: 'top' }, el('strong', { text: c.name || fmtPhone(c.phone) }), el('span', { class: 'small muted', text: new Date(c.last_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: new Date().toDateString() === new Date(c.last_at).toDateString() ? '2-digit' : undefined }) }));
-      const lastLine = el('span', { class: 'last' });
-      if (c.last_dir === 'out') { const t = tickEl(c.status); if (t) lastLine.append(t); }
-      lastLine.append(document.createTextNode(c.last_text || ''));
-      const sub = el('div', { class: 'top' }, lastLine);
-      if (c.unread) sub.append(badge(String(c.unread), 'ok'));
-      btn.append(top, sub, el('div', { class: 'small muted', text: (c.name ? fmtPhone(c.phone) + ' · ' : '') + instName(c.instance_id) }));
+    if (!list.length) box.append(el('p', { class: 'wa-none', text: ib.filter === 'pinned' ? 'Nenhuma conversa fixada. Abra uma conversa e toque em Fixar.' : 'Nada por aqui ainda. Os envios e as respostas aparecem assim que acontecem.' }));
+    for (const c of list) {
+      const current = ib.conv && convKey(ib.conv) === convKey(c);
+      const btn = el('button', { class: 'wa-conv' + (!first && !known.has(sig(c)) ? ' fresh' : '') + (c.unread ? ' has-unread' : ''), type: 'button', 'aria-current': String(Boolean(current)), onclick: () => openConv(c) });
+      const av = avatar(c.name, c.phone, convKey(c));
+      av.append(el('i', { class: 'wa-badge-wa', 'aria-hidden': 'true' }));
+      const top = el('span', { class: 'wa-c-top' }, el('b', { text: shownName(c) }), el('time', { text: timeLabel(c.last_at) }));
+      const last = el('span', { class: 'wa-last' });
+      if (c.last_dir === 'out') { const t = tickEl(c.status); if (t) last.append(t); }
+      last.append(document.createTextNode(c.last_text || ''));
+      const bot = el('span', { class: 'wa-c-bot' }, last);
+      if (pinSet.has(convKey(c))) bot.append(el('span', { class: 'wa-pin', title: 'Fixada', text: '📌' }));
+      if (c.unread) bot.append(el('span', { class: 'wa-unread', text: c.unread > 99 ? '99+' : String(c.unread) }));
+      const sub = el('span', { class: 'wa-c-sub', text: (c.name ? fmtPhone(c.phone) + ' · ' : '') + instName(c.instance_id) });
+      btn.append(av, el('span', { class: 'wa-c-main' }, top, bot, sub));
       box.append(btn);
     }
     box.scrollTop = scrollTop;
-    ib.known = d.conversations.map(sig);
-    if (state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, document.hidden ? 15000 : 2500);
+    ib.known = ib.convs.map(sig);
   }
-  let searchT; $('ibSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(loadConvs, 300); };
-  $('ibInst').onchange = loadConvs; $('ibUnread').onchange = loadConvs; $('ibReplied').onchange = loadConvs;
-  try { $('ibMask').checked = localStorage.getItem('disply_mask') === '1'; } catch (e) {}
-  $('ibMask').onchange = () => { try { localStorage.setItem('disply_mask', $('ibMask').checked ? '1' : '0'); } catch (e) {} loadConvs(); if (ib.conv) loadThread(false); };
-  $('ibPresent').onclick = () => {
-    const on = !document.body.classList.contains('present');
-    document.body.classList.toggle('present', on);
-    $('ibPresent').textContent = on ? 'Sair da apresentação' : 'Modo apresentação';
-    if (on && !$('ibMask').checked) { $('ibMask').checked = true; $('ibMask').onchange(); }
-  };
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('present')) $('ibPresent').click(); });
 
-  async function openConv(c) { ib.conv = c; ib.lastCount = -1; $('ibText').value = ''; $('ibMsg').textContent = ''; await loadThread(true); loadConvs(); }
+  function showChat(on) { $('waBox').classList.toggle('open', on); }
+  async function openConv(c) { ib.conv = c; ib.lastCount = -1; $('ibText').value = ''; $('ibMsg').textContent = ''; showChat(true); renderConvs(); await loadThread(true); }
 
   async function loadThread(scroll) {
     clearTimeout(ib.threadTimer);
     const c = ib.conv; if (!c) return;
     let d; try { d = await api(`r=inbox&a=thread&instance=${c.instance_id}&phone=${encodeURIComponent(c.phone)}`); } catch (err) { $('ibMsg').textContent = err.message; return; }
-    if (!ib.conv || ib.conv.phone !== c.phone) return;
-    const head = $('ibHead'); head.innerHTML = '';
-    head.append(el('strong', { text: d.name || fmtPhone(d.phone) }), el('div', { class: 'small muted', text: fmtPhone(d.phone) + ' · ' + instName(c.instance_id) }));
-    if (d.optout) head.append(el('div', { style: 'margin-top:6px' }, badge('Pediu para sair: não recebe mais disparos', 'warn')));
+    if (!ib.conv || convKey(ib.conv) !== convKey(c)) return;
+    c.unread = 0;
+    const head = $('ibHead'); head.hidden = false; head.innerHTML = '';
+    const back = el('button', { type: 'button', class: 'wa-icon wa-back', 'aria-label': 'Voltar para a lista', text: '←', onclick: () => { ib.conv = null; showChat(false); renderConvs(); } });
+    const pinned = pins.includes(convKey(c));
+    const pinBtn = el('button', { type: 'button', class: 'wa-chip', text: pinned ? 'Desafixar' : 'Fixar', onclick: () => {
+      pins = pinned ? pins.filter((k) => k !== convKey(c)) : [convKey(c), ...pins].slice(0, 200); lsSet('disply_pins', pins); renderConvs(); loadThread(false);
+    } });
+    const info = el('div', { class: 'wa-h-info' }, el('b', { text: d.name || fmtPhone(d.phone) }), el('span', { text: (d.name ? fmtPhone(d.phone) + ' · ' : '') + instName(c.instance_id) }));
+    head.append(back, avatar(d.name, d.phone, convKey(c)), info);
+    if (d.optout) head.append(el('span', { class: 'wa-chip warn', text: 'Pediu SAIR' }));
+    head.append(pinBtn);
     const box = $('ibMsgs');
-    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
     box.innerHTML = '';
-    const statusTxt = { sending: 'enviando', sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'falhou', pending: 'na fila', skipped: 'cancelada' };
+    let lastDay = '';
     for (const m of d.items) {
-      const b = el('div', { class: 'msg ' + m.dir });
-      if (m.kind === 'template' && m.op) b.append(el('span', { class: 'meta', style: 'text-align:left;margin:0 0 4px', text: 'Disparo · ' + m.op }));
-      b.append(document.createTextNode(m.text || ''));
-      const metaTxt = new Date(m.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + (m.dir === 'out' && m.status ? ' · ' + (statusTxt[m.status] || m.status) : '');
-      const metaEl = el('span', { class: 'meta', text: metaTxt + ' ' });
-      if (m.dir === 'out') { const t = tickEl(m.status); if (t) metaEl.append(t); }
-      b.append(metaEl);
-      if (m.error) b.append(el('span', { class: 'meta', text: m.error }));
+      const day = new Date(m.at).toDateString();
+      if (day !== lastDay) { box.append(el('div', { class: 'wa-day' }, el('span', { text: dayLabel(m.at) }))); lastDay = day; }
+      const b = el('div', { class: 'wa-bubble ' + m.dir + (m.status === 'failed' ? ' failed' : '') });
+      if (m.kind === 'template' && m.op) b.append(el('span', { class: 'wa-b-tag', text: 'Disparo · ' + m.op }));
+      b.append(el('span', { class: 'wa-b-text', text: m.text || '' }));
+      const meta = el('span', { class: 'wa-b-meta', text: new Date(m.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
+      if (m.dir === 'out') { const t = tickEl(m.status); if (t) meta.append(t); }
+      b.append(meta);
+      if (m.error) b.append(el('span', { class: 'wa-b-err', text: m.error }));
       box.append(b);
     }
     if (scroll || atBottom || d.items.length !== ib.lastCount) box.scrollTop = box.scrollHeight;
@@ -1711,20 +1900,22 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('ibForm').hidden = false;
     const open = d.window_open;
     $('ibText').disabled = !open; $('ibSend').disabled = !open;
-    $('ibText').placeholder = open ? 'Escreva a resposta… (Enter envia, Shift+Enter quebra linha)' : 'Janela de 24h fechada. Para retomar o contato, use um template em uma operação.';
-    if (open && d.window_closes_at) $('ibMsg').textContent = 'Você pode responder até ' + new Date(d.window_closes_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + '.';
-    else if (!open) $('ibMsg').textContent = '';
+    $('ibText').placeholder = open ? 'Digite uma mensagem' : 'Janela de 24h fechada: para falar com ele, use um template numa operação.';
+    $('ibMsg').textContent = open && d.window_closes_at ? 'Você pode responder até ' + new Date(d.window_closes_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + '.' : '';
     if (state.tab === 'inbox') ib.threadTimer = setTimeout(() => loadThread(false), 3000);
   }
+  const grow = () => { const t = $('ibText'); t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; };
+  $('ibText').addEventListener('input', grow);
   $('ibText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('ibForm').requestSubmit(); } });
   $('ibForm').onsubmit = async (e) => {
     e.preventDefault();
     const text = $('ibText').value.trim(); if (!text || !ib.conv) return;
     $('ibSend').disabled = true;
-    try { await post('r=inbox&a=reply', { instance_id: ib.conv.instance_id, phone: ib.conv.phone, text }); $('ibText').value = ''; setMsg('ibMsg', 'Enviada.', true); await loadThread(true); }
+    try { await post('r=inbox&a=reply', { instance_id: ib.conv.instance_id, phone: ib.conv.phone, text }); $('ibText').value = ''; grow(); await loadThread(true); }
     catch (err) { setMsg('ibMsg', err.message); }
     finally { $('ibSend').disabled = false; }
   };
+  paintTools();
   setInterval(() => { if (key && state.tab !== 'inbox') refreshUnread(); }, 30000);
 
   window.DisplyDisparos = { start, show: showTab, reload: () => loadInstances().catch(() => {}) };

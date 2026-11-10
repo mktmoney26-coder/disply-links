@@ -555,11 +555,28 @@ async function inbox(sql, req, body, a) {
       }
     } catch (err) { console.error('inbox ao vivo:', err.message); }
     let list = [...convs.values()].sort((x, y) => new Date(y.last_at) - new Date(x.last_at));
-    if (q) list = list.filter((c) => c.phone.includes(q.replace(/\D/g, '') || '§') || String(c.name || '').toLowerCase().includes(q));
+    const all = list;
+    if (q) {
+      // Busca por nome, número ou qualquer mensagem recebida.
+      const hit = new Set(rows.filter((m) => String(m.text || '').toLowerCase().includes(q)).map((m) => m.instance_id + ':' + m.phone));
+      const digits = q.replace(/\D/g, '');
+      list = list.filter((c) => (digits && c.phone.includes(digits)) || String(c.name || '').toLowerCase().includes(q)
+        || String(c.last_text || '').toLowerCase().includes(q) || hit.has(c.instance_id + ':' + c.phone));
+    }
+    const counts = { todas: all.length, nao_lidas: all.filter((c) => c.unread > 0).length, respondidas: all.filter((c) => c.replied).length };
     if (req.query.unread === '1') list = list.filter((c) => c.unread > 0);
     if (req.query.replied === '1') list = list.filter((c) => c.replied);
     const unreadTotal = [...convs.values()].reduce((s, c) => s + c.unread, 0);
-    return { conversations: list.slice(0, 300), unread: unreadTotal, live };
+    // Não lidas por número (para os ícones da coluna de números), sempre de todos os números.
+    const perInstance = {};
+    try {
+      for (const r of await sql`select instance_id, count(distinct phone)::int as n from wa_inbound where not is_read group by instance_id`) perInstance[r.instance_id] = r.n;
+    } catch (e) {}
+    const keys = typeof req.query.keys === 'string' ? req.query.keys.split(',').slice(0, 200) : [];
+    const pinned = keys.length ? list.filter((c) => keys.includes(c.instance_id + ':' + c.phone)) : [];
+    let out = list.slice(0, 400);
+    for (const p of pinned) if (!out.includes(p)) out.push(p);
+    return { conversations: out, unread: unreadTotal, live, counts, per_instance: perInstance };
   }
   if (a === 'reply') {
     const instanceId = int(body.instance_id);
