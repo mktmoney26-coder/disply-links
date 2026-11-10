@@ -1,7 +1,7 @@
 // API do módulo Ativos (BMs, números, templates, alertas). Protegida pela senha do painel.
 // Rotas: ?r=overview | bms | numbers | templates | alerts | check | settings | activity
 const { guard } = require('../lib/auth');
-const { encrypt } = require('../lib/secrets');
+const { encrypt, decrypt } = require('../lib/secrets');
 const { graph } = require('../lib/meta');
 const { diagnose, getAssetsDb, runCheck, notify, getSetting, setSetting, logActivity } = require('../lib/assets-monitor');
 const { cronKey } = require('./ativos-cron');
@@ -161,6 +161,95 @@ async function settings(sql, req, body, a) {
   throw new HttpError(405, 'Método não permitido.');
 }
 
+// ---------------- Criar o mesmo template em várias contas ----------------
+const GRAPH = 'https://graph.facebook.com/' + (process.env.GRAPH_VERSION || 'v24.0');
+const appCache = new Map(); // bm_ref -> app_id (o envio de mídia é feito pelo app dono do token)
+async function appOf(bm) {
+  if (appCache.has(bm.id)) return appCache.get(bm.id);
+  const token = decrypt(bm.token_enc);
+  const d = await graph(`/debug_token?input_token=${encodeURIComponent(token)}`, token);
+  const app = (d.data && d.data.app_id) || null;
+  if (app) appCache.set(bm.id, app);
+  return app;
+}
+function tplError(err) {
+  const m = String(err.message || '');
+  if (/already exists|já existe|2388023|2388024/i.test(m) || err.subcode === 2388023 || err.subcode === 2388024) return 'Já existe um template com esse nome e idioma nesta conta.';
+  if (/content.*deleted|being deleted|2388025/i.test(m)) return 'Um template com esse nome foi excluído há pouco; a Meta só libera o nome depois de 30 dias. Use outro nome.';
+  if (/handle/i.test(m)) return 'A Meta não aceitou a mídia do cabeçalho (envie de novo).';
+  if (err.code === 190) return 'Token da BM expirado. Atualize o token em BMs.';
+  if (err.code === 200 || err.code === 10) return 'O token não tem permissão de gerenciar templates nesta conta (whatsapp_business_management).';
+  if (/limit/i.test(m) && /template/i.test(m)) return 'A conta atingiu o limite de templates.';
+  return m || 'A Meta recusou o template.';
+}
+async function templatesBulk(sql, req, body, a) {
+  await sql`create table if not exists as_uploads (upload_id text not null, idx integer not null, data text not null,
+    created_at timestamptz not null default now(), primary key (upload_id, idx))`;
+  if (req.method === 'GET') {
+    const rows = await sql`select w.waba_id, w.name as waba_name, b.id as bm_ref, b.name as bm, b.profile, b.token_enc, b.last_error,
+        (select count(*)::int from as_numbers n where n.waba_id = w.waba_id) as numeros
+      from as_wabas w join as_bms b on b.id = w.bm_ref and b.active order by b.name, w.name`;
+    const apps = {};
+    await Promise.all([...new Map(rows.map((r) => [r.bm_ref, r])).values()].map(async (r) => {
+      try { apps[r.bm_ref] = await appOf({ id: r.bm_ref, token_enc: r.token_enc }); } catch (e) { apps[r.bm_ref] = null; }
+    }));
+    return rows.map(({ token_enc, ...r }) => ({ ...r, app_id: apps[r.bm_ref] || null }));
+  }
+  if (a === 'chunk') {
+    const id = clean(body.upload_id, 40); const idx = Number(body.idx);
+    if (!/^[a-z0-9-]{8,40}$/.test(id) || !Number.isInteger(idx) || idx < 0 || idx > 40) throw new HttpError(400, 'Envio de arquivo inválido.');
+    const data = String(body.data || '');
+    if (!/^[A-Za-z0-9+/=]+$/.test(data)) throw new HttpError(400, 'Arquivo inválido.');
+    await sql`insert into as_uploads (upload_id, idx, data) values (${id}, ${idx}, ${data}) on conflict (upload_id, idx) do update set data = excluded.data`;
+    return { ok: true };
+  }
+  if (a === 'handle') {
+    // Junta as partes e envia o arquivo para o app da BM; devolve o "handle" que vai no exemplo do cabeçalho.
+    const id = clean(body.upload_id, 40); const mime = clean(body.mime, 60); const total = Number(body.parts);
+    if (!/^(image\/(jpeg|png)|video\/mp4|application\/pdf)$/.test(mime)) throw new HttpError(400, 'Formato não aceito: use JPG, PNG, MP4 ou PDF.');
+    const [bm] = await sql`select id, token_enc from as_bms where id = ${Number(body.bm_ref)}`;
+    if (!bm) throw new HttpError(404, 'BM não encontrada.');
+    const parts = await sql`select idx, data from as_uploads where upload_id = ${id} order by idx`;
+    if (!parts.length || parts.length !== total) throw new HttpError(400, 'O arquivo não chegou inteiro. Envie de novo.');
+    const buf = Buffer.concat(parts.map((p) => Buffer.from(p.data, 'base64')));
+    const token = decrypt(bm.token_enc); const app = await appOf(bm);
+    if (!app) throw new HttpError(400, 'Não consegui identificar o app do token desta BM.');
+    const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'video/mp4': 'mp4', 'application/pdf': 'pdf' }[mime];
+    const session = await graph(`/${app}/uploads?file_length=${buf.length}&file_type=${encodeURIComponent(mime)}&file_name=cabecalho.${ext}`, token, { method: 'POST' });
+    const r = await fetch(GRAPH + '/' + session.id, { method: 'POST', headers: { Authorization: 'OAuth ' + token, file_offset: '0' }, body: buf });
+    let up = {}; try { up = await r.json(); } catch {}
+    if (!r.ok || !up.h) throw new HttpError(400, 'A Meta recusou o arquivo: ' + ((up.error && (up.error.error_user_msg || up.error.message)) || r.status));
+    return { handle: up.h, app_id: app };
+  }
+  if (a === 'cleanup') {
+    await sql`delete from as_uploads where upload_id = ${clean(body.upload_id, 40)} or created_at < now() - interval '1 day'`;
+    return { ok: true };
+  }
+  if (a === 'create') {
+    const waba = clean(body.waba_id, 30);
+    const [row] = await sql`select w.waba_id, b.id, b.name, b.token_enc from as_wabas w join as_bms b on b.id = w.bm_ref where w.waba_id = ${waba}`;
+    if (!row) throw new HttpError(404, 'Conta não encontrada.');
+    const t = body.template || {};
+    const name = clean(t.name, 512);
+    if (!/^[a-z0-9_]{1,512}$/.test(name)) throw new HttpError(400, 'Nome do template: só letras minúsculas, números e _.');
+    if (!['MARKETING', 'UTILITY'].includes(t.category)) throw new HttpError(400, 'Categoria inválida.');
+    const payload = { name, language: clean(t.language, 10) || 'pt_BR', category: t.category, components: Array.isArray(t.components) ? t.components : [] };
+    try {
+      const r = await graph(`/${waba}/message_templates`, decrypt(row.token_enc), { method: 'POST', body: JSON.stringify(payload) });
+      await logActivity(sql, `Template ${name} enviado para aprovação em ${row.name} (${waba}): ${r.status || 'PENDING'}`);
+      try {
+        await sql`insert into as_templates (waba_id, bm_ref, name, language, category, status, updated_at)
+          values (${waba}, ${row.id}, ${name}, ${payload.language}, ${r.category || payload.category}, ${r.status || 'PENDING'}, now())
+          on conflict do nothing`;
+      } catch (e) {}
+      return { ok: true, id: r.id, status: r.status || 'PENDING', category: r.category || payload.category };
+    } catch (err) {
+      return { ok: false, erro: tplError(err) };
+    }
+  }
+  throw new HttpError(405, 'Método não permitido.');
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (!guard(req, res)) return;
@@ -184,6 +273,7 @@ module.exports = async (req, res) => {
       else out = await runCheck(sql, body.id ? Number(body.id) : null);
     }
     else if (r === 'settings') out = await settings(sql, req, body, a);
+    else if (r === 'tpl-bulk') out = await templatesBulk(sql, req, body, a);
     else if (r === 'activity') out = await sql`select * from as_activity order by created_at desc limit 200`;
     else throw new HttpError(404, 'Recurso não encontrado.');
     res.status(200).json(out);

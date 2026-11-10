@@ -177,6 +177,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .tick{font-size:12px;font-weight:700;letter-spacing:-2px;color:var(--muted);margin-right:4px} .tick.read{color:#34B7F1} .tick.fail{color:var(--bad);letter-spacing:0}
   @media (prefers-reduced-motion:reduce){.live-dot,.conv.fresh{animation:none}}
   body.present .sidebar,body.present .topbar{display:none!important}
+  .modal-bg{position:fixed;inset:0;background:rgba(5,10,20,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal-bg[hidden]{display:none}
+  .modal{background:var(--card);color:var(--ink);border-radius:14px;padding:18px;width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
   body.present main{max-width:none} body.present #ibHint{display:none}
   body.present .inbox .convs{max-height:calc(100vh - 230px)} body.present .msgs{max-height:calc(100vh - 330px)}
   .composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);align-items:flex-end}
@@ -232,6 +235,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           <a href="#bms" data-view="bms">BMs</a>
           <a href="#numeros" data-view="numeros">Números <span class="count" id="restrBadge" hidden></span></a>
           <a href="#saude" data-view="saude">Status dos templates <span class="count" id="tplBadge" hidden></span></a>
+          <a href="#tplnovo" data-view="tplnovo">Criar template</a>
           <a href="#alertas" data-view="alertas">Alertas <span class="count" id="alertBadge" hidden></span></a>
         </div>
       </div>
@@ -301,12 +305,24 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
             <div><label for="opInst">Instância (número que envia)</label><select id="opInst"></select></div>
             <div><label for="opTpl">Template aprovado</label><select id="opTpl"></select></div>
           </div>
+          <div class="card soft" style="padding:12px 14px">
+            <label class="row" style="gap:8px;font-weight:700;margin:0"><input id="opSplitOn" type="checkbox" style="width:18px;height:18px"> Dividir a lista entre vários números (lotes A, B, C…)</label>
+            <div id="opSplit" class="stack" style="margin-top:10px" hidden>
+              <p class="small muted" style="margin:0">Cada número envia um lote até o limite diário dele. O lote A é o número escolhido acima. O mesmo template (mesmo nome e idioma) precisa estar aprovado em todos os números.</p>
+              <div class="wrap"><table>
+                <thead><tr><th style="width:36px"></th><th>Lote</th><th>Número</th><th style="width:130px">Limite</th><th>Template</th></tr></thead>
+                <tbody id="opSplitRows"></tbody>
+              </table></div>
+              <p id="opSplitSum" class="small" style="margin:0"></p>
+            </div>
+          </div>
           <div id="opProfile" class="row" style="gap:14px;padding:12px;border:1px solid var(--line);border-radius:10px" hidden>
             <div id="opPhoto" style="width:64px;height:64px;border-radius:99px;background:var(--soft);overflow:hidden;flex:0 0 64px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">sem foto</div>
             <div style="flex:1 1 220px">
               <strong>Foto de perfil do número</strong>
               <p class="small muted" style="margin:2px 0 8px">É a foto que o cliente vê no WhatsApp. Quadrada, JPG ou PNG (ajustada para 640×640).</p>
               <label class="btn ghost" style="margin:0;display:inline-flex">Trocar foto<input id="opPhotoFile" type="file" accept="image/jpeg,image/png" style="display:none"></label>
+              <button class="btn ghost" type="button" id="opCardBtn">Prévia para o cliente</button>
               <span id="opPhotoMsg" class="small" role="status" style="margin-left:8px"></span>
             </div>
           </div>
@@ -539,6 +555,57 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       </div>
 
       <!-- ================= ATIVOS: TEMPLATES ================= -->
+      <div class="view" id="view-tplnovo" hidden>
+        <p class="small muted" style="margin:0">Monte o template uma vez e envie para aprovação em todas as contas que marcar. Depois de aprovado, sincronize os templates em Disparos › Instâncias para usar nas operações.</p>
+        <div class="split">
+          <div class="main stack">
+            <div class="card stack">
+              <div class="grid">
+                <div><label for="tnName">Nome do template</label><input id="tnName" type="text" maxlength="512" placeholder="promo_black_friday"><p class="small muted" style="margin:4px 0 0">Só minúsculas, números e _. Ajusto sozinho.</p></div>
+                <div><label for="tnCat">Categoria</label><select id="tnCat"><option value="MARKETING">Marketing</option><option value="UTILITY">Utilidade</option></select></div>
+                <div><label for="tnLang">Idioma</label><select id="tnLang"><option value="pt_BR">Português (BR)</option><option value="en_US">Inglês (EUA)</option><option value="es">Espanhol</option></select></div>
+              </div>
+              <div class="grid">
+                <div><label for="tnHead">Cabeçalho</label><select id="tnHead"><option value="">Nenhum</option><option value="TEXT">Texto</option><option value="IMAGE">Imagem</option><option value="VIDEO">Vídeo</option><option value="DOCUMENT">Documento (PDF)</option></select></div>
+                <div id="tnHeadTextBox" hidden><label for="tnHeadText">Texto do cabeçalho</label><input id="tnHeadText" type="text" maxlength="60"></div>
+                <div id="tnHeadFileBox" hidden><label for="tnHeadFile">Arquivo de exemplo</label><input id="tnHeadFile" type="file" accept="image/jpeg,image/png,video/mp4,application/pdf"><p class="small muted" id="tnHeadFileHint" style="margin:4px 0 0"></p></div>
+              </div>
+              <div><label for="tnBody">Texto da mensagem</label><textarea id="tnBody" maxlength="1024" rows="6" placeholder="Oi {{1}}! Temos uma condição especial pra você…"></textarea>
+                <p class="small muted" style="margin:4px 0 0">Use {{1}}, {{2}}… para as variáveis. <button type="button" class="linkbtn small" id="tnAddVar">+ Inserir variável</button> <span id="tnBodyCount"></span></p></div>
+              <div id="tnVars" class="grid"></div>
+              <div><label for="tnFooter">Rodapé (opcional)</label><input id="tnFooter" type="text" maxlength="60" placeholder="Responda SAIR para não receber mais"></div>
+              <div>
+                <strong>Botões</strong>
+                <div id="tnBtns" class="stack" style="margin-top:8px"></div>
+                <div class="row" style="margin-top:8px">
+                  <button type="button" class="btn ghost" id="tnAddUrl">+ Link</button>
+                  <button type="button" class="btn ghost" id="tnAddQuick">+ Resposta rápida</button>
+                  <button type="button" class="btn ghost" id="tnAddPhone">+ Ligar</button>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row" style="justify-content:space-between">
+                <h3 style="margin:0">Contas que vão receber</h3>
+                <div class="row"><input id="tnFilter" type="text" placeholder="Filtrar BM ou conta" style="min-width:200px"><button type="button" class="btn ghost" id="tnAll">Marcar todas</button></div>
+              </div>
+              <div class="wrap"><table>
+                <thead><tr><th style="width:36px"></th><th>BM</th><th>Conta do WhatsApp</th><th>Números</th><th>Resultado</th></tr></thead>
+                <tbody id="tnTargets"><tr><td colspan="5" class="muted">Carregando…</td></tr></tbody>
+              </table></div>
+            </div>
+            <div class="row">
+              <button class="btn primary" type="button" id="tnSend">Enviar para aprovação</button>
+              <span id="tnMsg" class="small" role="status"></span>
+            </div>
+          </div>
+          <aside class="side">
+            <span class="small muted" style="display:block;font-weight:600;margin-bottom:6px">Prévia</span>
+            <div class="phone"><div class="bubble" id="tnPreview"></div></div>
+          </aside>
+        </div>
+      </div>
+
       <div class="view" id="view-saude" hidden>
         <div class="row" style="justify-content:space-between">
           <p class="small muted" style="margin:0">Situação dos templates de todas as BMs. Você recebe um alerta quando um template é pausado, desativado ou reprovado.</p>
@@ -801,6 +868,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const acts = el('td');
       acts.append(
         el('button', { class: 'link', type: 'button', text: 'Sincronizar', onclick: () => instAction('sync', i.id, 'Templates sincronizados.') }),
+        el('button', { class: 'link', type: 'button', text: 'Prévia do perfil', onclick: () => profileCard(i.id) }),
         el('button', { class: 'link', type: 'button', text: 'Assinar webhook', onclick: () => instAction('subscribe', i.id, 'Webhook assinado: esta WABA agora envia eventos para a Disply.', { override: true }) }),
         el('button', { class: 'link', type: 'button', text: i.active ? 'Desativar' : 'Ativar', onclick: async () => { await post('r=instances', { id: i.id, active: !i.active }, 'PATCH'); loadInstances(); } })
       );
@@ -936,7 +1004,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!DDDS.has(ddd)) return { reason: 'DDD ' + ddd + ' não existe' };
     let local = d.slice(4); let fixed = false;
     if (local.length === 8) {
-      if (/^[2-5]/.test(local)) return { reason: 'Telefone fixo (sem WhatsApp)' };
+      // Fixo (começa com 2 a 5): pode ter WhatsApp Business, então fica na lista e só é sinalizado.
+      if (/^[2-5]/.test(local)) return { phone: '55' + ddd + local, landline: true };
       local = '9' + local; fixed = true;
     }
     if (local[0] !== '9') return { reason: 'Celular inválido (precisa começar com 9)' };
@@ -1005,7 +1074,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const cols = pickColumns(rows);
     if (!cols) return null;
     const seen = new Set(); const contacts = []; const problems = []; const reasons = {};
-    const rep = { linhas: 0, validos: 0, nono: 0, nomes: 0, duplicados: 0, invalidos: 0 };
+    const rep = { linhas: 0, validos: 0, nono: 0, nomes: 0, duplicados: 0, invalidos: 0, fixos: 0 };
     rows.slice(cols.start).forEach((r, i) => {
       const rawPhone = r[cols.phone]; const rawName = cols.name >= 0 ? r[cols.name] : '';
       if (!String(rawPhone || '').trim() && !String(rawName || '').trim()) return;
@@ -1017,8 +1086,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       seen.add(ph.phone);
       const nm = cleanName(rawName);
       if (ph.fixed) rep.nono++;
+      if (ph.landline) rep.fixos++;
       if (nm.fixed) rep.nomes++;
-      contacts.push({ name: nm.name, phone: ph.phone });
+      contacts.push(ph.landline ? { name: nm.name, phone: ph.phone, fixo: true } : { name: nm.name, phone: ph.phone });
     });
     rep.validos = contacts.length; rep.motivos = reasons;
     return { contacts, rep, problems };
@@ -1035,8 +1105,16 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const st = (n, label, cls) => stats.append(el('div', { class: 'check-stat ' + (cls || '') }, el('strong', { text: num(n) }), el('span', { text: label })));
     st(r.linhas, 'linhas lidas'); st(r.validos, 'prontos para envio', 'ok');
     st(r.nono, 'corrigidos (9º dígito)', r.nono ? 'info' : ''); st(r.nomes, 'nomes ajustados', r.nomes ? 'info' : '');
+    st(r.fixos, 'fixos (mantidos)', r.fixos ? 'info' : '');
     st(r.duplicados, 'duplicados removidos', r.duplicados ? 'warn' : ''); st(r.invalidos, 'inválidos (fora da lista)', r.invalidos ? 'bad' : '');
     card.append(stats);
+    if (r.fixos) {
+      const lab = el('label', { class: 'row small', style: 'margin:10px 0 0;gap:8px;font-weight:600' });
+      const cb = el('input', { type: 'checkbox', style: 'width:18px;height:18px' });
+      cb.onchange = () => { res.dropFixos = cb.checked; };
+      lab.append(cb, document.createTextNode(`Tirar os ${num(r.fixos)} fixos da lista`));
+      card.append(el('p', { class: 'small muted', style: 'margin:10px 0 0', text: 'Fixos ficam na lista porque muitos têm WhatsApp Business. Os que não tiverem WhatsApp aparecem como “não tem WhatsApp” nas falhas do disparo, sem custo.' }), lab);
+    }
     if (r.invalidos) {
       card.append(el('p', { class: 'small', style: 'margin:10px 0 4px;font-weight:700', text: 'Motivos dos inválidos' }));
       const ul = el('ul', { class: 'small', style: 'margin:0;padding-left:18px' });
@@ -1055,6 +1133,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     try { c = typeof c === 'string' ? JSON.parse(c) : c; } catch { return '—'; }
     const parts = [`${num(c.validos)} ok`];
     if (c.nono) parts.push(`${num(c.nono)} corrigidos`);
+    if (c.fixos) parts.push(`${num(c.fixos)} fixos`);
     if (c.duplicados) parts.push(`${num(c.duplicados)} duplicados`);
     if (c.invalidos) parts.push(`${num(c.invalidos)} inválidos`);
     return '✓ ' + parts.join(' · ');
@@ -1082,8 +1161,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       $(ids.btn).disabled = true; setMsg(ids.msg, 'Criando lista…', true);
       try {
         const check = { ...res.rep }; delete check.motivos;
+        const list = res.dropFixos ? res.contacts.filter((c) => !c.fixo) : res.contacts;
+        if (res.dropFixos) { check.validos = list.length; check.fixos_removidos = check.fixos; check.fixos = 0; }
         const { id } = await post('r=lists', { name: $(ids.name).value || 'Lista', check });
-        let total = 0; const list = res.contacts;
+        let total = 0;
         for (let i = 0; i < list.length; i += 2000) {
           const r = await post('r=lists&a=add', { id, contacts: list.slice(i, i + 2000) });
           total = r.total; setMsg(ids.msg, `Importando… ${num(Math.min(i + 2000, list.length))} de ${num(list.length)}`, true);
@@ -1107,6 +1188,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     ['opName', 'opMediaUrl', 'opHeaderVar', 'opBtnParam', 'opQty', 'opTestPhone'].forEach((x) => { $(x).value = ''; });
     $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40';
     state.tpl = null; state.mediaUrl = ''; $('opVars').innerHTML = '';
+    $('opSplitOn').checked = false; split.sel.clear(); split.qtyTouched = false; renderSplit();
     ['opMsg', 'opTestMsg', 'opMediaMsg'].forEach((x) => { $(x).textContent = ''; });
     $('btnStartConfirm').hidden = true; $('btnStart').hidden = false; $('opProfile').hidden = true;
     $('opTpl').innerHTML = '<option value="">Escolha a instância</option>';
@@ -1144,6 +1226,62 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     try { const p = await post('r=instances&a=profile', { id: Number(id) }); showPhoto(p.photo); }
     catch (err) { setMsg('opPhotoMsg', 'Não consegui ler o perfil: ' + err.message); }
   }
+  // ---------- Imagem "Foto de perfil" para mandar ao cliente ----------
+  function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  async function drawProfileCard(d) {
+    const W = 1080, H = 1040, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const font = (w, px) => `${w} ${px}px -apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
+    ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#121620'; roundRect(ctx, 0, 24, W, H, 28); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.font = font(700, 50); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('Foto de perfil', W / 2, 146);
+    ctx.strokeStyle = '#c9ced6'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(1022, 86); ctx.lineTo(1050, 114); ctx.moveTo(1050, 86); ctx.lineTo(1022, 114); ctx.stroke();
+    ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.font = font(500, 42); ctx.fillText(d.phone || '', 34, 246);
+    ctx.fillStyle = '#8a93a3'; ctx.font = font(400, 33); ctx.fillText(d.name || '', 34, 297);
+    ctx.strokeStyle = '#2b313c'; ctx.lineWidth = 2; roundRect(ctx, 34, 358, W - 68, 628, 32); ctx.stroke();
+    const cx = W / 2, cy = 358 + 314, r = 240;
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+    if (d.photo) {
+      const img = await new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = d.photo; });
+      const sc = Math.max((2 * r) / img.width, (2 * r) / img.height); const w = img.width * sc, h = img.height * sc;
+      ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+    } else {
+      ctx.fillStyle = '#2b313c'; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+      ctx.fillStyle = '#6b7380'; ctx.beginPath(); ctx.arc(cx, cy - 60, 90, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx, cy + 190, 170, 140, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    return c;
+  }
+  async function profileCard(id) {
+    let bg = $('cardModal');
+    if (!bg) { bg = el('div', { id: 'cardModal', class: 'modal-bg', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Prévia da foto de perfil' }); document.body.append(bg); bg.onclick = (e) => { if (e.target === bg) bg.hidden = true; }; }
+    bg.hidden = false; bg.innerHTML = '';
+    const box = el('div', { class: 'modal' }); bg.append(box);
+    box.append(el('p', { class: 'small muted', text: 'Montando a prévia com a foto atual do número…' }));
+    let d; try { d = await post('r=instances&a=card', { id: Number(id) }); } catch (err) { box.innerHTML = ''; box.append(el('p', { class: 'err', text: err.message }), el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { bg.hidden = true; } })); return; }
+    const canvas = await drawProfileCard(d);
+    const url = canvas.toDataURL('image/png');
+    box.innerHTML = '';
+    box.append(el('h3', { style: 'margin:0 0 4px', text: 'Prévia para o cliente' }),
+      el('p', { class: 'small muted', style: 'margin:0 0 10px', text: d.photo ? 'Como o contato vê o perfil deste número no WhatsApp.' : 'Este número ainda está sem foto de perfil.' }),
+      el('img', { src: url, alt: 'Foto de perfil de ' + (d.phone || ''), style: 'width:100%;max-width:420px;display:block;margin:0 auto;border-radius:12px' }));
+    const msg = el('span', { class: 'small', role: 'status' });
+    const row = el('div', { class: 'row', style: 'margin-top:12px;justify-content:center' });
+    const fname = 'perfil-' + String(d.phone || id).replace(/\D/g, '') + '.png';
+    row.append(el('a', { class: 'btn primary', href: url, download: fname, text: 'Baixar imagem' }));
+    if (navigator.clipboard && window.ClipboardItem) row.append(el('button', { class: 'btn ghost', type: 'button', text: 'Copiar imagem', onclick: async () => {
+      try { const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setMsg(msg.id = 'cardMsg', 'Copiada. É só colar no WhatsApp.', true); }
+      catch (e) { msg.textContent = 'Não consegui copiar; use Baixar imagem.'; }
+    } }));
+    row.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { bg.hidden = true; } }));
+    box.append(row, msg);
+  }
+  document.addEventListener('keydown', (e) => { const m = $('cardModal'); if (e.key === 'Escape' && m && !m.hidden) m.hidden = true; });
+  $('opCardBtn').onclick = () => { if ($('opInst').value) profileCard($('opInst').value); };
+
   function squareJpeg(file) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file); const img = new Image();
@@ -1170,6 +1308,90 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     finally { $('opPhotoFile').value = ''; }
   };
 
+  // ---------- Dividir entre vários números ----------
+  const split = { sel: new Map(), tpl: new Map() };
+  function tierLimit(t) {
+    const m = /TIER_(\d+)(K)?/i.exec(String(t || ''));
+    if (m) return Number(m[1]) * (m[2] ? 1000 : 1);
+    return /UNLIMITED/i.test(String(t || '')) ? 100000 : null;
+  }
+  const instById = (id) => state.instances.find((i) => String(i.id) === String(id));
+  const splitOn = () => $('opSplitOn').checked;
+  async function tplStatusFor(id) {
+    if (!state.tpl) return null;
+    const key = id + '|' + state.tpl.name + '|' + state.tpl.language;
+    if (split.tpl.has(key)) return split.tpl.get(key);
+    split.tpl.set(key, 'loading');
+    try {
+      const { templates } = await api('r=templates&instance=' + encodeURIComponent(id));
+      const t = templates.find((x) => x.name === state.tpl.name && x.language === state.tpl.language);
+      split.tpl.set(key, !t ? 'missing' : t.status === 'APPROVED' ? 'ok' : 'pending:' + t.status);
+    } catch (e) { split.tpl.set(key, 'error'); }
+    renderSplit();
+    return split.tpl.get(key);
+  }
+  function splitParts() {
+    const main = $('opInst').value; if (!main || String(main).startsWith('asset:')) return [];
+    const parts = [{ instance_id: Number(main), limit: Number(split.sel.get(String(main))) || 0 }];
+    for (const i of state.instances) if (i.active && String(i.id) !== String(main) && split.sel.has(String(i.id))) parts.push({ instance_id: i.id, limit: Number(split.sel.get(String(i.id))) || 0 });
+    return parts;
+  }
+  function renderSplit() {
+    $('opSplit').hidden = !splitOn();
+    if (!splitOn()) return;
+    const main = $('opInst').value; const tb = $('opSplitRows'); tb.innerHTML = '';
+    if (!main || String(main).startsWith('asset:')) { tb.append(el('tr', {}, el('td', { colSpan: 5, class: 'muted', text: 'Escolha primeiro o número principal (lote A).' }))); $('opSplitSum').textContent = ''; return; }
+    if (!split.sel.has(String(main))) split.sel.set(String(main), tierLimit((instById(main) || {}).limit_tier) || 1000);
+    const order = [instById(main), ...state.instances.filter((i) => i.active && String(i.id) !== String(main))].filter(Boolean);
+    let letter = 0;
+    for (const i of order) {
+      const isMain = String(i.id) === String(main); const on = isMain || split.sel.has(String(i.id));
+      const cb = el('input', { type: 'checkbox', style: 'width:18px;height:18px', 'aria-label': 'Usar ' + i.name });
+      cb.checked = on; cb.disabled = isMain;
+      cb.onchange = () => { if (cb.checked) { split.sel.set(String(i.id), tierLimit(i.limit_tier) || 1000); tplStatusFor(i.id); } else split.sel.delete(String(i.id)); renderSplit(); };
+      const lim = el('input', { type: 'number', min: '1', step: '1', style: 'min-height:36px;padding:6px 8px', value: on ? String(split.sel.get(String(i.id))) : '', 'aria-label': 'Limite de ' + i.name });
+      lim.disabled = !on;
+      lim.oninput = () => { split.sel.set(String(i.id), Number(lim.value) || 0); splitSummary(); };
+      const tierTxt = tierLimit(i.limit_tier) ? 'limite da Meta: ' + num(tierLimit(i.limit_tier)) + '/dia' : 'limite não identificado';
+      const nameCell = el('td', {}, el('strong', { text: i.name }), el('div', { class: 'small muted', text: (i.bm ? i.bm + ' · ' : '') + tierTxt }));
+      let tplCell;
+      if (!state.tpl) tplCell = td('Escolha o template', 'muted');
+      else if (isMain) tplCell = el('td', {}, badge('Aprovado', 'ok'));
+      else if (!on) tplCell = td('—', 'muted');
+      else {
+        const st = split.tpl.get(i.id + '|' + state.tpl.name + '|' + state.tpl.language);
+        if (st === undefined) { tplStatusFor(i.id); tplCell = td('Verificando…', 'muted'); }
+        else if (st === 'loading') tplCell = td('Verificando…', 'muted');
+        else if (st === 'ok') tplCell = el('td', {}, badge('Aprovado', 'ok'));
+        else if (st === 'missing') tplCell = el('td', {}, badge('Não tem este template', 'bad'));
+        else if (String(st).startsWith('pending:')) tplCell = el('td', {}, badge('Em análise (' + st.slice(8) + ')', 'warn'));
+        else tplCell = el('td', {}, badge('Erro ao verificar', 'bad'));
+      }
+      tb.append(el('tr', {}, el('td', {}, cb), td(on ? 'Lote ' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[letter++] : '', on ? '' : 'muted'), nameCell, el('td', {}, lim), tplCell));
+    }
+    splitSummary();
+  }
+  function splitSummary() {
+    const parts = splitParts(); const box = $('opSplitSum');
+    if (parts.length < 2) { box.textContent = 'Marque pelo menos mais um número para dividir.'; box.className = 'small muted'; return; }
+    const cap = parts.reduce((s, p) => s + p.limit, 0);
+    const avail = state.available || 0;
+    const want = Math.min(avail || cap, cap);
+    let left = Math.min(Number($('opQty').value) || want, cap);
+    const lots = parts.map((p, i) => { const n = Math.max(0, Math.min(p.limit, left)); left -= n; return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i] + ': ' + num(n); });
+    const bms = parts.map((p) => (instById(p.instance_id) || {}).bm_ref).filter(Boolean);
+    const sameBm = bms.length !== new Set(bms).size;
+    const bad = parts.some((p) => { if (String(p.instance_id) === String($('opInst').value)) return false; const st = state.tpl && split.tpl.get(p.instance_id + '|' + state.tpl.name + '|' + state.tpl.language); return st && st !== 'ok' && st !== 'loading'; });
+    box.className = 'small' + (bad || (avail && avail > cap) || sameBm ? ' err' : '');
+    box.textContent = `${parts.length} números · capacidade ${num(cap)} · lista ${avail ? num(avail) : '—'} → ${lots.join(' · ')}`
+      + (avail > cap ? ` · ${num(avail - cap)} contato(s) ficam de fora (aumente os limites ou adicione números).` : '')
+      + (sameBm ? ' · Atenção: há números da mesma BM, e eles dividem o mesmo limite diário.' : '')
+      + (bad ? ' · Algum número não tem o template aprovado.' : '');
+    if (avail) { $('opQty').max = Math.min(avail, cap); if (!split.qtyTouched) $('opQty').value = Math.min(avail, cap); }
+  }
+  $('opSplitOn').onchange = () => { if (splitOn() && state.available) $('opQty').value = Math.min(state.available, splitParts().reduce((s, p) => s + p.limit, 0) || state.available); renderSplit(); };
+  $('opQty').addEventListener('input', () => { split.qtyTouched = true; if (splitOn()) splitSummary(); });
+
   $('opInst').onchange = async () => {
     if (!(await ensureInstance($('opInst'), 'opMsg'))) return;
     loadProfile($('opInst').value);
@@ -1179,9 +1401,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     state.templates = templates.filter((t) => t.status === 'APPROVED' && !t.info.carousel);
     sel.append(el('option', { value: '', text: state.templates.length ? 'Escolha…' : 'Nenhum template aprovado (sincronize em Templates)' }));
     for (const t of state.templates) sel.append(el('option', { value: t.id, text: `${t.name} · ${t.category} · ${t.language}` }));
-    applyTemplate();
+    state.tpl = null; applyTemplate(); renderSplit();
   };
-  $('opTpl').onchange = () => { state.tpl = state.templates.find((t) => String(t.id) === $('opTpl').value) || null; applyTemplate(); };
+  $('opTpl').onchange = () => { state.tpl = state.templates.find((t) => String(t.id) === $('opTpl').value) || null; applyTemplate(); renderSplit(); };
 
   function insertAt(input, token) {
     const s = input.selectionStart ?? input.value.length, e = input.selectionEnd ?? s;
@@ -1257,9 +1479,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const id = $('opList').value; if (!id) { renderPreview(); return; }
     const d = await api('r=lists&a=sample&id=' + encodeURIComponent(id));
     state.sample = d.sample; state.available = d.available;
-    $('opQty').max = d.available; $('opQty').value = Math.min(d.available, 2000) || '';
-    $('opListInfo').textContent = num(d.available) + ' disponível(is) (sem os que pediram SAIR).' + (d.available > 2000 ? ' Atenção ao limite diário da BM.' : '');
-    renderPreview();
+    $('opQty').max = d.available;
+    const mainLimit = tierLimit((instById($('opInst').value) || {}).limit_tier) || 2000;
+    $('opQty').value = splitOn() ? Math.min(d.available, splitParts().reduce((s, p) => s + p.limit, 0) || d.available) : (Math.min(d.available, mainLimit) || '');
+    $('opListInfo').textContent = num(d.available) + ' disponível(is) (sem os que pediram SAIR).' + (!splitOn() && d.available > mainLimit ? ` A lista passa do limite deste número (${num(mainLimit)}/dia): use “Dividir a lista entre vários números”.` : '');
+    renderPreview(); renderSplit();
   };
 
   function opPayload() {
@@ -1268,7 +1492,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       name: $('opName').value, instance_id: Number($('opInst').value), template_id: t ? t.id : null,
       header_value: t && t.info.needsMedia ? (state.mediaUrl || $('opMediaUrl').value) : $('opHeaderVar').value,
       body_vars: collectVars(), button_param: $('opBtnParam').value, name_fallback: $('opFallback').value,
-      list_id: Number($('opList').value), quantity: Number($('opQty').value), tps: Number($('opTps').value)
+      list_id: Number($('opList').value), quantity: Number($('opQty').value), tps: Number($('opTps').value),
+      split: splitOn() && splitParts().length > 1 ? splitParts() : undefined
     };
   }
   $('btnTest').onclick = async () => {
@@ -1294,7 +1519,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('opMsg').textContent = '';
     if (!state.tpl || !$('opList').value) { $('opMsg').textContent = 'Escolha template e lista.'; return; }
     $('btnStart').hidden = true; $('btnStartConfirm').hidden = false;
-    $('btnStartConfirm').textContent = `Confirmar: enviar para ${num($('opQty').value || state.available)} contato(s)`;
+    const parts = splitOn() ? splitParts() : [];
+    if (splitOn() && parts.length < 2) { $('opMsg').textContent = 'Marque pelo menos mais um número para dividir, ou desligue a divisão.'; $('btnStart').hidden = false; $('btnStartConfirm').hidden = true; return; }
+    const cap = parts.length > 1 ? parts.reduce((s2, p) => s2 + p.limit, 0) : Infinity;
+    $('btnStartConfirm').textContent = `Confirmar: enviar para ${num(Math.min(Number($('opQty').value) || state.available, state.available || Infinity, cap))} contato(s)` + (parts.length > 1 ? ` em ${parts.length} números (lotes A–${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[parts.length - 1]})` : '');
   };
   $('btnStartConfirm').onclick = async () => {
     $('btnStartConfirm').disabled = true;
@@ -1335,7 +1563,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (o.status === 'running') acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Pausar', onclick: () => act('paused') }));
     if (o.status === 'paused') acts.append(el('button', { class: 'btn primary', type: 'button', text: 'Retomar', onclick: () => act('running') }));
     if (o.status === 'running' || o.status === 'paused') acts.append(el('button', { class: 'btn danger', type: 'button', text: 'Cancelar', onclick: () => act('canceled') }));
-    if (d.report_url) acts.append(el('a', { class: 'btn primary', href: d.report_url, target: '_blank', rel: 'noopener', text: 'Relatório (PDF)' }));
+    if (d.group_report_url) acts.append(el('a', { class: 'btn primary', href: d.group_report_url, target: '_blank', rel: 'noopener', text: 'Relatório da campanha (todos os lotes)' }));
+    if (d.report_url) acts.append(el('a', { class: d.group_report_url ? 'btn ghost' : 'btn primary', href: d.report_url, target: '_blank', rel: 'noopener', text: d.group_report_url ? 'Relatório deste lote' : 'Relatório (PDF)' }));
     if (c.failed) acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Exportar falhas', onclick: () => exportFailures(id, o.name) }));
     acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { box.hidden = true; state.detailId = null; clearTimeout(state.timer); } }));
     head.append(acts); box.append(head);
@@ -1343,6 +1572,16 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0]]
       .forEach(([l, v]) => stats.append(el('div', { class: 'stat' }, el('span', { class: 'small muted', text: l }), el('b', { text: num(v) }))));
     box.append(stats);
+    if (d.lotes && d.lotes.length > 1) {
+      const lt = el('div', { class: 'row', style: 'gap:8px;margin-top:12px;flex-wrap:wrap' });
+      lt.append(el('span', { class: 'small muted', style: 'font-weight:700', text: 'Lotes desta campanha:' }));
+      for (const l of d.lotes) {
+        const b = el('button', { type: 'button', class: 'btn ghost', style: 'min-height:34px;padding:6px 10px' + (l.id === id ? ';outline:2px solid var(--accent)' : ''), onclick: () => openDetail(l.id) });
+        b.append(document.createTextNode(`Lote ${l.tag} · ${l.instance_name || ''} · ${num(l.sent)}/${num(l.quantity)} `), opBadge(l.status));
+        lt.append(b);
+      }
+      box.append(lt);
+    }
     box.append(el('div', { style: 'margin:14px 0 6px' }, bar([[total ? sent / total * 100 : 0, 'var(--accent)'], [total ? (c.failed || 0) / total * 100 : 0, 'var(--bad)']])));
     box.append(el('p', { class: 'small muted', style: 'margin:0', text: 'Entregues e lidas dependem do webhook configurado e do app publicado na Meta.' }));
     if (d.errors.length) {
@@ -1830,7 +2069,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const VIEWS = {
     inicio: ['Visão geral', ''], ops: ['Operações', 'Disparos'], inbox: ['Inbox', 'Disparos'], lists: ['Listas de contatos', 'Disparos'],
     tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['BMs', 'Ativos Meta'], numeros: ['Números', 'Ativos Meta'],
-    saude: ['Status dos templates', 'Ativos Meta'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
+    saude: ['Status dos templates', 'Ativos Meta'], tplnovo: ['Criar template em várias BMs', 'Ativos Meta'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
     config: ['Configurações', 'Sistema'], historico: ['Histórico', 'Sistema']
   };
   const DISPAROS = ['ops', 'inbox', 'lists', 'tpl', 'inst'];
@@ -1856,6 +2095,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (view === 'alertas') loadAlerts();
     if (view === 'config') loadConfig();
     if (view === 'historico') loadActivity();
+    if (view === 'tplnovo') loadTargets();
   }
   window.addEventListener('hashchange', () => { if (key) go(location.hash.slice(1)); });
 
@@ -2161,6 +2401,193 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!list.length) empty(tb, 2, 'Nada registrado ainda.');
     for (const a of list) tb.append(el('tr', {}, td(fmt(a.created_at)), td(a.text)));
   }
+
+  // ---------- Criar template em várias BMs ----------
+  const tn = { targets: [], sel: new Set(), btns: [], result: new Map(), busy: false };
+  const tnSlug = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 512);
+  const tnVarsOf = (t) => [...new Set([...String(t || '').matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  async function loadTargets() {
+    const tb = $('tnTargets');
+    try { tn.targets = await api('r=tpl-bulk'); } catch (err) { tb.innerHTML = ''; empty(tb, 5, err.message); return; }
+    renderTargets(); tnPreview();
+  }
+  function renderTargets() {
+    const tb = $('tnTargets'); tb.innerHTML = '';
+    const q = $('tnFilter').value.trim().toLowerCase();
+    const list = tn.targets.filter((t) => !q || (t.bm + ' ' + (t.waba_name || '') + ' ' + t.waba_id + ' ' + (t.profile || '')).toLowerCase().includes(q));
+    if (!list.length) empty(tb, 5, tn.targets.length ? 'Nenhuma conta com esse filtro.' : 'Nenhuma conta encontrada. Cadastre as BMs em Ativos Meta › BMs.');
+    for (const t of list) {
+      const cb = el('input', { type: 'checkbox', style: 'width:18px;height:18px', 'aria-label': 'Enviar para ' + t.bm });
+      cb.checked = tn.sel.has(t.waba_id); cb.disabled = tn.busy;
+      cb.onchange = () => { if (cb.checked) tn.sel.add(t.waba_id); else tn.sel.delete(t.waba_id); tnCount(); };
+      const r = tn.result.get(t.waba_id);
+      const res = el('td');
+      if (r) res.append(r.state === 'ok' ? badge('Enviado · ' + ({ APPROVED: 'Aprovado', PENDING: 'Em análise', REJECTED: 'Reprovado' }[r.status] || r.status), r.status === 'REJECTED' ? 'bad' : r.status === 'APPROVED' ? 'ok' : 'info')
+        : r.state === 'err' ? el('span', { class: 'small err', text: r.text }) : el('span', { class: 'small muted', text: r.text }));
+      else if (!t.app_id) res.append(el('span', { class: 'small muted', text: 'Token sem app identificado' }));
+      tb.append(el('tr', {}, tdn(cb), tdn(el('strong', { text: t.bm }), el('div', { class: 'small muted', text: t.profile || '' })),
+        tdn(el('span', { text: t.waba_name || '—' }), el('div', { class: 'small muted', text: t.waba_id })), td(num(t.numeros)), res));
+    }
+    tnCount();
+  }
+  function tnCount() { $('tnSend').textContent = tn.sel.size ? `Enviar para aprovação em ${num(tn.sel.size)} conta(s)` : 'Enviar para aprovação'; $('tnSend').disabled = tn.busy || !tn.sel.size; }
+  $('tnFilter').oninput = renderTargets;
+  $('tnAll').onclick = () => {
+    const q = $('tnFilter').value.trim().toLowerCase();
+    const vis = tn.targets.filter((t) => !q || (t.bm + ' ' + (t.waba_name || '') + ' ' + t.waba_id + ' ' + (t.profile || '')).toLowerCase().includes(q));
+    const all = vis.every((t) => tn.sel.has(t.waba_id));
+    vis.forEach((t) => (all ? tn.sel.delete(t.waba_id) : tn.sel.add(t.waba_id)));
+    $('tnAll').textContent = all ? 'Marcar todas' : 'Desmarcar todas';
+    renderTargets();
+  };
+  $('tnName').onblur = () => { $('tnName').value = tnSlug($('tnName').value); };
+  $('tnHead').onchange = () => {
+    const h = $('tnHead').value;
+    $('tnHeadTextBox').hidden = h !== 'TEXT'; $('tnHeadFileBox').hidden = !['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h);
+    $('tnHeadFile').accept = { IMAGE: 'image/jpeg,image/png', VIDEO: 'video/mp4', DOCUMENT: 'application/pdf' }[h] || '';
+    $('tnHeadFileHint').textContent = { IMAGE: 'JPG ou PNG, até 5 MB.', VIDEO: 'MP4, até 16 MB.', DOCUMENT: 'PDF, até 16 MB.' }[h] || '';
+    tnPreview();
+  };
+  $('tnAddVar').onclick = () => {
+    const ta = $('tnBody'); const n = (tnVarsOf(ta.value).slice(-1)[0] || 0) + 1; const tok = `{{${n}}}`;
+    const s0 = ta.selectionStart ?? ta.value.length; ta.value = ta.value.slice(0, s0) + tok + ta.value.slice(ta.selectionEnd ?? s0);
+    ta.focus(); tnRenderVars(); tnPreview();
+  };
+  const tnExamples = {};
+  function tnRenderVars() {
+    const box = $('tnVars'); box.innerHTML = '';
+    for (const v of tnVarsOf($('tnBody').value)) {
+      const inp = el('input', { type: 'text', maxlength: '200', id: 'tnVar' + v, placeholder: v === 1 ? 'Maria' : 'exemplo' });
+      inp.value = tnExamples[v] || ''; inp.oninput = () => { tnExamples[v] = inp.value; tnPreview(); };
+      box.append(el('div', {}, el('label', { for: 'tnVar' + v, text: `Exemplo para {{${v}}}` }), inp));
+    }
+    $('tnBodyCount').textContent = `${$('tnBody').value.length}/1024`;
+  }
+  $('tnBody').oninput = () => { tnRenderVars(); tnPreview(); };
+  ['tnHeadText', 'tnFooter'].forEach((id) => { $(id).oninput = tnPreview; });
+  function tnAddBtn(type) {
+    if (tn.btns.length >= 10) return;
+    tn.btns.push({ type, text: '', url: '', ex: '', phone: '' }); tnRenderBtns(); tnPreview();
+  }
+  $('tnAddUrl').onclick = () => tnAddBtn('URL'); $('tnAddQuick').onclick = () => tnAddBtn('QUICK_REPLY'); $('tnAddPhone').onclick = () => tnAddBtn('PHONE_NUMBER');
+  function tnRenderBtns() {
+    const box = $('tnBtns'); box.innerHTML = '';
+    tn.btns.forEach((b, i) => {
+      const row = el('div', { class: 'grid', style: 'align-items:end;border:1px solid var(--line);border-radius:10px;padding:10px' });
+      const field = (label, key, ph, max) => { const id = `tnB${i}${key}`; const inp = el('input', { id, type: 'text', maxlength: String(max || 200), placeholder: ph || '' }); inp.value = b[key]; inp.oninput = () => { b[key] = inp.value; tnPreview(); }; return el('div', {}, el('label', { for: id, text: label }), inp); };
+      row.append(field({ URL: 'Texto do botão (link)', QUICK_REPLY: 'Texto do botão (resposta rápida)', PHONE_NUMBER: 'Texto do botão (ligar)' }[b.type], 'text', '', 25));
+      if (b.type === 'URL') {
+        row.append(field('Link (para link variável, termine com {{1}})', 'url', 'https://seusite.com/{{1}}', 2000));
+        row.append(field('Exemplo do final do link (se terminar com {{1}})', 'ex', 'promo', 200));
+      }
+      if (b.type === 'PHONE_NUMBER') row.append(field('Telefone com DDI', 'phone', '+5531999999999', 20));
+      row.append(el('button', { type: 'button', class: 'btn ghost', text: 'Remover', onclick: () => { tn.btns.splice(i, 1); tnRenderBtns(); tnPreview(); } }));
+      box.append(row);
+    });
+  }
+  function tnPreview() {
+    const b = $('tnPreview'); b.innerHTML = '';
+    const h = $('tnHead').value;
+    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h)) {
+      const m = el('div', { class: 'media' }); const f = $('tnHeadFile').files[0];
+      if (f && h === 'IMAGE') m.append(el('img', { src: URL.createObjectURL(f), alt: '' })); else m.textContent = { IMAGE: 'Imagem', VIDEO: 'Vídeo', DOCUMENT: 'Documento' }[h] + (f ? ' · ' + f.name : '');
+      b.append(m);
+    }
+    const fill = (t) => String(t || '').replace(/\{\{\s*(\d+)\s*\}\}/g, (_, v) => tnExamples[v] || `{{${v}}}`);
+    if (h === 'TEXT' && $('tnHeadText').value) b.append(el('div', { class: 'text', style: 'font-weight:700;padding-bottom:0', text: $('tnHeadText').value }));
+    b.append(el('div', { class: 'text', text: fill($('tnBody').value) || 'O texto da mensagem aparece aqui.' }));
+    if ($('tnFooter').value) b.append(el('div', { class: 'foot', text: $('tnFooter').value }));
+    if (tn.btns.length) { const bx = el('div', { class: 'btns' }); tn.btns.forEach((x) => bx.append(el('div', { text: x.text || 'Botão' }))); b.append(bx); }
+  }
+  $('tnHeadFile').onchange = tnPreview;
+
+  function tnComponents(handle) {
+    const comps = []; const h = $('tnHead').value;
+    if (h === 'TEXT') {
+      const t = $('tnHeadText').value.trim(); const hv = tnVarsOf(t);
+      comps.push(hv.length ? { type: 'HEADER', format: 'TEXT', text: t, example: { header_text: [tnExamples['h'] || 'exemplo'] } } : { type: 'HEADER', format: 'TEXT', text: t });
+    } else if (h) comps.push({ type: 'HEADER', format: h, example: { header_handle: [handle] } });
+    const body = $('tnBody').value.trim(); const vars = tnVarsOf(body);
+    comps.push(vars.length ? { type: 'BODY', text: body, example: { body_text: [vars.map((v) => tnExamples[v])] } } : { type: 'BODY', text: body });
+    if ($('tnFooter').value.trim()) comps.push({ type: 'FOOTER', text: $('tnFooter').value.trim() });
+    if (tn.btns.length) comps.push({ type: 'BUTTONS', buttons: tn.btns.map((b) => {
+      if (b.type === 'URL') return /\{\{1\}\}\s*$/.test(b.url) ? { type: 'URL', text: b.text.trim(), url: b.url.trim(), example: [b.url.trim().replace(/\{\{1\}\}\s*$/, b.ex.trim() || 'exemplo')] } : { type: 'URL', text: b.text.trim(), url: b.url.trim() };
+      if (b.type === 'PHONE_NUMBER') return { type: 'PHONE_NUMBER', text: b.text.trim(), phone_number: '+' + b.phone.replace(/\D/g, '') };
+      return { type: 'QUICK_REPLY', text: b.text.trim() };
+    }) });
+    return comps;
+  }
+  function tnValidate() {
+    $('tnName').value = tnSlug($('tnName').value);
+    if (!$('tnName').value) return 'Dê um nome ao template.';
+    const body = $('tnBody').value.trim(); if (!body) return 'Escreva o texto da mensagem.';
+    const vars = tnVarsOf(body);
+    if (vars.some((v, i) => v !== i + 1)) return 'As variáveis precisam ser em sequência: {{1}}, {{2}}, {{3}}…';
+    if (vars.some((v) => !String(tnExamples[v] || '').trim())) return 'Preencha um exemplo para cada variável (a Meta exige).';
+    if (/^\s*\{\{\s*\d+\s*\}\}|\{\{\s*\d+\s*\}\}[\s.!?]*$/.test(body)) return 'A Meta não aceita variável no começo ou no fim do texto. Coloque uma palavra antes/depois.';
+    const h = $('tnHead').value;
+    if (h === 'TEXT' && !$('tnHeadText').value.trim()) return 'Escreva o texto do cabeçalho.';
+    if (h === 'TEXT' && tnVarsOf($('tnHeadText').value).length) return 'Variável no cabeçalho ainda não é suportada aqui. Tire a variável do cabeçalho.';
+    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h)) {
+      const f = $('tnHeadFile').files[0]; if (!f) return 'Escolha o arquivo de exemplo do cabeçalho.';
+      if (f.size > (h === 'IMAGE' ? 5 : 16) * 1024 * 1024) return 'Arquivo grande demais para o cabeçalho.';
+    }
+    for (const b of tn.btns) {
+      if (!b.text.trim()) return 'Escreva o texto de todos os botões.';
+      if (b.type === 'URL' && !/^https?:\/\/\S+$/.test(b.url.trim())) return 'O link do botão precisa começar com https://';
+      if (b.type === 'URL' && /\{\{1\}\}\s*$/.test(b.url) && !b.ex.trim()) return 'Preencha o exemplo do final do link.';
+      if (b.type === 'PHONE_NUMBER' && b.phone.replace(/\D/g, '').length < 10) return 'Telefone do botão inválido.';
+    }
+    return '';
+  }
+  const fileB64 = (blob) => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = fail; r.readAsDataURL(blob); });
+  $('tnSend').onclick = async () => {
+    const problem = tnValidate(); if (problem) { setMsg('tnMsg', problem); return; }
+    const targets = tn.targets.filter((t) => tn.sel.has(t.waba_id));
+    if (!targets.length) { setMsg('tnMsg', 'Marque as contas que vão receber.'); return; }
+    tn.busy = true; tnCount(); targets.forEach((t) => tn.result.set(t.waba_id, { state: 'wait', text: 'Na fila…' })); renderTargets();
+    const handles = {};
+    try {
+      const h = $('tnHead').value; const f = $('tnHeadFile').files[0];
+      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h) && f) {
+        const uploadId = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        const CH = 2.5 * 1024 * 1024; const parts = Math.ceil(f.size / CH);
+        for (let i = 0; i < parts; i++) {
+          setMsg('tnMsg', `Enviando o arquivo… ${Math.round((i / parts) * 100)}%`, true);
+          await post('r=tpl-bulk&a=chunk', { upload_id: uploadId, idx: i, data: await fileB64(f.slice(i * CH, (i + 1) * CH)) });
+        }
+        const apps = [...new Set(targets.map((t) => t.app_id).filter(Boolean))];
+        for (const app of apps) {
+          setMsg('tnMsg', 'Preparando a mídia na Meta…', true);
+          const t = targets.find((x) => x.app_id === app);
+          try { handles[app] = (await post('r=tpl-bulk&a=handle', { upload_id: uploadId, parts, mime: f.type, bm_ref: t.bm_ref })).handle; }
+          catch (err) { targets.filter((x) => x.app_id === app).forEach((x) => tn.result.set(x.waba_id, { state: 'err', text: err.message })); }
+        }
+        post('r=tpl-bulk&a=cleanup', { upload_id: uploadId }).catch(() => {});
+      }
+      const needsHandle = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h);
+      const queue = targets.filter((t) => tn.result.get(t.waba_id).state === 'wait');
+      let done = 0, ok = 0;
+      const worker = async () => {
+        for (let t = queue.shift(); t; t = queue.shift()) {
+          tn.result.set(t.waba_id, { state: 'wait', text: 'Enviando…' }); renderTargets();
+          if (needsHandle && !handles[t.app_id]) tn.result.set(t.waba_id, { state: 'err', text: 'Sem mídia para o app desta BM (token sem app identificado).' });
+          else {
+            try {
+              const r = await post('r=tpl-bulk&a=create', { waba_id: t.waba_id, template: { name: $('tnName').value, category: $('tnCat').value, language: $('tnLang').value, components: tnComponents(handles[t.app_id]) } });
+              if (r.ok) { ok++; tn.result.set(t.waba_id, { state: 'ok', status: r.status }); } else tn.result.set(t.waba_id, { state: 'err', text: r.erro });
+            } catch (err) { tn.result.set(t.waba_id, { state: 'err', text: err.message }); }
+          }
+          done++; setMsg('tnMsg', `Enviando… ${done} de ${targets.length}`, true); renderTargets();
+        }
+      };
+      await Promise.all([worker(), worker(), worker(), worker()]);
+      const fail = targets.length - ok;
+      setMsg('tnMsg', `Pronto: ${ok} conta(s) receberam o template para aprovação${fail ? `, ${fail} com erro (veja a coluna Resultado)` : ''}. A aprovação costuma sair em minutos; acompanhe em Status dos templates.`, !fail);
+    } catch (err) { setMsg('tnMsg', err.message); }
+    finally { tn.busy = false; renderTargets(); }
+  };
+  tnRenderVars(); tnPreview();
 
   // ---------- Copiar (vale para todo o sistema) ----------
   document.addEventListener('click', async (e) => {

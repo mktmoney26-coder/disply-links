@@ -39,6 +39,12 @@ async function instances(sql, req, body, a) {
       from wa_instances i left join wa_templates t on t.instance_id = i.id
       group by i.id, i.name, i.waba_id, i.phone_number_id, i.display_phone, i.verified_name, i.quality, i.active, i.created_at, i.app_secret_enc
       order by i.created_at desc`;
+    // Limite diário e BM de cada número (vem do monitoramento de Ativos).
+    try {
+      const tiers = await sql`select n.phone_number_id, n.limit_tier, n.bm_ref, b.name as bm from as_numbers n join as_bms b on b.id = n.bm_ref`;
+      const byPn = new Map(tiers.map((t) => [t.phone_number_id, t]));
+      for (const r of rows) { const t = byPn.get(r.phone_number_id); if (t) { r.limit_tier = t.limit_tier; r.bm_ref = t.bm_ref; r.bm = t.bm; } }
+    } catch (e) { /* sem Ativos: segue sem limite */ }
     // Números monitorados em Ativos que ainda não viraram instância (conectam com um clique).
     let available = [];
     try {
@@ -97,6 +103,26 @@ async function instances(sql, req, body, a) {
     const inst = await getInstance(sql, int(body.id || req.query.id));
     const pr = await meta.getProfile(inst.phone_number_id, decrypt(inst.token_enc));
     return { photo: pr.profile_picture_url || null, about: pr.about || '', description: pr.description || '' };
+  }
+  // Dados para montar a imagem "Foto de perfil" que vai para o cliente (a foto vem como data URL para o navegador poder desenhar).
+  if (a === 'card') {
+    const inst = await getInstance(sql, int(body.id || req.query.id));
+    const token = decrypt(inst.token_enc);
+    const pr = await meta.getProfile(inst.phone_number_id, token).catch(() => ({}));
+    let n = {};
+    try { n = await meta.graph(`/${inst.phone_number_id}?fields=display_phone_number,verified_name`, token); } catch (e) {}
+    let photo = null;
+    const url = pr.profile_picture_url;
+    if (url && /^https:\/\/[^/]*(whatsapp\.net|fbcdn\.net|fbsbx\.com)\//.test(url)) {
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (r.ok) {
+          const buf = Buffer.from(await r.arrayBuffer());
+          if (buf.length < 6 * 1024 * 1024) photo = `data:${r.headers.get('content-type') || 'image/jpeg'};base64,${buf.toString('base64')}`;
+        }
+      } catch (e) {}
+    }
+    return { phone: n.display_phone_number || inst.display_phone || '', name: n.verified_name || inst.verified_name || '', photo };
   }
   if (a === 'photo') {
     const inst = await getInstance(sql, int(body.id));
@@ -277,6 +303,63 @@ async function validateOp(sql, op) {
   return { tpl, info, inst };
 }
 
+// Uma lista grande dividida entre vários números: cada número recebe um lote (A, B, C…) até o seu limite.
+const TAGS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+async function createSplit(sql, req, body) {
+  const base = readOpInput(body);
+  if (!base.name) bad('Dê um nome para a operação.');
+  const parts = [];
+  const seen = new Set();
+  for (const p of body.split.slice(0, 50)) {
+    const instance_id = int(p && p.instance_id); const limit = int(p && p.limit);
+    if (!instance_id || seen.has(instance_id)) continue;
+    if (!limit || limit < 1) bad('Informe o limite de envios de cada número.');
+    seen.add(instance_id); parts.push({ instance_id, limit });
+  }
+  if (parts.length < 2) bad('Escolha pelo menos dois números para dividir a lista.');
+  if (parts[0].instance_id !== base.instance_id) bad('O primeiro lote precisa ser o número principal.');
+  const main = await validateOp(sql, base);
+  // Mesmo template (nome e idioma) aprovado em cada número.
+  const problems = [];
+  for (const p of parts) {
+    if (p.instance_id === base.instance_id) { p.template_id = base.template_id; continue; }
+    const inst = (await sql`select id, name, active from wa_instances where id = ${p.instance_id}`)[0];
+    if (!inst || !inst.active) { problems.push(`instância ${p.instance_id} inativa`); continue; }
+    const t = (await sql`select id, status from wa_templates where instance_id = ${p.instance_id} and name = ${main.tpl.name} and language = ${main.tpl.language}`)[0];
+    if (!t) problems.push(`${inst.name}: não tem o template “${main.tpl.name}”`);
+    else if (t.status !== 'APPROVED') problems.push(`${inst.name}: template “${main.tpl.name}” ainda não aprovado`);
+    else p.template_id = t.id;
+  }
+  if (problems.length) bad('Não dá para dividir: ' + problems.join('; ') + '.');
+  const avail = (await sql`select count(*)::int as n from wa_contacts c left join wa_optouts o on o.phone = c.phone
+    where c.list_id = ${base.list_id} and o.phone is null`)[0].n;
+  if (!avail) bad('A lista não tem contatos disponíveis.');
+  const capacity = parts.reduce((s, p) => s + p.limit, 0);
+  let left = Math.min(avail, capacity, base.quantity && base.quantity > 0 ? base.quantity : avail);
+  const created = [];
+  let offset = 0; let groupId = null;
+  try {
+    for (let i = 0; i < parts.length && left > 0; i++) {
+      const p = parts[i]; const n = Math.min(p.limit, left); const tag = TAGS[i] || String(i + 1);
+      const [row] = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps, group_id, tag, status)
+        values (${base.name + ' · Lote ' + tag}, ${p.instance_id}, ${p.template_id}, ${base.header_value || null}, ${JSON.stringify(base.body_vars_obj)},
+                ${base.button_param || null}, ${base.name_fallback}, ${base.list_id}, ${n}, ${base.tps}, ${groupId}, ${tag}, 'paused') returning id`;
+      if (!groupId) { groupId = row.id; await sql`update wa_operations set group_id = ${groupId} where id = ${row.id}`; }
+      created.push({ id: row.id, tag, quantity: n });
+      await sql`insert into wa_recipients (operation_id, name, phone)
+        select ${row.id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
+        where c.list_id = ${base.list_id}::int and o.phone is null order by c.id offset ${offset}::int limit ${n}::int`;
+      offset += n; left -= n;
+    }
+  } catch (err) {
+    for (const c of created) { await sql`delete from wa_recipients where operation_id = ${c.id}`; await sql`delete from wa_operations where id = ${c.id}`; }
+    throw err;
+  }
+  // Só começa depois que todos os lotes estão montados.
+  for (const c of created) { await sql`update wa_operations set status = 'running' where id = ${c.id}`; kick(req, c.id); }
+  return { id: created[0].id, group_id: groupId, lotes: created, quantity: created.reduce((s, c) => s + c.quantity, 0), avail, capacity };
+}
+
 async function ops(sql, req, body, a) {
   if (req.method === 'GET' && a === 'failures') {
     const id = int(req.query.id);
@@ -292,10 +375,15 @@ async function ops(sql, req, body, a) {
     const errors = await sql`select error, count(*)::int as n from wa_recipients where operation_id = ${id} and status = 'failed'
       group by error order by count(*) desc limit 5`;
     const stalled = op.status === 'running' && (!op.lock_until || new Date(op.lock_until) < new Date());
-    return { operation: op, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
+    const lotes = op.group_id ? await sql`select o.id, o.tag, o.status, o.quantity, i.name as instance_name,
+        sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
+        sum(case when r.status = 'failed' then 1 else 0 end)::int as failed
+      from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_recipients r on r.operation_id = o.id
+      where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, i.name order by o.id` : [];
+    return { operation: op, lotes, group_report_url: op.group_id ? `/relatorio/${op.group_id}?t=${reportKey(op.group_id)}&grupo=1` : null, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
   }
   if (req.method === 'GET') {
-    const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.finished_at, i.name as instance_name, t.name as template_name,
+    const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.finished_at, o.group_id, o.tag, i.name as instance_name, t.name as template_name,
         sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
         sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as delivered,
         sum(case when r.status = 'read' then 1 else 0 end)::int as read,
@@ -303,7 +391,7 @@ async function ops(sql, req, body, a) {
         count(r.id)::int as total
       from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
       left join wa_recipients r on r.operation_id = o.id
-      group by o.id, o.name, o.status, o.quantity, o.created_at, o.finished_at, i.name, t.name
+      group by o.id, o.name, o.status, o.quantity, o.created_at, o.finished_at, o.group_id, o.tag, i.name, t.name
       order by o.created_at desc limit 100`;
     return { operations: rows };
   }
@@ -334,6 +422,7 @@ async function ops(sql, req, body, a) {
     if (status === 'running') kick(req, id);
     return { id, status };
   }
+  if (req.method === 'POST' && Array.isArray(body.split) && body.split.length > 1) return createSplit(sql, req, body);
   if (req.method === 'POST') {
     const op = readOpInput(body);
     if (!op.name) bad('Dê um nome para a operação.');
