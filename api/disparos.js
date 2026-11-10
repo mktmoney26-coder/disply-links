@@ -83,6 +83,15 @@ async function instances(sql, req, body, a) {
     await step('apps_ligados', () => meta.graph(`/${inst.waba_id}/subscribed_apps`, token));
     return out;
   }
+  if (a === 'register') {
+    // Ativa o número na API oficial. O PIN vira a senha de verificação em duas etapas do número.
+    const inst = await getInstance(sql, int(body.id));
+    const pin = /^\d{6}$/.test(String(body.pin || '')) ? String(body.pin) : String(crypto.randomInt(100000, 999999));
+    try { await meta.registerNumber(inst.phone_number_id, decrypt(inst.token_enc), pin); }
+    catch (err) { throw new HttpError(400, 'A Meta não registrou o número: ' + (err.code ? '(#' + err.code + ') ' : '') + err.message); }
+    try { await meta.subscribeApp(inst.waba_id, decrypt(inst.token_enc), null); } catch (e) {}
+    return { ok: true, pin };
+  }
   if (a === 'profile') {
     const inst = await getInstance(sql, int(body.id || req.query.id));
     const pr = await meta.getProfile(inst.phone_number_id, decrypt(inst.token_enc));
