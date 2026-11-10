@@ -72,6 +72,17 @@ async function instances(sql, req, body, a) {
     return { numbers: await meta.listNumbers(waba, token) };
   }
   if (a === 'sync') return { synced: await syncTemplates(sql, int(body.id)) };
+  if (a === 'diag') {
+    // Mostra o que o token da instância enxerga (sem revelar o token) e quando foi gerado.
+    const inst = await getInstance(sql, int(body.id));
+    const token = decrypt(inst.token_enc);
+    const out = {};
+    const step = async (k, fn) => { try { out[k] = await fn(); } catch (e) { out[k] = `(#${e.code || '?'}) ${e.message}`; } };
+    await step('token', async () => { const d = (await meta.graph(`/debug_token?input_token=${encodeURIComponent(token)}`, token)).data || {}; return { gerado_em: d.issued_at ? new Date(d.issued_at * 1000).toISOString() : null, app: d.application, escopos: d.granular_scopes }; });
+    await step('numero', () => meta.graph(`/${inst.phone_number_id}?fields=id,display_phone_number,status,platform_type,account_mode`, token));
+    await step('apps_ligados', () => meta.graph(`/${inst.waba_id}/subscribed_apps`, token));
+    return out;
+  }
   if (a === 'profile') {
     const inst = await getInstance(sql, int(body.id || req.query.id));
     const pr = await meta.getProfile(inst.phone_number_id, decrypt(inst.token_enc));
