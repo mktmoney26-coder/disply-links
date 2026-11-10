@@ -119,6 +119,10 @@ async function bms(sql, req, body, a) {
     const active = body.active === undefined ? bm.active : Boolean(body.active);
     await sql`update as_bms set profile = ${pick('profile', 80)}, name = ${pick('name', 120) || bm.name}, waba_ids = ${pick('waba_ids', 500)},
       supplier = ${pick('supplier', 120)}, launched_at = ${launched}, token_enc = ${tokenEnc}, active = ${active} where id = ${id}`;
+    // Token novo vale também para as instâncias de disparo dos números desta BM.
+    if (body.token) {
+      try { await sql`update wa_instances set token_enc = ${tokenEnc}, updated_at = now() where phone_number_id in (select phone_number_id from as_numbers where bm_ref = ${id})`; } catch (e) {}
+    }
     await logActivity(sql, `BM editada: ${bm.name}${body.token ? ' (token trocado)' : ''}${active !== bm.active ? (active ? ' (reativada)' : ' (pausada)') : ''}`);
     return { ok: true };
   }
