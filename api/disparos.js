@@ -38,7 +38,30 @@ async function instances(sql, req, body, a) {
       from wa_instances i left join wa_templates t on t.instance_id = i.id
       group by i.id, i.name, i.waba_id, i.phone_number_id, i.display_phone, i.verified_name, i.quality, i.active, i.created_at, i.app_secret_enc
       order by i.created_at desc`;
-    return { instances: rows };
+    // Números monitorados em Ativos que ainda não viraram instância (conectam com um clique).
+    let available = [];
+    try {
+      available = await sql`select n.phone_number_id, n.display_phone, n.verified_name, n.waba_id, n.status, n.health, b.name as bm
+        from as_numbers n join as_bms b on b.id = n.bm_ref and b.active
+        left join wa_instances i on i.phone_number_id = n.phone_number_id
+        where i.id is null order by b.name, n.display_phone`;
+    } catch (e) { available = []; }
+    return { instances: rows, available };
+  }
+  if (a === 'from-asset') {
+    // Cria a instância usando o token da BM já cadastrada em Ativos (o token continua criptografado).
+    const pnid = str(body.phone_number_id, 40);
+    const rows0 = await sql`select n.*, b.name as bm, b.token_enc from as_numbers n join as_bms b on b.id = n.bm_ref where n.phone_number_id = ${pnid}`;
+    if (!rows0.length) throw new HttpError(404, 'Número não encontrado em Ativos.');
+    const n = rows0[0];
+    const name = `${n.bm} · ${n.display_phone || pnid}`.slice(0, 80);
+    const rows = await sql`insert into wa_instances (name, waba_id, phone_number_id, display_phone, verified_name, quality, token_enc)
+      values (${name}, ${n.waba_id}, ${pnid}, ${n.display_phone || null}, ${n.verified_name || null}, ${n.quality || null}, ${n.token_enc})
+      on conflict (phone_number_id) do update set waba_id = excluded.waba_id, token_enc = excluded.token_enc, active = true, updated_at = now()
+      returning id`;
+    let synced = 0, syncError = null;
+    try { synced = await syncTemplates(sql, rows[0].id); } catch (e) { syncError = e.message; }
+    return { id: rows[0].id, synced, syncError };
   }
   if (a === 'lookup') {
     const waba = str(body.waba_id, 40); const token = str(body.token, 1000);

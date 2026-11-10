@@ -745,7 +745,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const qualityBadge = (q) => q === 'GREEN' ? badge('Alta', 'ok') : q === 'YELLOW' ? badge('Média', 'warn') : q === 'RED' ? badge('Baixa', 'bad') : badge('Sem dados', 'off');
 
   async function loadInstances() {
-    state.instances = (await api('r=instances')).instances;
+    const ir = await api('r=instances'); state.instances = ir.instances; state.available = ir.available || [];
     const tb = $('instRows'); tb.innerHTML = '';
     if (!state.instances.length) { const tr = el('tr'); const c = td('Nenhum número conectado. Clique em “+ Conectar número”.', 'muted'); c.colSpan = 6; tr.append(c); tb.append(tr); }
     for (const i of state.instances) {
@@ -772,6 +772,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const cur = sel.value; sel.innerHTML = '';
       sel.append(el('option', { value: '', text: sel.id === 'ibInst' ? 'Todas' : state.instances.length ? 'Escolha…' : 'Conecte um número primeiro' }));
       for (const i of state.instances.filter((x) => x.active)) sel.append(el('option', { value: i.id, text: i.name + (i.display_phone ? ' · ' + i.display_phone : '') }));
+      if (sel.id !== 'ibInst' && (state.available || []).length) {
+        const g = el('optgroup', { label: 'Números das BMs (conecta ao escolher)' });
+        for (const n of state.available) g.append(el('option', { value: 'asset:' + n.phone_number_id, text: n.bm + ' · ' + (n.display_phone || n.phone_number_id) + (n.health === 'BLOCKED' ? ' (bloqueado)' : n.status && n.status !== 'CONNECTED' ? ' (' + n.status.toLowerCase() + ')' : '') }));
+        sel.append(g);
+        if (!state.instances.length) sel.options[0].textContent = 'Escolha…';
+      }
       if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
     }
   }
@@ -815,7 +821,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       tb.append(el('tr', {}, name, td(t.category), td(t.language), td(headerLabel(t.info.headerType)), td(t.info.bodyVars.length), td(btns), st));
     }
   }
-  $('tplInst').onchange = loadTemplatesTab;
+  $('tplInst').onchange = async () => { if (await ensureInstance($('tplInst'), 'tplMsg')) loadTemplatesTab(); };
   $('btnTplSync').onclick = async () => {
     const id = Number($('tplInst').value); if (!id) return;
     setMsg('tplMsg', 'Sincronizando…', true);
@@ -925,7 +931,24 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   $('btnNewOp').onclick = () => { resetOpForm(); $('opDetail').hidden = true; $('opForm').hidden = false; $('opName').focus(); };
   $('btnOpCancel').onclick = () => { $('opForm').hidden = true; };
 
+  // Escolheu um número das BMs que ainda não é instância: conecta na hora com o token da BM.
+  async function ensureInstance(sel, msgId) {
+    const v = sel.value;
+    if (!v.startsWith('asset:')) return true;
+    sel.disabled = true;
+    try {
+      if (msgId) setMsg(msgId, 'Conectando o número…', true);
+      const r = await post('r=instances&a=from-asset', { phone_number_id: v.slice(6) });
+      await loadInstances();
+      sel.value = String(r.id);
+      if (msgId) setMsg(msgId, r.syncError ? 'Número conectado, mas os templates não sincronizaram: ' + r.syncError : 'Número conectado. ' + r.synced + ' template(s) sincronizado(s).', !r.syncError);
+      return true;
+    } catch (err) { sel.value = ''; if (msgId) setMsg(msgId, err.message); return false; }
+    finally { sel.disabled = false; }
+  }
+
   $('opInst').onchange = async () => {
+    if (!(await ensureInstance($('opInst'), 'opMsg'))) return;
     state.templates = []; const id = $('opInst').value; const sel = $('opTpl'); sel.innerHTML = '';
     if (!id) { sel.append(el('option', { value: '', text: 'Escolha a instância' })); applyTemplate(); return; }
     const { templates } = await api('r=templates&instance=' + encodeURIComponent(id));
@@ -1177,7 +1200,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   };
   setInterval(() => { if (key && state.tab !== 'inbox') refreshUnread(); }, 30000);
 
-  window.DisplyDisparos = { start, show: showTab };
+  window.DisplyDisparos = { start, show: showTab, reload: () => loadInstances().catch(() => {}) };
 })();
 
 </script>
@@ -1499,6 +1522,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const badge = (text, kind) => el('span', { class: 'badge b-' + kind, text });
   const empty = (tb, cols, text) => { const c = td(text, 'muted'); c.colSpan = cols; tb.append(el('tr', {}, c)); };
   function setMsg(id, text, ok) { const m = $(id); m.textContent = text || ''; m.classList.toggle('err', !ok && !!text); m.classList.toggle('okmsg', !!ok); }
+  function alertBox(t) { const m = el('div', { class: 'card err', style: 'position:fixed;right:16px;bottom:16px;z-index:60;max-width:380px', text: t }); document.body.append(m); setTimeout(() => m.remove(), 6000); }
   function count(id, n) { const b = $(id); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n || ''); }
 
   // ---------- Tema ----------
@@ -1808,7 +1832,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (n.health_detail && n.health !== 'AVAILABLE') envio.append(el('div', { class: 'small muted', style: 'max-width:280px;margin-top:4px;white-space:pre-wrap', text: n.health_detail }));
       const parado = n.dias_parado == null ? el('span', { class: 'badge b-warn', text: '30+ dias' }) : n.dias_parado >= 7 ? badge(n.dias_parado + ' dias', 'warn') : el('span', { text: n.dias_parado === 0 ? 'Hoje' : n.dias_parado + (n.dias_parado === 1 ? ' dia' : ' dias') });
       const disp = n.instance_id ? badge('Em uso', 'info')
-        : el('button', { class: 'link', type: 'button', text: 'Conectar', onclick: () => { location.hash = 'inst'; setTimeout(() => { const b = $('btnNewInst'); if (b) b.click(); const w = $('iWaba'); if (w) w.value = n.waba_id; const nm = $('iName'); if (nm && !nm.value) nm.value = (n.bm + ' – ' + (n.display_phone || '')).slice(0, 80); }, 50); } });
+        : el('button', { class: 'link', type: 'button', text: 'Conectar', onclick: async (e) => { e.target.disabled = true; e.target.textContent = 'Conectando…'; try { const r = await fetch('/api/disparos?r=instances&a=from-asset', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ phone_number_id: n.phone_number_id }) }); const d = await r.json(); if (!r.ok) throw new Error(d.erro || 'Erro'); if (window.DisplyDisparos) window.DisplyDisparos.reload(); loadNumbers(); } catch (err) { e.target.disabled = false; e.target.textContent = 'Conectar'; alertBox(err.message); } } });
       tb.append(el('tr', {},
         td(n.profile || '—'),
         tdn(el('strong', { text: n.bm }), el('div', { class: 'small muted', text: (n.waba_name || 'Conta') + ' · ' + n.waba_id })),
