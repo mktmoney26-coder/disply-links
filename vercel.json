@@ -43,6 +43,10 @@
       "destination": "/api/app?to=disparos"
     },
     {
+      "source": "/privacidade",
+      "destination": "/api/privacidade"
+    },
+    {
       "source": "/relatorio/:id",
       "destination": "/api/relatorio?id=:id"
     },
