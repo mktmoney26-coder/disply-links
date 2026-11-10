@@ -32,14 +32,28 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
   /* ---------- Estrutura ---------- */
   .shell{display:flex;min-height:100vh}
-  .sidebar{position:sticky;top:0;align-self:flex-start;height:100vh;width:228px;flex:0 0 228px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px 12px;overflow-y:auto}
+  .sidebar{position:sticky;top:0;align-self:flex-start;height:100vh;width:240px;flex:0 0 240px;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px 12px;overflow-y:auto}
   .brand{display:flex;align-items:center;gap:8px;padding:4px 8px 16px}
   .brand img{height:30px;width:auto;display:block}
   .brand .txt{font-weight:800;font-size:22px;letter-spacing:-.02em;background:var(--marca);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .navgroup{margin:10px 0 4px;padding:0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-  .nav a{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px;padding:8px 10px;border-radius:7px;color:var(--ink);text-decoration:none;font-weight:500;border-left:3px solid transparent}
-  .nav a:hover{background:var(--soft)}
-  .nav a[aria-current=page]{background:var(--neutral-bg);border-left-color:var(--teal);font-weight:600}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav .ico{flex:0 0 18px;width:18px;height:18px;color:var(--muted)}
+  .nav .top,.grp-h{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:8px 10px;border-radius:7px;cursor:pointer;color:var(--ink);font-size:15px;font-weight:600;text-decoration:none}
+  .nav .top:hover,.grp-h:hover{background:var(--soft)}
+  .nav .top:focus-visible,.grp-h:focus-visible,.grp-items a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .nav .top[aria-current=page]{background:var(--neutral-bg)}
+  .nav .top[aria-current=page] .ico,.grp.has-active .grp-h .ico{color:var(--teal)}
+  .grp-h .lbl{flex:1 1 auto}
+  .grp-h .chev{width:14px;height:14px;color:var(--muted);transition:transform .15s ease}
+  .grp-h[aria-expanded=false] .chev{transform:rotate(-90deg)}
+  .grp + .grp,.top + .grp{margin-top:4px}
+  .grp-items{margin:2px 0 6px 19px;padding-left:10px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}
+  .grp-items a{white-space:nowrap;position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;padding:6px 10px;border-radius:7px;color:var(--muted);text-decoration:none;font-size:14px;font-weight:500}
+  .grp-items a:hover{background:var(--soft);color:var(--ink)}
+  .grp-items a[aria-current=page]{background:var(--neutral-bg);color:var(--ink);font-weight:600}
+  .grp-items a[aria-current=page]::before{content:"";position:absolute;left:-11px;top:6px;bottom:6px;width:3px;border-radius:3px;background:var(--marca)}
+  .grp-h .count{display:none}
+  .grp-h[aria-expanded=false] .count:not([hidden]){display:inline-flex}
   .count{min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
   .sidebar .foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
   .sidebar .foot button{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:36px;padding:6px 10px;border-radius:7px;font-size:14px;color:var(--muted)}
@@ -174,25 +188,41 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     <div class="brand">
       <img alt="Disply" class="logo-cor">
     </div>
-    <nav class="nav" id="nav">
-      <a href="#inicio" data-view="inicio">Visão geral</a>
-      <div class="navgroup">Disparos</div>
-      <a href="#ops" data-view="ops">Operações</a>
-      <a href="#inbox" data-view="inbox">Inbox <span class="count" id="unreadBadge" hidden></span></a>
-      <a href="#lists" data-view="lists">Listas</a>
-      <a href="#tpl" data-view="tpl">Templates</a>
-      <a href="#inst" data-view="inst">Instâncias</a>
-      <div class="navgroup">Ativos Meta</div>
-      <a href="#bms" data-view="bms">BMs</a>
-      <a href="#numeros" data-view="numeros">Números <span class="count" id="restrBadge" hidden></span></a>
-      <a href="#saude" data-view="saude">Saúde dos templates <span class="count" id="tplBadge" hidden></span></a>
-      <a href="#alertas" data-view="alertas">Alertas <span class="count" id="alertBadge" hidden></span></a>
-      <div class="navgroup">Links</div>
-      <a href="#links" data-view="links">Links</a>
-      <a href="#dominios" data-view="dominios">Domínios</a>
-      <div class="navgroup">Sistema</div>
-      <a href="#config" data-view="config">Configurações</a>
-      <a href="#historico" data-view="historico">Histórico</a>
+    <nav class="nav" id="nav" aria-label="Seções">
+      <a class="top" href="#inicio" data-view="inicio"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Visão geral</span></a>
+      <div class="grp" data-grp="disparos">
+        <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-disparos"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3 14.5 21l-4.5-7-7-4.5z"/></svg><span class="lbl">Disparos</span><span class="count" id="grpDispCount" hidden></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="grp-items" id="grp-disparos">
+          <a href="#ops" data-view="ops">Operações</a>
+          <a href="#inbox" data-view="inbox">Inbox <span class="count" id="unreadBadge" hidden></span></a>
+          <a href="#lists" data-view="lists">Listas</a>
+          <a href="#tpl" data-view="tpl">Templates</a>
+          <a href="#inst" data-view="inst">Instâncias</a>
+        </div>
+      </div>
+      <div class="grp" data-grp="ativos">
+        <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-ativos"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="lbl">Ativos Meta</span><span class="count" id="grpAtivCount" hidden></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="grp-items" id="grp-ativos">
+          <a href="#bms" data-view="bms">BMs</a>
+          <a href="#numeros" data-view="numeros">Números <span class="count" id="restrBadge" hidden></span></a>
+          <a href="#saude" data-view="saude">Status dos templates <span class="count" id="tplBadge" hidden></span></a>
+          <a href="#alertas" data-view="alertas">Alertas <span class="count" id="alertBadge" hidden></span></a>
+        </div>
+      </div>
+      <div class="grp" data-grp="links">
+        <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-links"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span class="lbl">Links</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="grp-items" id="grp-links">
+          <a href="#links" data-view="links">Meus links</a>
+          <a href="#dominios" data-view="dominios">Domínios</a>
+        </div>
+      </div>
+      <div class="grp" data-grp="sistema">
+        <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-sistema"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="lbl">Sistema</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="grp-items" id="grp-sistema">
+          <a href="#config" data-view="config">Configurações</a>
+          <a href="#historico" data-view="historico">Histórico</a>
+        </div>
+      </div>
     </nav>
     <div class="foot">
       <button type="button" id="btnTheme"><span id="themeLabel">Tema escuro</span></button>
@@ -1474,7 +1504,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const VIEWS = {
     inicio: ['Visão geral', ''], ops: ['Operações', 'Disparos'], inbox: ['Inbox', 'Disparos'], lists: ['Listas de contatos', 'Disparos'],
     tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['BMs', 'Ativos Meta'], numeros: ['Números', 'Ativos Meta'],
-    saude: ['Saúde dos templates', 'Ativos Meta'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
+    saude: ['Status dos templates', 'Ativos Meta'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
     config: ['Configurações', 'Sistema'], historico: ['Histórico', 'Sistema']
   };
   const DISPAROS = ['ops', 'inbox', 'lists', 'tpl', 'inst'];
@@ -1486,6 +1516,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     current = view;
     document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== 'view-' + view; });
     document.querySelectorAll('#nav a').forEach((a) => { if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    markGroups();
     $('pageTitle').textContent = VIEWS[view][0]; $('crumb').textContent = VIEWS[view][1];
     document.title = VIEWS[view][0] + ' · Disply';
     $('checkBar').hidden = !ATIVOS.includes(view);
@@ -1501,6 +1532,35 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (view === 'historico') loadActivity();
   }
   window.addEventListener('hashchange', () => { if (key) go(location.hash.slice(1)); });
+
+  // Grupos do menu: abrem/fecham e lembram a escolha
+  const GKEY = 'disply_menu_closed';
+  let closedGroups = []; try { closedGroups = JSON.parse(localStorage.getItem(GKEY) || '[]'); } catch (e) {}
+  function setGroup(g, open) {
+    const h = g.querySelector('.grp-h'); h.setAttribute('aria-expanded', String(open));
+    g.querySelector('.grp-items').hidden = !open;
+  }
+  document.querySelectorAll('.grp').forEach((g) => {
+    setGroup(g, !closedGroups.includes(g.dataset.grp));
+    g.querySelector('.grp-h').onclick = () => {
+      const open = g.querySelector('.grp-h').getAttribute('aria-expanded') !== 'true';
+      setGroup(g, open);
+      closedGroups = closedGroups.filter((x) => x !== g.dataset.grp); if (!open) closedGroups.push(g.dataset.grp);
+      try { localStorage.setItem(GKEY, JSON.stringify(closedGroups)); } catch (e) {}
+    };
+  });
+  function markGroups() {
+    document.querySelectorAll('.grp').forEach((g) => {
+      const active = Boolean(g.querySelector('a[aria-current=page]'));
+      g.classList.toggle('has-active', active);
+      if (active) setGroup(g, true);
+    });
+  }
+  function groupCounts() {
+    const sum = (ids) => ids.reduce((t, id) => { const b = $(id); return t + (b.hidden ? 0 : Number(String(b.textContent).replace('+', '')) || 0); }, 0);
+    count('grpDispCount', sum(['unreadBadge'])); count('grpAtivCount', sum(['restrBadge', 'tplBadge', 'alertBadge']));
+  }
+  setInterval(groupCounts, 2000);
 
   function closeMenu() { $('side').classList.remove('open'); $('scrim').classList.remove('open'); $('btnMenu').setAttribute('aria-expanded', 'false'); }
   $('btnMenu').onclick = () => { $('side').classList.add('open'); $('scrim').classList.add('open'); $('btnMenu').setAttribute('aria-expanded', 'true'); };
@@ -1560,6 +1620,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       o = o || await api('r=overview');
       count('alertBadge', o.alertas); count('restrBadge', o.restritos); count('tplBadge', o.templates_ruins);
       if (o.last_run) { lastRun = o.last_run; paintCheck(); }
+      groupCounts();
     } catch (e) {}
     return o;
   }
