@@ -1700,6 +1700,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const name = tdn(el('strong', { text: b.name }), el('div', { class: 'small muted', text: 'ID ' + b.bm_id }));
       let sit;
       if (!b.active) sit = badge('Pausada', 'off');
+      else if (b.last_error && String(b.last_error).startsWith('Parcial')) { sit = el('div', {}, badge('Acesso parcial', 'warn'), el('div', { class: 'small muted', style: 'max-width:240px;margin-top:4px', text: b.last_error.replace(/^Parcial: /, '') })); }
       else if (b.last_error) { sit = el('div', {}, badge('Erro na consulta', 'bad'), el('div', { class: 'small muted', style: 'max-width:240px;margin-top:4px', text: b.last_error })); }
       else if (!b.last_check) sit = badge('Aguardando', 'info');
       else sit = badge('OK', 'ok');
