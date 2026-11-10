@@ -59,6 +59,8 @@ async function instances(sql, req, body, a) {
       values (${name}, ${n.waba_id}, ${pnid}, ${n.display_phone || null}, ${n.verified_name || null}, ${n.quality || null}, ${n.token_enc})
       on conflict (phone_number_id) do update set waba_id = excluded.waba_id, token_enc = excluded.token_enc, active = true, updated_at = now()
       returning id`;
+    // Liga o app do token à conta do WhatsApp (necessário para enviar). Não altera o webhook de outras plataformas.
+    try { await meta.subscribeApp(n.waba_id, decrypt(n.token_enc), null); } catch (e) {}
     let synced = 0, syncError = null;
     try { synced = await syncTemplates(sql, rows[0].id); } catch (e) { syncError = e.message; }
     return { id: rows[0].id, synced, syncError };
