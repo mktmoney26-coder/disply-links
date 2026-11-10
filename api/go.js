@@ -1,7 +1,14 @@
 // Página de cada link: mostra a prévia no WhatsApp, registra o clique e redireciona.
 // Todo visitante recebe exatamente a mesma página e vai para o mesmo destino.
 const links = require('../links.json');
-const { getDb, requestHost, PRIMARY_HOST } = require('../lib/db');
+const { getRawDb, requestHost, PRIMARY_HOST } = require('../lib/db');
+
+let waitUntil = (p) => p;
+try { ({ waitUntil } = require('@vercel/functions')); } catch {}
+
+// Guarda os links já consultados por 60 segundos (evita ir ao banco a cada clique).
+const CACHE = new Map();
+const TTL = 60 * 1000;
 
 // Robôs que só buscam a prévia do link. Eles recebem a mesma página,
 // apenas não contam como clique.
@@ -25,24 +32,23 @@ module.exports = async (req, res) => {
   const slug = String(req.query.slug || '').toLowerCase();
   if (!/^[a-z0-9-]{1,64}$/.test(slug)) return notFound(res);
 
-  let sql = null;
-  try {
-    sql = await getDb();
-  } catch (err) {
-    console.error('Erro ao conectar no banco:', err);
-  }
-
   const host = requestHost(req);
+  const sql = getRawDb();
+  const key = host + '/' + slug;
 
   // 1) Links criados pelo painel (banco de dados), só no domínio ao qual o link pertence
   let link = null;
-  if (sql) {
+  const cached = CACHE.get(key);
+  if (cached && Date.now() - cached.at < TTL) {
+    link = cached.link;
+    if (link === 'off') return notFound(res);
+  } else if (sql) {
     try {
       const rows = await sql`
         select destination, active, updated_at, (image_b64 is not null) as has_image
         from links where slug = ${slug} and host = ${host}`;
       if (rows.length) {
-        if (!rows[0].active) return notFound(res);
+        if (!rows[0].active) { CACHE.set(key, { at: Date.now(), link: 'off' }); return notFound(res); }
         const version = new Date(rows[0].updated_at).getTime();
         link = {
           title: INVISIBLE_TITLE,
@@ -50,6 +56,7 @@ module.exports = async (req, res) => {
           image: rows[0].has_image ? `/i/${slug}.jpg?v=${version}` : null
         };
       }
+      CACHE.set(key, { at: Date.now(), link });
     } catch (err) {
       console.error('Erro ao buscar link:', err);
     }
@@ -64,13 +71,19 @@ module.exports = async (req, res) => {
   const isPreview = PREVIEW_FETCHERS.test(userAgent);
   const contact = typeof req.query.c === 'string' ? req.query.c.slice(0, 64) : null;
 
-  if (!isPreview && sql) {
-    try {
-      await sql`insert into clicks (slug, contact, country, user_agent)
-        values (${slug}, ${contact}, ${req.headers['x-vercel-ip-country'] || null}, ${userAgent.slice(0, 300)})`;
-    } catch (err) {
-      console.error('Erro ao registrar clique:', err);
+  // Pessoa: redireciona na hora (302) e registra o clique depois da resposta.
+  if (!isPreview) {
+    if (sql) {
+      waitUntil(sql`insert into clicks (slug, contact, country, user_agent)
+        values (${slug}, ${contact}, ${req.headers['x-vercel-ip-country'] || null}, ${userAgent.slice(0, 300)})`
+        .catch((err) => console.error('Erro ao registrar clique:', err)));
     }
+    res.statusCode = 302;
+    res.setHeader('Location', link.destination);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.end();
+    return;
   }
 
   const base = `https://${host}`;
