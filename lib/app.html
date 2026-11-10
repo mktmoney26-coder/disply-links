@@ -153,6 +153,32 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .msg.in{align-self:flex-start;background:var(--bubble)} .msg.out{align-self:flex-end;background:#D9FDD3;color:#111B21}
   .msg.tpl{background:var(--info-bg);color:var(--info)}
   .msg .meta{display:block;font-size:11px;opacity:.75;margin-top:4px;text-align:right}
+  .linkbtn{background:none;border:0;padding:4px 0;color:var(--accent,#0E7490);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px;display:inline-block;margin-top:4px}
+  .linkbtn.danger{color:var(--bad)}
+  .card.soft{background:var(--bg);border-style:dashed}
+  .checkbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:var(--card)}
+  .check-head{font-weight:700;margin-bottom:10px;padding:8px 10px;border-radius:8px}
+  .check-head.ok{background:var(--ok-bg);color:var(--ok)} .check-head.warn{background:var(--warn-bg);color:var(--warn)} .check-head.bad{background:var(--bad-bg);color:var(--bad)}
+  .check-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+  .check-stat{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column}
+  .check-stat strong{font-size:20px;font-variant-numeric:tabular-nums} .check-stat span{font-size:12px;color:var(--muted)}
+  .check-stat.ok strong{color:var(--ok)} .check-stat.info strong{color:var(--info)} .check-stat.warn strong{color:var(--warn)} .check-stat.bad strong{color:var(--bad)}
+  .livebar{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+  .live-op{flex:1 1 420px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px 14px}
+  .live-op .live-title{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:8px}
+  .live-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:livepulse 1.4s infinite}
+  .live-dot.off{background:var(--muted);animation:none}
+  @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}70%{box-shadow:0 0 0 9px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+  .live-nums{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .live-nums div{display:flex;flex-direction:column} .live-nums strong{font-size:22px;font-variant-numeric:tabular-nums;line-height:1.1} .live-nums span{font-size:12px;color:var(--muted)}
+  .live-bar{height:6px;border-radius:4px;background:var(--off-bg);overflow:hidden;margin-top:8px} .live-bar i{display:block;height:100%;background:linear-gradient(90deg,#14b8a6,#2563eb);transition:width .6s ease}
+  .conv.fresh{animation:convin 1.6s ease}
+  @keyframes convin{0%{background:#d9fdd3;transform:translateY(-6px);opacity:.3}25%{opacity:1;transform:none}100%{background:transparent}}
+  .tick{font-size:12px;font-weight:700;letter-spacing:-2px;color:var(--muted);margin-right:4px} .tick.read{color:#34B7F1} .tick.fail{color:var(--bad);letter-spacing:0}
+  @media (prefers-reduced-motion:reduce){.live-dot,.conv.fresh{animation:none}}
+  body.present .sidebar,body.present .topbar{display:none!important}
+  body.present main{max-width:none} body.present #ibHint{display:none}
+  body.present .inbox .convs{max-height:calc(100vh - 230px)} body.present .msgs{max-height:calc(100vh - 330px)}
   .composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);align-items:flex-end}
   .composer textarea{flex:1 1 auto;min-height:44px;max-height:160px}
 
@@ -306,8 +332,17 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
           <div id="opBtnBox" hidden><label for="opBtnParam">Final do link do botão</label><input id="opBtnParam" type="text"><p id="opBtnHint" class="small muted" style="margin:4px 0 0"></p></div>
 
+          <div class="card soft" id="opImport" hidden>
+            <div class="grid">
+              <div><label for="opLName">Nome da lista</label><input id="opLName" type="text" maxlength="120"></div>
+              <div><label for="opLFile">Planilha (CSV ou Excel)</label><input id="opLFile" type="file" accept=".csv,.txt,.xlsx,.xls"></div>
+            </div>
+            <div id="opLCheck"></div>
+            <div class="row"><button class="btn primary" type="button" id="opLImport" disabled>Importar e usar nesta operação</button><span id="opLMsg" class="small" role="status"></span></div>
+          </div>
           <div class="grid">
-            <div><label for="opList">Lista de contatos</label><select id="opList"></select><p id="opListInfo" class="small muted" style="margin:4px 0 0"></p></div>
+            <div><label for="opList">Lista de contatos</label><select id="opList"></select><p id="opListInfo" class="small muted" style="margin:4px 0 0"></p>
+              <button type="button" class="linkbtn small" id="opListNew">+ Importar planilha nova aqui</button></div>
             <div><label for="opQty">Quantidade a enviar</label><input id="opQty" type="number" min="1"></div>
             <div><label for="opTps">Velocidade (mensagens/segundo)</label><input id="opTps" type="number" min="1" max="80" value="40"></div>
           </div>
@@ -352,10 +387,14 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       <div class="row">
         <div style="min-width:220px"><label for="ibInst" class="small">Instância</label><select id="ibInst"><option value="">Todas</option></select></div>
         <div style="min-width:200px"><label for="ibSearch" class="small">Buscar</label><input id="ibSearch" type="text" placeholder="Nome ou telefone"></div>
+        <label class="row small" style="align-self:flex-end;margin:0 0 10px;font-weight:600"><input id="ibReplied" type="checkbox" style="width:18px;height:18px"> Só quem respondeu</label>
         <label class="row small" style="align-self:flex-end;margin:0 0 10px;font-weight:600"><input id="ibUnread" type="checkbox" style="width:18px;height:18px"> Só não lidas</label>
+        <label class="row small" style="align-self:flex-end;margin:0 0 10px;font-weight:600"><input id="ibMask" type="checkbox" style="width:18px;height:18px"> Ocultar telefones</label>
+        <button type="button" class="btn ghost" id="ibPresent" style="align-self:flex-end;margin-bottom:6px">Modo apresentação</button>
       </div>
     </div>
-    <p class="small muted" style="margin:0">Respostas dos clientes chegam pelo webhook. Você pode responder em até 24h depois da última mensagem do cliente.</p>
+    <div id="ibLive" class="livebar" hidden></div>
+    <p class="small muted" id="ibHint" style="margin:0">Os envios dos disparos aparecem aqui na hora em que saem, e o status muda sozinho (enviada → entregue → lida). Respostas chegam pelo webhook; você pode responder em até 24h depois da última mensagem do cliente.</p>
     <div class="inbox">
       <div class="card convs" id="ibConvs" aria-label="Conversas"></div>
       <div class="card thread">
@@ -429,11 +468,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         <div><label for="lName">Nome da lista</label><input id="lName" type="text" maxlength="120" placeholder="Clientes Black Friday"></div>
         <div><label for="lFile">Arquivo</label><input id="lFile" type="file" accept=".csv,.txt,.xlsx,.xls"></div>
       </div>
-      <p id="lPreview" class="small" role="status"></p>
+      <div id="lCheck" role="status"></div>
       <div class="row"><button class="btn primary" type="button" id="btnImport" disabled>Importar</button><span id="lMsg" class="small" role="status"></span></div>
     </div>
     <div class="card"><div class="wrap"><table>
-      <thead><tr><th>Lista</th><th>Contatos</th><th>Bloqueados (SAIR)</th><th>Criada</th></tr></thead>
+      <thead><tr><th>Lista</th><th>Contatos</th><th>Verificação</th><th>Bloqueados (SAIR)</th><th>Criada</th><th></th></tr></thead>
       <tbody id="listRows"></tbody>
     </table></div><p id="optoutInfo" class="small muted"></p></div>
   </section></div>
@@ -737,6 +776,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   async function start(k) { key = k; await loadAll(); refreshUnread(); }
   function showTab(name) {
     state.tab = name;
+    if (name !== 'inbox' && document.body.classList.contains('present')) { document.body.classList.remove('present'); $('ibPresent').textContent = 'Modo apresentação'; }
     if (name === 'ops') loadOps();
     if (name === 'tpl') loadTemplatesTab();
     if (name === 'inbox') loadConvs();
@@ -839,12 +879,21 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   };
 
   // ================= LISTAS =================
-  let parsedContacts = [];
   async function loadLists() {
     const d = await api('r=lists'); state.lists = d.lists;
     const tb = $('listRows'); tb.innerHTML = '';
-    if (!d.lists.length) { const tr = el('tr'); const c = td('Nenhuma lista importada.', 'muted'); c.colSpan = 4; tr.append(c); tb.append(tr); }
-    for (const l of d.lists) { const n = el('td'); n.append(el('strong', { text: l.name })); tb.append(el('tr', {}, n, td(num(l.total)), td(num(l.blocked)), td(fmt(l.created_at)))); }
+    if (!d.lists.length) { const tr = el('tr'); const c = td('Nenhuma lista importada.', 'muted'); c.colSpan = 6; tr.append(c); tb.append(tr); }
+    for (const l of d.lists) {
+      const n = el('td'); n.append(el('strong', { text: l.name }));
+      const act = el('td');
+      const del = el('button', { type: 'button', class: 'linkbtn small', text: 'Excluir' });
+      del.onclick = async () => {
+        if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = 'Confirmar exclusão'; del.classList.add('danger'); setTimeout(() => { del.dataset.armed = ''; del.textContent = 'Excluir'; del.classList.remove('danger'); }, 4000); return; }
+        try { await post('r=lists&a=delete', { id: l.id }); await loadLists(); } catch (err) { setMsg('lMsg', err.message); }
+      };
+      act.append(del);
+      tb.append(el('tr', {}, n, td(num(l.total)), td(checkSummaryText(l.check_summary), l.check_summary ? '' : 'muted'), td(num(l.blocked)), td(fmt(l.created_at)), act));
+    }
     $('optoutInfo').textContent = num(d.optouts) + ' telefone(s) bloqueado(s) por pedido de SAIR.';
     const sel = $('opList'); const cur = sel.value; sel.innerHTML = '';
     sel.append(el('option', { value: '', text: d.lists.length ? 'Escolha…' : 'Importe uma lista primeiro' }));
@@ -853,8 +902,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   }
   const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   function parseCsv(text) {
-    const first = text.split(/\r?\n/)[0] || '';
-    const delim = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ';' : (first.includes('\t') ? '\t' : ',');
+    const lines = text.split(/\r?\n/).slice(0, 15);
+    const cnt = (ch) => Math.max(0, ...lines.map((l) => l.split(ch).length - 1));
+    const delim = [';', '\t', ','].reduce((best, ch) => (cnt(ch) > cnt(best) ? ch : best), ',');
     const rows = []; let row = [], cell = '', q = false;
     for (let i = 0; i < text.length; i++) {
       const ch = text[i];
@@ -867,65 +917,190 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (cell || row.length) { row.push(cell); rows.push(row); }
     return rows.filter((r) => r.some((c) => String(c).trim()));
   }
-  function pickColumns(rows) {
-    const head = (rows[0] || []).map(norm);
-    let phone = head.findIndex((h) => /(tel|fone|phone|whats|celular|numero|contato)/.test(h));
-    let name = head.findIndex((h) => /(nome|name|cliente|lead)/.test(h));
-    let start = 1;
-    if (phone < 0) {
-      start = 0;
-      const sample = rows.slice(0, 20);
-      const digits = (c) => String(c || '').replace(/\D/g, '').length;
-      const cols = (rows[0] || []).length;
-      for (let c = 0; c < cols; c++) if (sample.filter((r) => digits(r[c]) >= 10).length >= sample.length / 2) { phone = c; break; }
-      if (phone < 0) return null;
-      if (sample.some((r) => /[a-z]/i.test(r[0] || '')) && phone !== 0) name = 0; else if (phone === 0 && cols > 1) name = 1;
-      if (rows[0] && String(rows[0][phone] || '').replace(/\D/g, '').length < 8) start = 1;
+  // ---------- Leitura da planilha + verificador de números ----------
+  const DDDS = new Set('11 12 13 14 15 16 17 18 19 21 22 24 27 28 31 32 33 34 35 37 38 41 42 43 44 45 46 47 48 49 51 53 54 55 61 62 63 64 65 66 67 68 69 71 73 74 75 77 79 81 82 83 84 85 86 87 88 89 91 92 93 94 95 96 97 98 99'.split(' '));
+  const PHONE_H = /(tel|fone|phone|whats|zap|celular|cel\b|numero|contato|mobile)/;
+  const NAME_H = /(nome|name|cliente|lead|paciente|aluno)/;
+  function checkPhone(raw) {
+    const s0 = String(raw == null ? '' : raw).trim();
+    if (!s0) return { reason: 'Telefone vazio' };
+    if (/\d[.,]\d+e\+?\d+$/i.test(s0)) return { reason: 'Número cortado pelo Excel (formato científico)' };
+    let d = s0.replace(/\D/g, '');
+    if (s0.startsWith('+') && !d.startsWith('55')) return { reason: 'Número de outro país' };
+    d = d.replace(/^0+/, '');
+    if ((d.length === 12 || d.length === 13) && !d.startsWith('55')) d = d.slice(2); // código de operadora (0 15 31 9…)
+    if (d.length === 8 || d.length === 9) return { reason: 'Sem DDD' };
+    if (d.length === 10 || d.length === 11) d = '55' + d;
+    if (!/^55\d{10,11}$/.test(d)) return { reason: d.length < 12 ? 'Número curto demais' : 'Número longo demais' };
+    const ddd = d.slice(2, 4);
+    if (!DDDS.has(ddd)) return { reason: 'DDD ' + ddd + ' não existe' };
+    let local = d.slice(4); let fixed = false;
+    if (local.length === 8) {
+      if (/^[2-5]/.test(local)) return { reason: 'Telefone fixo (sem WhatsApp)' };
+      local = '9' + local; fixed = true;
     }
-    return { phone, name, start };
+    if (local[0] !== '9') return { reason: 'Celular inválido (precisa começar com 9)' };
+    if (/^(\d)\1+$/.test(local.slice(1))) return { reason: 'Número de teste ou repetido' };
+    return { phone: '55' + ddd + local, fixed };
   }
-  function validPhone(raw) { let d = String(raw || '').replace(/\D/g, '').replace(/^0+/, ''); if (d.length === 10 || d.length === 11) d = '55' + d; return /^55\d{10,11}$/.test(d); }
-  function loadScript(src) { return new Promise((ok, fail) => { const s = el('script', { src }); s.onload = ok; s.onerror = fail; document.head.append(s); }); }
+  function cleanName(raw) {
+    const n = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+    if (!n) return { name: '', fixed: false };
+    if (/@|\d{3,}|^https?:/i.test(n)) return { name: '', fixed: true }; // e-mail, telefone ou link no lugar do nome
+    if (n === n.toUpperCase() || n === n.toLowerCase()) {
+      const t = n.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase())
+        .replace(/ (Da|De|Do|Das|Dos|E)(?= )/g, (w) => w.toLowerCase());
+      return { name: t, fixed: t !== n };
+    }
+    return { name: n, fixed: false };
+  }
+  function cellText(v) {
+    if (typeof v === 'number') return Number.isInteger(v) || Math.abs(v) > 1e9 ? Math.round(v).toLocaleString('fullwide', { useGrouping: false }) : String(v);
+    return String(v == null ? '' : v);
+  }
+  function pickColumns(rows) {
+    const digits = (c) => String(c || '').replace(/\D/g, '').length;
+    let headIdx = -1;
+    for (let i = 0; i < Math.min(rows.length, 10); i++) if ((rows[i] || []).some((h) => PHONE_H.test(norm(h)) && digits(h) < 6)) { headIdx = i; break; }
+    const start = headIdx + 1;
+    const sample = rows.slice(start, start + 50);
+    const cols = Math.max(0, ...rows.slice(0, 60).map((r) => r.length));
+    const score = (c) => sample.filter((r) => digits(r[c]) >= 8).length;
+    let phone = -1, name = -1;
+    if (headIdx >= 0) {
+      const head = rows[headIdx].map(norm);
+      const cands = head.map((h, i) => (PHONE_H.test(h) ? i : -1)).filter((i) => i >= 0).sort((a, b) => score(b) - score(a));
+      if (cands.length && score(cands[0]) > 0) phone = cands[0];
+      name = head.findIndex((h, i) => i !== phone && NAME_H.test(h));
+    }
+    if (phone < 0) {
+      let best = -1, bestScore = 0;
+      for (let c = 0; c < cols; c++) { const sc = score(c); if (sc > bestScore) { best = c; bestScore = sc; } }
+      if (best < 0 || bestScore < Math.max(1, sample.length / 3)) return null;
+      phone = best;
+    }
+    if (name < 0) {
+      for (let c = 0; c < cols; c++) if (c !== phone && sample.filter((r) => /\p{L}{2,}/u.test(String(r[c] || '')) && digits(r[c]) < 3).length >= sample.length / 2) { name = c; break; }
+    }
+    return { phone, name, start: headIdx >= 0 ? start : (digits((rows[0] || [])[phone]) < 8 ? 1 : 0) };
+  }
+  async function readSheetRows(f) {
+    if (/\.xlsx?$/i.test(f.name)) {
+      if (!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' });
+      let firstRows = null;
+      for (const sn of wb.SheetNames) {
+        const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: '' }).map((r) => r.map(cellText)).filter((r) => r.some((c) => c.trim()));
+        if (!firstRows) firstRows = rows;
+        if (pickColumns(rows)) return rows;
+      }
+      return firstRows || [];
+    }
+    const buf = await f.arrayBuffer();
+    let text = new TextDecoder('utf-8').decode(buf);
+    if (text.includes('�')) text = new TextDecoder('windows-1252').decode(buf); // CSV salvo pelo Excel no Windows
+    return parseCsv(text.replace(/^﻿/, ''));
+  }
+  function analyzeRows(rows) {
+    const cols = pickColumns(rows);
+    if (!cols) return null;
+    const seen = new Set(); const contacts = []; const problems = []; const reasons = {};
+    const rep = { linhas: 0, validos: 0, nono: 0, nomes: 0, duplicados: 0, invalidos: 0 };
+    rows.slice(cols.start).forEach((r, i) => {
+      const rawPhone = r[cols.phone]; const rawName = cols.name >= 0 ? r[cols.name] : '';
+      if (!String(rawPhone || '').trim() && !String(rawName || '').trim()) return;
+      rep.linhas++;
+      const ph = checkPhone(rawPhone);
+      const line = i + cols.start + 1;
+      if (!ph.phone) { rep.invalidos++; reasons[ph.reason] = (reasons[ph.reason] || 0) + 1; problems.push([line, rawName, rawPhone, ph.reason]); return; }
+      if (seen.has(ph.phone)) { rep.duplicados++; return; }
+      seen.add(ph.phone);
+      const nm = cleanName(rawName);
+      if (ph.fixed) rep.nono++;
+      if (nm.fixed) rep.nomes++;
+      contacts.push({ name: nm.name, phone: ph.phone });
+    });
+    rep.validos = contacts.length; rep.motivos = reasons;
+    return { contacts, rep, problems };
+  }
+  const fmtBr = (p) => `(${p.slice(2, 4)}) ${p.slice(4, 9)}-${p.slice(9)}`;
+  function renderCheck(box, res) {
+    box.innerHTML = '';
+    if (!res) return;
+    const r = res.rep;
+    const card = el('div', { class: 'checkbox' });
+    const status = r.validos === 0 ? ['bad', 'Nenhum número válido na planilha'] : r.invalidos / Math.max(1, r.linhas) > 0.2 ? ['warn', 'Muitos números com problema: confira a planilha antes de disparar'] : ['ok', 'Lista verificada e pronta para o disparo'];
+    card.append(el('div', { class: 'check-head ' + status[0], text: status[1] }));
+    const stats = el('div', { class: 'check-stats' });
+    const st = (n, label, cls) => stats.append(el('div', { class: 'check-stat ' + (cls || '') }, el('strong', { text: num(n) }), el('span', { text: label })));
+    st(r.linhas, 'linhas lidas'); st(r.validos, 'prontos para envio', 'ok');
+    st(r.nono, 'corrigidos (9º dígito)', r.nono ? 'info' : ''); st(r.nomes, 'nomes ajustados', r.nomes ? 'info' : '');
+    st(r.duplicados, 'duplicados removidos', r.duplicados ? 'warn' : ''); st(r.invalidos, 'inválidos (fora da lista)', r.invalidos ? 'bad' : '');
+    card.append(stats);
+    if (r.invalidos) {
+      card.append(el('p', { class: 'small', style: 'margin:10px 0 4px;font-weight:700', text: 'Motivos dos inválidos' }));
+      const ul = el('ul', { class: 'small', style: 'margin:0;padding-left:18px' });
+      Object.entries(r.motivos).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => ul.append(el('li', { text: `${k}: ${num(v)}` })));
+      card.append(ul);
+      const csv = 'linha;nome;telefone;problema\n' + res.problems.map((p) => p.map((x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"').join(';')).join('\n');
+      card.append(el('a', { class: 'linkbtn small', href: URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })), download: 'numeros-com-problema.csv', text: 'Baixar números com problema (CSV)' }));
+    }
+    if (res.contacts.length) {
+      card.append(el('p', { class: 'small muted', style: 'margin:10px 0 0', text: 'Exemplos: ' + res.contacts.slice(0, 3).map((c) => (c.name || 'sem nome') + ' · ' + fmtBr(c.phone)).join('  |  ') }));
+    }
+    box.append(card);
+  }
+  function checkSummaryText(c) {
+    if (!c) return '—';
+    try { c = typeof c === 'string' ? JSON.parse(c) : c; } catch { return '—'; }
+    const parts = [`${num(c.validos)} ok`];
+    if (c.nono) parts.push(`${num(c.nono)} corrigidos`);
+    if (c.duplicados) parts.push(`${num(c.duplicados)} duplicados`);
+    if (c.invalidos) parts.push(`${num(c.invalidos)} inválidos`);
+    return '✓ ' + parts.join(' · ');
+  }
+  function loadScript(src) { return new Promise((ok, fail) => { const s = el('script', { src }); s.onload = ok; s.onerror = () => fail(new Error('não consegui carregar o leitor de Excel. Salve como CSV e tente de novo.')); document.head.append(s); }); }
 
-  $('lFile').onchange = async () => {
-    parsedContacts = []; $('btnImport').disabled = true; $('lPreview').textContent = 'Lendo arquivo…';
-    const f = $('lFile').files[0]; if (!f) { $('lPreview').textContent = ''; return; }
-    try {
-      let rows;
-      if (/\.xlsx?$/i.test(f.name)) {
-        if (!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
-        const wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' });
-        rows = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: '' });
-      } else {
-        rows = parseCsv(await f.text());
-      }
-      const cols = pickColumns(rows);
-      if (!cols) { $('lPreview').textContent = 'Não encontrei uma coluna de telefone. Use um cabeçalho “telefone”.'; return; }
-      let invalid = 0;
-      for (const r of rows.slice(cols.start)) {
-        const phone = r[cols.phone]; if (!validPhone(phone)) { invalid++; continue; }
-        parsedContacts.push({ name: cols.name >= 0 ? String(r[cols.name] || '').trim() : '', phone: String(phone) });
-      }
-      const ex = parsedContacts.slice(0, 3).map((c) => (c.name || 'sem nome') + ' · ' + c.phone).join('  |  ');
-      $('lPreview').textContent = `${num(parsedContacts.length)} contato(s) válido(s), ${num(invalid)} inválido(s). Exemplos: ${ex}`;
-      if (!$('lName').value) $('lName').value = f.name.replace(/\.[^.]+$/, '');
-      $('btnImport').disabled = !parsedContacts.length;
-    } catch (err) { $('lPreview').textContent = 'Não consegui ler o arquivo: ' + err.message; }
-  };
-  $('btnImport').onclick = async () => {
-    $('btnImport').disabled = true; setMsg('lMsg', 'Criando lista…', true);
-    try {
-      const { id } = await post('r=lists', { name: $('lName').value });
-      let total = 0;
-      for (let i = 0; i < parsedContacts.length; i += 2000) {
-        const r = await post('r=lists&a=add', { id, contacts: parsedContacts.slice(i, i + 2000) });
-        total = r.total; setMsg('lMsg', `Importando… ${num(Math.min(i + 2000, parsedContacts.length))} de ${num(parsedContacts.length)}`, true);
-      }
-      setMsg('lMsg', `Lista importada com ${num(total)} contato(s) únicos.`, true);
-      parsedContacts = []; $('lFile').value = ''; $('lName').value = ''; $('lPreview').textContent = '';
-      await loadLists();
-    } catch (err) { setMsg('lMsg', err.message); $('btnImport').disabled = false; }
-  };
+  // Liga um formulário de importação (aba Listas ou dentro da operação).
+  function importer(ids, onDone) {
+    let res = null;
+    $(ids.file).onchange = async () => {
+      res = null; $(ids.btn).disabled = true; setMsg(ids.msg, '');
+      const box = $(ids.check); box.innerHTML = ''; box.append(el('p', { class: 'small muted', text: 'Lendo e verificando os números…' }));
+      const f = $(ids.file).files[0]; if (!f) { box.innerHTML = ''; return; }
+      try {
+        const rows = await readSheetRows(f);
+        res = analyzeRows(rows);
+        if (!res) { box.innerHTML = ''; box.append(el('p', { class: 'small err', text: 'Não encontrei uma coluna de telefone. Coloque um cabeçalho “telefone” na coluna dos números.' })); return; }
+        renderCheck(box, res);
+        if (!$(ids.name).value) $(ids.name).value = f.name.replace(/\.[^.]+$/, '');
+        $(ids.btn).disabled = !res.contacts.length;
+      } catch (err) { box.innerHTML = ''; box.append(el('p', { class: 'small err', text: 'Não consegui ler o arquivo: ' + err.message })); }
+    };
+    $(ids.btn).onclick = async () => {
+      if (!res || !res.contacts.length) return;
+      $(ids.btn).disabled = true; setMsg(ids.msg, 'Criando lista…', true);
+      try {
+        const check = { ...res.rep }; delete check.motivos;
+        const { id } = await post('r=lists', { name: $(ids.name).value || 'Lista', check });
+        let total = 0; const list = res.contacts;
+        for (let i = 0; i < list.length; i += 2000) {
+          const r = await post('r=lists&a=add', { id, contacts: list.slice(i, i + 2000) });
+          total = r.total; setMsg(ids.msg, `Importando… ${num(Math.min(i + 2000, list.length))} de ${num(list.length)}`, true);
+        }
+        setMsg(ids.msg, `Lista importada com ${num(total)} contato(s) verificados.`, true);
+        res = null; $(ids.file).value = ''; $(ids.name).value = '';
+        await loadLists();
+        if (onDone) onDone(id);
+      } catch (err) { setMsg(ids.msg, err.message); $(ids.btn).disabled = false; }
+    };
+  }
+  importer({ file: 'lFile', name: 'lName', check: 'lCheck', btn: 'btnImport', msg: 'lMsg' }, () => setTimeout(() => { $('lCheck').innerHTML = ''; }, 8000));
+  importer({ file: 'opLFile', name: 'opLName', check: 'opLCheck', btn: 'opLImport', msg: 'opLMsg' }, (id) => {
+    $('opList').value = String(id); $('opList').dispatchEvent(new Event('change'));
+    setTimeout(() => { $('opImport').hidden = true; $('opLCheck').innerHTML = ''; setMsg('opLMsg', ''); }, 2500);
+  });
+  $('opListNew').onclick = () => { $('opImport').hidden = !$('opImport').hidden; if (!$('opImport').hidden) $('opLFile').focus(); };
 
   // ================= NOVA OPERAÇÃO =================
   function resetOpForm() {
@@ -1189,13 +1364,38 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   }
 
   // ================= INBOX =================
-  const ib = { conv: null, listTimer: null, threadTimer: null, lastCount: -1 };
+  const ib = { conv: null, listTimer: null, threadTimer: null, lastCount: -1, known: null };
+  const maskOn = () => $('ibMask').checked;
+  const TICK = { sent: ['✓', ''], delivered: ['✓✓', ''], read: ['✓✓', 'read'], failed: ['falhou', 'fail'], sending: ['…', ''], pending: ['…', ''] };
+  function tickEl(st) { const t = TICK[st]; return t ? el('span', { class: 'tick ' + t[1], text: t[0], title: ({ sent: 'Enviada', delivered: 'Entregue', read: 'Lida', failed: 'Falhou' })[st] || '' }) : null; }
+  function renderLive(ops) {
+    const bar = $('ibLive'); bar.innerHTML = '';
+    bar.hidden = !ops || !ops.length;
+    for (const o of ops || []) {
+      const running = o.status === 'running';
+      const box = el('div', { class: 'live-op' });
+      box.append(el('div', { class: 'live-title' }, el('span', { class: 'live-dot' + (running ? '' : ' off') }),
+        el('span', { text: (running ? 'AO VIVO · ' : (o.status === 'paused' ? 'Pausado · ' : 'Finalizado · ')) + o.name })));
+      const nums = el('div', { class: 'live-nums' });
+      [['enviadas', 'Enviadas'], ['entregues', 'Entregues'], ['lidas', 'Lidas'], ['respostas', 'Respostas'], ['falhas', 'Falhas']]
+        .forEach(([k, l]) => nums.append(el('div', {}, el('strong', { text: num(o[k]) }), el('span', { text: l }))));
+      box.append(nums);
+      const pct = o.total ? Math.round(((o.enviadas + o.falhas) / o.total) * 100) : 0;
+      const bar2 = el('div', { class: 'live-bar', title: pct + '% da lista' }); bar2.append(el('i', { style: 'width:' + pct + '%' }));
+      box.append(bar2, el('div', { class: 'small muted', style: 'margin-top:4px', text: `${num(o.enviadas + o.falhas)} de ${num(o.total)} (${pct}%)` }));
+      bar.append(box);
+    }
+  }
   const instName = (id) => { const i = state.instances.find((x) => x.id === id); return i ? i.name : 'Instância ' + id; };
-  const fmtPhone = (p) => { const d = String(p || ''); return d.length === 13 ? `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}` : '+' + d; };
+  const fmtPhone = (p) => {
+    const d = String(p || '');
+    if (d.length === 13) return maskOn() ? `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 5)}••••-${d.slice(9)}` : `+${d.slice(0, 2)} ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}`;
+    return maskOn() ? '+' + d.slice(0, 4) + '••••' + d.slice(-4) : '+' + d;
+  };
   const timeLabel = (d) => { const t = new Date(d); const today = new Date().toDateString() === t.toDateString(); return today ? t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : t.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); };
 
   function setUnread(n) { const b = $('unreadBadge'); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n); }
-  async function refreshUnread() { try { const d = await api('r=inbox'); setUnread(d.unread); } catch (e) {} }
+  async function refreshUnread() { try { const d = await api('r=inbox&sends=0'); setUnread(d.unread); } catch (e) {} }
 
   async function loadConvs() {
     clearTimeout(ib.listTimer);
@@ -1203,23 +1403,43 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if ($('ibInst').value) qs.set('instance', $('ibInst').value);
     if ($('ibSearch').value.trim()) qs.set('q', $('ibSearch').value.trim());
     if ($('ibUnread').checked) qs.set('unread', '1');
-    let d; try { d = await api(qs.toString()); } catch (err) { return; }
+    if ($('ibReplied').checked) qs.set('replied', '1');
+    const gen = ib.gen = (ib.gen || 0) + 1;
+    let d; try { d = await api(qs.toString()); } catch (err) { if (gen === ib.gen && state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, 5000); return; }
+    if (gen !== ib.gen) return;
     setUnread(d.unread);
-    const box = $('ibConvs'); box.innerHTML = '';
-    if (!d.conversations.length) box.append(el('p', { class: 'muted small', style: 'padding:8px', text: 'Nenhuma resposta ainda. Elas aparecem aqui quando o webhook estiver ativo.' }));
+    renderLive(d.live);
+    const box = $('ibConvs'); const scrollTop = box.scrollTop; box.innerHTML = '';
+    const sig = (c) => c.instance_id + ':' + c.phone + ':' + new Date(c.last_at).getTime();
+    const first = ib.known === null; const known = new Set(ib.known || []);
+    if (!d.conversations.length) box.append(el('p', { class: 'muted small', style: 'padding:8px', text: 'Nada ainda. Os envios e as respostas aparecem aqui assim que acontecem.' }));
     for (const c of d.conversations) {
       const current = ib.conv && ib.conv.phone === c.phone && ib.conv.instance_id === c.instance_id;
-      const btn = el('button', { class: 'conv', type: 'button', 'aria-current': String(Boolean(current)), onclick: () => openConv(c) });
-      const top = el('div', { class: 'top' }, el('strong', { text: c.name || fmtPhone(c.phone) }), el('span', { class: 'small muted', text: timeLabel(c.last_at) }));
-      const sub = el('div', { class: 'top' }, el('span', { class: 'last', text: c.last_text || '' }));
+      const btn = el('button', { class: 'conv' + (!first && !known.has(sig(c)) ? ' fresh' : ''), type: 'button', 'aria-current': String(Boolean(current)), onclick: () => openConv(c) });
+      const top = el('div', { class: 'top' }, el('strong', { text: c.name || fmtPhone(c.phone) }), el('span', { class: 'small muted', text: new Date(c.last_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: new Date().toDateString() === new Date(c.last_at).toDateString() ? '2-digit' : undefined }) }));
+      const lastLine = el('span', { class: 'last' });
+      if (c.last_dir === 'out') { const t = tickEl(c.status); if (t) lastLine.append(t); }
+      lastLine.append(document.createTextNode(c.last_text || ''));
+      const sub = el('div', { class: 'top' }, lastLine);
       if (c.unread) sub.append(badge(String(c.unread), 'ok'));
       btn.append(top, sub, el('div', { class: 'small muted', text: (c.name ? fmtPhone(c.phone) + ' · ' : '') + instName(c.instance_id) }));
       box.append(btn);
     }
-    if (state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, 10000);
+    box.scrollTop = scrollTop;
+    ib.known = d.conversations.map(sig);
+    if (state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, document.hidden ? 15000 : 2500);
   }
   let searchT; $('ibSearch').oninput = () => { clearTimeout(searchT); searchT = setTimeout(loadConvs, 300); };
-  $('ibInst').onchange = loadConvs; $('ibUnread').onchange = loadConvs;
+  $('ibInst').onchange = loadConvs; $('ibUnread').onchange = loadConvs; $('ibReplied').onchange = loadConvs;
+  try { $('ibMask').checked = localStorage.getItem('disply_mask') === '1'; } catch (e) {}
+  $('ibMask').onchange = () => { try { localStorage.setItem('disply_mask', $('ibMask').checked ? '1' : '0'); } catch (e) {} loadConvs(); if (ib.conv) loadThread(false); };
+  $('ibPresent').onclick = () => {
+    const on = !document.body.classList.contains('present');
+    document.body.classList.toggle('present', on);
+    $('ibPresent').textContent = on ? 'Sair da apresentação' : 'Modo apresentação';
+    if (on && !$('ibMask').checked) { $('ibMask').checked = true; $('ibMask').onchange(); }
+  };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('present')) $('ibPresent').click(); });
 
   async function openConv(c) { ib.conv = c; ib.lastCount = -1; $('ibText').value = ''; $('ibMsg').textContent = ''; await loadThread(true); loadConvs(); }
 
@@ -1236,10 +1456,13 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     box.innerHTML = '';
     const statusTxt = { sending: 'enviando', sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'falhou', pending: 'na fila', skipped: 'cancelada' };
     for (const m of d.items) {
-      const b = el('div', { class: 'msg ' + m.dir + (m.kind === 'template' ? ' tpl' : '') });
+      const b = el('div', { class: 'msg ' + m.dir });
+      if (m.kind === 'template' && m.op) b.append(el('span', { class: 'meta', style: 'text-align:left;margin:0 0 4px', text: 'Disparo · ' + m.op }));
       b.append(document.createTextNode(m.text || ''));
-      const metaTxt = timeLabel(m.at) + ' ' + new Date(m.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (m.dir === 'out' && m.status ? ' · ' + (statusTxt[m.status] || m.status) : '');
-      b.append(el('span', { class: 'meta', text: metaTxt }));
+      const metaTxt = new Date(m.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + (m.dir === 'out' && m.status ? ' · ' + (statusTxt[m.status] || m.status) : '');
+      const metaEl = el('span', { class: 'meta', text: metaTxt + ' ' });
+      if (m.dir === 'out') { const t = tickEl(m.status); if (t) metaEl.append(t); }
+      b.append(metaEl);
       if (m.error) b.append(el('span', { class: 'meta', text: m.error }));
       box.append(b);
     }
@@ -1251,7 +1474,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('ibText').placeholder = open ? 'Escreva a resposta… (Enter envia, Shift+Enter quebra linha)' : 'Janela de 24h fechada. Para retomar o contato, use um template em uma operação.';
     if (open && d.window_closes_at) $('ibMsg').textContent = 'Você pode responder até ' + new Date(d.window_closes_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + '.';
     else if (!open) $('ibMsg').textContent = '';
-    if (state.tab === 'inbox') ib.threadTimer = setTimeout(() => loadThread(false), 5000);
+    if (state.tab === 'inbox') ib.threadTimer = setTimeout(() => loadThread(false), 3000);
   }
   $('ibText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('ibForm').requestSubmit(); } });
   $('ibForm').onsubmit = async (e) => {

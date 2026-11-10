@@ -190,10 +190,10 @@ async function lists(sql, req, body, a) {
     return { sample: first[0] || null, available: avail[0].n };
   }
   if (req.method === 'GET') {
-    const rows = await sql`select l.id, l.name, l.created_at, count(c.id)::int as total,
+    const rows = await sql`select l.id, l.name, l.created_at, l.check_summary, count(c.id)::int as total,
         sum(case when o.phone is not null then 1 else 0 end)::int as blocked
       from wa_lists l left join wa_contacts c on c.list_id = l.id left join wa_optouts o on o.phone = c.phone
-      group by l.id, l.name, l.created_at order by l.created_at desc`;
+      group by l.id, l.name, l.created_at, l.check_summary order by l.created_at desc`;
     const opt = await sql`select count(*)::int as n from wa_optouts`;
     return { lists: rows, optouts: opt[0].n };
   }
@@ -215,10 +215,19 @@ async function lists(sql, req, body, a) {
     await sql`update wa_lists set total = ${total[0].n} where id = ${id}`;
     return { received: contacts.length, valid: clean.length, total: total[0].n };
   }
+  if (a === 'delete') {
+    const id = int(body.id);
+    const busy = await sql`select name from wa_operations where list_id = ${id} and status in ('running','paused') limit 1`;
+    if (busy.length) bad(`Esta lista está em uso na operação “${busy[0].name}”. Finalize a operação antes de excluir.`);
+    await sql`delete from wa_contacts where list_id = ${id}`;
+    await sql`delete from wa_lists where id = ${id}`;
+    return { ok: true };
+  }
   if (req.method === 'POST') {
     const name = str(body.name, 120);
     if (!name) bad('Dê um nome para a lista.');
-    const rows = await sql`insert into wa_lists (name) values (${name}) returning id`;
+    const check = body.check && typeof body.check === 'object' ? JSON.stringify(body.check).slice(0, 2000) : null;
+    const rows = await sql`insert into wa_lists (name, check_summary) values (${name}, ${check}) returning id`;
     return { id: rows[0].id };
   }
   throw new HttpError(405, 'Método não permitido.');
@@ -354,6 +363,25 @@ async function ops(sql, req, body, a) {
 // ---------------- Inbox ----------------
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
+// Texto real da mensagem enviada (corpo do template com as variáveis do contato).
+async function templatePreviews(sql, opIds) {
+  const map = new Map();
+  if (!opIds.length) return map;
+  const ops = await sql`select o.id, o.name, o.body_vars, o.name_fallback, t.components
+    from wa_operations o left join wa_templates t on t.id = o.template_id where o.id = any(${opIds}::int[])`;
+  for (const o of ops) {
+    let vars = {}; try { vars = JSON.parse(o.body_vars || '{}'); } catch {}
+    map.set(o.id, { name: o.name, info: meta.describeTemplate(o.components), op: { body_vars_obj: vars, name_fallback: o.name_fallback } });
+  }
+  return map;
+}
+function campaignText(p, contact) {
+  if (!p) return 'Mensagem do disparo';
+  const t = meta.previewText(p.info, p.op, contact).trim();
+  const head = { IMAGE: '🖼️ ', VIDEO: '🎬 ', DOCUMENT: '📄 ' }[p.info.headerType] || '';
+  return head + (t || 'Mensagem do disparo');
+}
+
 async function inbox(sql, req, body, a) {
   if (req.method === 'GET' && a === 'thread') {
     const instanceId = int(req.query.instance);
@@ -362,15 +390,16 @@ async function inbox(sql, req, body, a) {
       where instance_id = ${instanceId} and phone = ${phone} order by created_at desc limit 300`;
     const outbound = await sql`select id, text, status, error, created_at from wa_outbound
       where instance_id = ${instanceId} and phone = ${phone} order by created_at desc limit 300`;
-    const campaigns = await sql`select r.id, r.status, r.error, r.sent_at as created_at, o.name as operation_name, t.name as template_name,
-        o.body_vars, r.name as contact_name
-      from wa_recipients r join wa_operations o on o.id = r.operation_id left join wa_templates t on t.id = o.template_id
+    const campaigns = await sql`select r.id, r.status, r.error, r.sent_at as created_at, r.operation_id, o.name as operation_name,
+        r.name as contact_name
+      from wa_recipients r join wa_operations o on o.id = r.operation_id
       where o.instance_id = ${instanceId} and r.phone = ${phone} and r.sent_at is not null order by r.sent_at desc limit 50`;
+    const previews = await templatePreviews(sql, [...new Set(campaigns.map((c) => c.operation_id))]);
     await sql`update wa_inbound set is_read = true where instance_id = ${instanceId} and phone = ${phone} and not is_read`;
     const items = [
       ...inbound.map((m) => ({ dir: 'in', id: 'i' + m.id, text: m.text, type: m.msg_type, at: m.created_at })),
       ...outbound.map((m) => ({ dir: 'out', id: 'o' + m.id, text: m.text, status: m.status, error: m.error, at: m.created_at })),
-      ...campaigns.map((c) => ({ dir: 'out', kind: 'template', id: 'c' + c.id, text: `Template ${c.template_name || ''} · operação “${c.operation_name}”`, status: c.status, error: c.error, at: c.created_at }))
+      ...campaigns.map((c) => ({ dir: 'out', kind: 'template', id: 'c' + c.id, op: c.operation_name, text: campaignText(previews.get(c.operation_id), { name: c.contact_name, phone }), status: c.status, error: c.error, at: c.created_at }))
     ].sort((x, y) => new Date(x.at) - new Date(y.at));
     const lastIn = inbound[0] ? new Date(inbound[0].created_at).getTime() : 0;
     const optout = (await sql`select 1 from wa_optouts where phone = ${phone}`).length > 0;
@@ -390,15 +419,55 @@ async function inbox(sql, req, body, a) {
     for (const m of rows) {
       const k = m.instance_id + ':' + m.phone;
       let c = convs.get(k);
-      if (!c) { c = { instance_id: m.instance_id, phone: m.phone, name: m.name, last_text: m.text, last_at: m.created_at, unread: 0, total: 0 }; convs.set(k, c); }
+      if (!c) { c = { instance_id: m.instance_id, phone: m.phone, name: m.name, last_text: m.text, last_at: m.created_at, last_dir: 'in', replied: true, unread: 0, total: 0 }; convs.set(k, c); }
       if (!c.name && m.name) c.name = m.name;
       c.total++; if (!m.is_read) c.unread++;
     }
-    let list = [...convs.values()];
+    // Envios dos disparos (últimas 48h): aparecem na hora em que saem, com o status atualizado pelo webhook.
+    const withSends = req.query.sends !== '0';
+    let live = [];
+    if (withSends) {
+      const sends = instanceId
+        ? await sql`select r.operation_id, o.instance_id, r.phone, r.name, r.status, r.sent_at from wa_recipients r join wa_operations o on o.id = r.operation_id
+            where r.sent_at > now() - interval '48 hours' and o.instance_id = ${instanceId} order by r.sent_at desc limit 3000`
+        : await sql`select r.operation_id, o.instance_id, r.phone, r.name, r.status, r.sent_at from wa_recipients r join wa_operations o on o.id = r.operation_id
+            where r.sent_at > now() - interval '48 hours' order by r.sent_at desc limit 3000`;
+      const previews = await templatePreviews(sql, [...new Set(sends.map((r) => r.operation_id))]);
+      for (const r of sends) {
+        const k = r.instance_id + ':' + r.phone;
+        let c = convs.get(k);
+        if (!c) {
+          c = { instance_id: r.instance_id, phone: r.phone, name: r.name, last_text: campaignText(previews.get(r.operation_id), r), last_at: r.sent_at, last_dir: 'out', status: r.status, replied: false, unread: 0, total: 0 };
+          convs.set(k, c);
+        } else {
+          if (!c.name && r.name) c.name = r.name;
+          if (c.status === undefined) c.status = r.status;
+          if (new Date(r.sent_at) > new Date(c.last_at)) { c.last_at = r.sent_at; c.last_text = campaignText(previews.get(r.operation_id), r); c.last_dir = 'out'; }
+        }
+        c.total++;
+      }
+      // Placar das operações em andamento ou terminadas nas últimas 2 horas.
+      live = await sql`select o.id, o.name, o.status, o.instance_id,
+          count(r.id)::int as total,
+          sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as enviadas,
+          sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as entregues,
+          sum(case when r.status = 'read' then 1 else 0 end)::int as lidas,
+          sum(case when r.status = 'failed' then 1 else 0 end)::int as falhas
+        from wa_operations o join wa_recipients r on r.operation_id = o.id
+        where o.status in ('running','paused') or o.finished_at > now() - interval '2 hours'
+        group by o.id, o.name, o.status, o.instance_id order by o.id desc limit 5`;
+      for (const o of live) {
+        const [x] = await sql`select count(distinct i.phone)::int as n from wa_inbound i join wa_recipients r on r.phone = i.phone and r.operation_id = ${o.id}
+          where i.instance_id = ${o.instance_id} and i.created_at >= r.sent_at`;
+        o.respostas = x ? x.n : 0;
+      }
+    }
+    let list = [...convs.values()].sort((x, y) => new Date(y.last_at) - new Date(x.last_at));
     if (q) list = list.filter((c) => c.phone.includes(q.replace(/\D/g, '') || '§') || String(c.name || '').toLowerCase().includes(q));
     if (req.query.unread === '1') list = list.filter((c) => c.unread > 0);
+    if (req.query.replied === '1') list = list.filter((c) => c.replied);
     const unreadTotal = [...convs.values()].reduce((s, c) => s + c.unread, 0);
-    return { conversations: list.slice(0, 300), unread: unreadTotal };
+    return { conversations: list.slice(0, 300), unread: unreadTotal, live };
   }
   if (a === 'reply') {
     const instanceId = int(body.instance_id);
