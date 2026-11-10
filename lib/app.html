@@ -780,7 +780,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     for (const sel of [$('opInst'), $('tplInst'), $('ibInst')]) {
       const cur = sel.value; sel.innerHTML = '';
       sel.append(el('option', { value: '', text: sel.id === 'ibInst' ? 'Todas' : state.instances.length ? 'Escolha…' : 'Conecte um número primeiro' }));
-      for (const i of state.instances.filter((x) => x.active)) sel.append(el('option', { value: i.id, text: i.name + (i.display_phone ? ' · ' + i.display_phone : '') }));
+      for (const i of state.instances.filter((x) => x.active)) sel.append(el('option', { value: i.id, text: i.name + (i.display_phone && !String(i.name).includes(i.display_phone) ? ' · ' + i.display_phone : '') }));
       if (sel.id !== 'ibInst' && (state.available || []).length) {
         const g = el('optgroup', { label: 'Números das BMs (conecta ao escolher)' });
         for (const n of state.available) g.append(el('option', { value: 'asset:' + n.phone_number_id, text: n.bm + ' · ' + (n.display_phone || n.phone_number_id) + (n.health === 'BLOCKED' ? ' (bloqueado)' : n.status && n.status !== 'CONNECTED' ? ' (' + n.status.toLowerCase() + ')' : '') }));
