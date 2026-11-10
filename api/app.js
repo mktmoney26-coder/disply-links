@@ -7,7 +7,13 @@ const { panelEnabled } = require('../lib/auth');
 let html = null;
 const TARGETS = { links: '/app#links', disparos: '/app#ops', home: '/app' };
 
+const relatorio = require('../lib/relatorio');
+const privacidade = require('../lib/privacidade');
+
 module.exports = (req, res) => {
+  const page = String((req.query || {}).page || '');
+  if (page === 'relatorio') return relatorio(req, res);
+  if (page === 'privacidade') return privacidade(req, res);
   if (!panelEnabled()) {
     res.status(404).setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.end('Página não encontrada.');

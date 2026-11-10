@@ -7,7 +7,7 @@ const { guard } = require('../lib/auth');
 const { encrypt, decrypt, verifyToken } = require('../lib/secrets');
 const meta = require('../lib/meta');
 const { runOperation, loadContext, sendOne } = require('../lib/runner');
-const { reportKey } = require('./relatorio');
+const { reportKey } = require('../lib/relatorio');
 
 let waitUntil = (p) => p.catch(() => {});
 try { ({ waitUntil } = require('@vercel/functions')); } catch {}
