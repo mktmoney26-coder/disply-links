@@ -16,7 +16,7 @@ async function overview(sql) {
   const restricted = (n) => ['LIMITED', 'BLOCKED'].includes(n.health) || ['BANNED', 'FLAGGED', 'RESTRICTED'].includes(n.status) || n.quality === 'RED';
   const c = {
     bms: await one(sql`select count(*)::int as n from as_bms where active`),
-    bms_erro: await one(sql`select count(*)::int as n from as_bms where active and last_error is not null`),
+    bms_erro: await one(sql`select count(*)::int as n from as_bms where active and last_error is not null and last_error not like 'Parcial%'`),
     numeros: numbers.length,
     restritos: numbers.filter(restricted).length,
     parados: numbers.filter((n) => n.dias_parado == null || n.dias_parado >= 7).length,
