@@ -1160,6 +1160,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (o.status === 'running') acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Pausar', onclick: () => act('paused') }));
     if (o.status === 'paused') acts.append(el('button', { class: 'btn primary', type: 'button', text: 'Retomar', onclick: () => act('running') }));
     if (o.status === 'running' || o.status === 'paused') acts.append(el('button', { class: 'btn danger', type: 'button', text: 'Cancelar', onclick: () => act('canceled') }));
+    if (d.report_url) acts.append(el('a', { class: 'btn primary', href: d.report_url, target: '_blank', rel: 'noopener', text: 'Relatório (PDF)' }));
     if (c.failed) acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Exportar falhas', onclick: () => exportFailures(id, o.name) }));
     acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { box.hidden = true; state.detailId = null; clearTimeout(state.timer); } }));
     head.append(acts); box.append(head);

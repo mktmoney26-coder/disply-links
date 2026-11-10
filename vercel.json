@@ -1,19 +1,62 @@
 {
   "functions": {
-    "api/app.js": { "includeFiles": "lib/app.html" },
-    "api/disparos.js": { "maxDuration": 60 },
-    "api/ativos.js": { "maxDuration": 60 },
-    "api/ativos-cron.js": { "maxDuration": 60 },
-    "api/links.js": { "maxDuration": 30 }
+    "api/app.js": {
+      "includeFiles": "lib/app.html"
+    },
+    "api/disparos.js": {
+      "maxDuration": 60
+    },
+    "api/ativos.js": {
+      "maxDuration": 60
+    },
+    "api/ativos-cron.js": {
+      "maxDuration": 60
+    },
+    "api/links.js": {
+      "maxDuration": 30
+    },
+    "api/relatorio.js": {
+      "includeFiles": "lib/brand/**"
+    }
   },
-  "crons": [{ "path": "/api/ativos-cron", "schedule": "0 11 * * *" }],
+  "crons": [
+    {
+      "path": "/api/ativos-cron",
+      "schedule": "0 11 * * *"
+    }
+  ],
   "rewrites": [
-    { "source": "/", "destination": "/api/app?to=home" },
-    { "source": "/app", "destination": "/api/app" },
-    { "source": "/painel", "destination": "/api/app?to=links" },
-    { "source": "/disparos", "destination": "/api/app?to=disparos" },
-    { "source": "/i/:file", "destination": "/api/img?file=:file" },
-    { "source": "/m/:file", "destination": "/api/media?file=:file" },
-    { "source": "/:slug([a-z0-9-]+)", "destination": "/api/go?slug=:slug" }
+    {
+      "source": "/",
+      "destination": "/api/app?to=home"
+    },
+    {
+      "source": "/app",
+      "destination": "/api/app"
+    },
+    {
+      "source": "/painel",
+      "destination": "/api/app?to=links"
+    },
+    {
+      "source": "/disparos",
+      "destination": "/api/app?to=disparos"
+    },
+    {
+      "source": "/relatorio/:id",
+      "destination": "/api/relatorio?id=:id"
+    },
+    {
+      "source": "/i/:file",
+      "destination": "/api/img?file=:file"
+    },
+    {
+      "source": "/m/:file",
+      "destination": "/api/media?file=:file"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+)",
+      "destination": "/api/go?slug=:slug"
+    }
   ]
 }

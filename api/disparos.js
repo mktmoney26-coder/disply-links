@@ -7,6 +7,7 @@ const { guard } = require('../lib/auth');
 const { encrypt, decrypt, verifyToken } = require('../lib/secrets');
 const meta = require('../lib/meta');
 const { runOperation, loadContext, sendOne } = require('../lib/runner');
+const { reportKey } = require('./relatorio');
 
 let waitUntil = (p) => p.catch(() => {});
 try { ({ waitUntil } = require('@vercel/functions')); } catch {}
@@ -282,7 +283,7 @@ async function ops(sql, req, body, a) {
     const errors = await sql`select error, count(*)::int as n from wa_recipients where operation_id = ${id} and status = 'failed'
       group by error order by count(*) desc limit 5`;
     const stalled = op.status === 'running' && (!op.lock_until || new Date(op.lock_until) < new Date());
-    return { operation: op, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled };
+    return { operation: op, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
   }
   if (req.method === 'GET') {
     const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.finished_at, i.name as instance_name, t.name as template_name,
