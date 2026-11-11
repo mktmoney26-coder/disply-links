@@ -2099,6 +2099,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   async function openDetail(id) {
     state.detailId = id; clearTimeout(state.timer);
     let d; try { d = await api('r=ops&id=' + id); } catch (err) { return; }
+    if (d.group) return renderGroup(d, id);
     const o = d.operation, c = d.counts, total = Object.values(c).reduce((a, b) => a + b, 0);
     const sent = (c.sent || 0) + (c.delivered || 0) + (c.read || 0), delivered = (c.delivered || 0) + (c.read || 0);
     const box = $('opDetail'); box.hidden = false; box.innerHTML = '';
@@ -2140,8 +2141,57 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       state.timer = setTimeout(() => { openDetail(id); loadOps(); }, 4000);
     }
   }
-  async function exportFailures(id, name) {
-    const { rows } = await api('r=ops&a=failures&id=' + id);
+  // Campanha com vários números: um relatório só, com o detalhe de cada BM dentro.
+  function renderGroup(d, id) {
+    const g = d.group, c = g.counts, o = d.operation;
+    const total = Object.values(c).reduce((a, b) => a + b, 0);
+    const sent = (c.sent || 0) + (c.delivered || 0) + (c.read || 0), delivered = (c.delivered || 0) + (c.read || 0);
+    const box = $('opDetail'); box.hidden = false; box.innerHTML = '';
+    const head = el('div', { class: 'row', style: 'justify-content:space-between;margin-bottom:12px' });
+    head.append(el('div', {}, el('h2', { style: 'margin:0', text: g.name }),
+      el('div', { class: 'small muted', text: `${g.lots.length} BMs · lista ${o.list_name || ''} · criada em ${fmt(o.created_at)}` })));
+    const acts = el('div', { class: 'row' }); acts.append(opBadge(g.status));
+    const act = async (status) => { try { await post('r=ops&a=status', { id: g.id, status, group: true }); openDetail(id); loadOps(); } catch (err) { $('opMsg').textContent = err.message; } };
+    if (g.status === 'running') acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Pausar tudo', onclick: () => act('paused') }));
+    if (g.lots.some((l) => l.status === 'paused')) acts.append(el('button', { class: 'btn primary', type: 'button', text: 'Retomar tudo', onclick: () => act('running') }));
+    if (g.lots.some((l) => l.status === 'running' || l.status === 'paused')) acts.append(el('button', { class: 'btn danger', type: 'button', text: 'Cancelar tudo', onclick: () => act('canceled') }));
+    if (d.group_report_url) acts.append(el('a', { class: 'btn primary', href: d.group_report_url, target: '_blank', rel: 'noopener', text: 'Relatório da campanha' }));
+    if (c.failed) acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Exportar falhas', onclick: () => exportFailures(g.id, g.name, true) }));
+    acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { box.hidden = true; state.detailId = null; clearTimeout(state.timer); } }));
+    head.append(acts); box.append(head);
+    const stats = el('div', { class: 'stats' });
+    [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0]]
+      .forEach(([l, v]) => stats.append(el('div', { class: 'stat' }, el('span', { class: 'small muted', text: l }), el('b', { text: num(v) }))));
+    box.append(stats);
+    box.append(el('div', { style: 'margin:14px 0 6px' }, bar([[total ? sent / total * 100 : 0, 'var(--accent)'], [total ? (c.failed || 0) / total * 100 : 0, 'var(--bad)']])));
+    // Detalhe por BM
+    box.append(el('h3', { style: 'margin:16px 0 8px', text: 'Por BM' }));
+    const wrap = el('div', { class: 'wrap', style: 'overflow-x:auto' });
+    const t = el('table');
+    const hr = el('tr'); ['Lote', 'BM · número', 'Template', 'Total', 'Na fila', 'Aceitas', 'Entregues', 'Lidas', 'Falhas', 'Status', ''].forEach((h) => hr.append(el('th', { text: h })));
+    t.append(el('thead', {}, hr));
+    const tb = el('tbody');
+    const pct = (a, b) => b ? ` (${Math.round(a / b * 100)}%)` : '';
+    for (const l of g.lots) {
+      const lotBtn = el('button', { class: 'link', type: 'button', text: 'Falhas', onclick: () => exportFailures(l.id, g.name + ' Lote ' + l.tag) });
+      tb.append(el('tr', {}, td(l.tag), td(`${(l.instance_name || '').split(' · ')[0]} · ${l.display_phone || ''}`), td(l.template_name || '—'), td(num(l.total)),
+        td(num(l.queued)), td(num(l.sent)), td(num(l.delivered) + pct(l.delivered, l.sent)), td(num(l.read)), td(num(l.failed) + pct(l.failed, l.total)),
+        (() => { const x = el('td'); x.append(opBadge(l.status)); return x; })(), (() => { const x = el('td'); if (l.failed) x.append(lotBtn); return x; })()));
+    }
+    t.append(tb); wrap.append(t); box.append(wrap);
+    box.append(el('p', { class: 'small muted', style: 'margin:8px 0 0', text: 'Entregues e lidas dependem do webhook configurado e do app publicado na Meta.' }));
+    if (g.errors.length) {
+      const ul = el('ul', { class: 'small', style: 'margin:8px 0 0;padding-left:18px' });
+      g.errors.forEach((e) => ul.append(el('li', { text: `${num(e.n)}× ${e.error}` })));
+      box.append(el('h3', { style: 'margin-top:14px', text: 'Erros mais comuns' }), ul);
+    }
+    if (g.status === 'running') {
+      for (const l of g.lots) if (l.stalled && l.queued > 0) post('r=ops&a=run', { id: l.id }).catch(() => {});
+      state.timer = setTimeout(() => { openDetail(id); loadOps(); }, 4000);
+    }
+  }
+  async function exportFailures(id, name, group) {
+    const { rows } = await api('r=ops&a=failures&id=' + id + (group ? '&group=1' : ''));
     const esc = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
     const csv = 'nome;telefone;erro\n' + rows.map((r) => [r.name, r.phone, r.error].map(esc).join(';')).join('\n');
     const a = el('a', { href: URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })), download: 'falhas-' + String(name).replace(/[^\w-]+/g, '_') + '.csv' });

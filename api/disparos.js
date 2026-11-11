@@ -389,6 +389,15 @@ async function createSplit(sql, req, body) {
   return { id: created[0].id, group_id: groupId, lotes: created, quantity: created.reduce((s, c) => s + c.quantity, 0), avail, capacity };
 }
 
+// Status de uma campanha a partir dos lotes: enviando se algum envia; pausada se algum pausado; senão concluída/cancelada.
+function groupStatus(list) {
+  if (list.includes('running')) return 'running';
+  if (list.includes('paused')) return 'paused';
+  if (list.includes('error')) return 'error';
+  if (list.every((s) => s === 'canceled')) return 'canceled';
+  return 'done';
+}
+
 async function ops(sql, req, body, a) {
   if (req.method === 'GET' && a === 'test-status') {
     const ids = String(req.query.wamids || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 50);
@@ -403,6 +412,8 @@ async function ops(sql, req, body, a) {
   }
   if (req.method === 'GET' && a === 'failures') {
     const id = int(req.query.id);
+    if (req.query.group) return { rows: await sql`select r.name, r.phone, r.error, o.tag from wa_recipients r join wa_operations o on o.id = r.operation_id
+      where o.group_id = ${id} and r.status = 'failed' order by r.id limit 50000` };
     return { rows: await sql`select name, phone, error from wa_recipients where operation_id = ${id} and status = 'failed' order by id limit 50000` };
   }
   if (req.method === 'GET' && req.query.id) {
@@ -420,7 +431,29 @@ async function ops(sql, req, body, a) {
         sum(case when r.status = 'failed' then 1 else 0 end)::int as failed
       from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_recipients r on r.operation_id = o.id
       where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, i.name order by o.id` : [];
-    return { operation: op, lotes, group_report_url: op.group_id ? `/relatorio/${op.group_id}?t=${reportKey(op.group_id)}&grupo=1` : null, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
+    let group = null;
+    if (op.group_id) {
+      const gc = await sql`select r.status, count(*)::int as n from wa_recipients r join wa_operations o on o.id = r.operation_id
+        where o.group_id = ${op.group_id} group by r.status`;
+      const ge = await sql`select r.error, count(*)::int as n from wa_recipients r join wa_operations o on o.id = r.operation_id
+        where o.group_id = ${op.group_id} and r.status = 'failed' group by r.error order by count(*) desc limit 8`;
+      const gl = await sql`select o.id, o.tag, o.status, o.quantity, o.lock_until, i.name as instance_name, i.display_phone, t.name as template_name,
+          count(r.id)::int as total,
+          sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
+          sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as delivered,
+          sum(case when r.status = 'read' then 1 else 0 end)::int as read,
+          sum(case when r.status = 'failed' then 1 else 0 end)::int as failed,
+          sum(case when r.status in ('pending','sending') then 1 else 0 end)::int as queued,
+          sum(case when r.status = 'skipped' then 1 else 0 end)::int as skipped
+        from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
+        left join wa_recipients r on r.operation_id = o.id
+        where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, i.name, i.display_phone, t.name order by o.id`;
+      const now = new Date();
+      const lots = gl.map((l) => ({ ...l, stalled: l.status === 'running' && (!l.lock_until || new Date(l.lock_until) < now) }));
+      group = { id: op.group_id, name: String(op.name).replace(/\s·\sLote\s\S+$/, ''), status: groupStatus(lots.map((l) => l.status)),
+        counts: Object.fromEntries(gc.map((c) => [c.status, c.n])), errors: ge, lots };
+    }
+    return { operation: op, group, lotes, group_report_url: op.group_id ? `/relatorio/${op.group_id}?t=${reportKey(op.group_id)}&grupo=1` : null, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
   }
   if (req.method === 'GET') {
     const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.finished_at, o.group_id, o.tag, i.name as instance_name, t.name as template_name,
@@ -432,8 +465,25 @@ async function ops(sql, req, body, a) {
       from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
       left join wa_recipients r on r.operation_id = o.id
       group by o.id, o.name, o.status, o.quantity, o.created_at, o.finished_at, o.group_id, o.tag, i.name, t.name
-      order by o.created_at desc limit 100`;
-    return { operations: rows };
+      order by o.created_at desc limit 300`;
+    // Campanhas com vários números aparecem como uma operação só (os lotes ficam dentro dela).
+    const out = []; const groups = new Map();
+    for (const r of rows) {
+      if (!r.group_id) { out.push(r); continue; }
+      let g = groups.get(r.group_id);
+      if (!g) {
+        g = { id: r.group_id, group_id: r.group_id, is_group: true, name: String(r.name).replace(/\s·\sLote\s\S+$/, ''), created_at: r.created_at, finished_at: r.finished_at,
+          quantity: 0, sent: 0, delivered: 0, read: 0, failed: 0, total: 0, lots: 0, statuses: [], templates: new Set() };
+        groups.set(r.group_id, g); out.push(g);
+      }
+      g.lots++; g.statuses.push(r.status); if (r.template_name) g.templates.add(r.template_name);
+      for (const k of ['quantity', 'sent', 'delivered', 'read', 'failed', 'total']) g[k] += Number(r[k]) || 0;
+      if (new Date(r.created_at) < new Date(g.created_at)) g.created_at = r.created_at;
+    }
+    for (const g of groups.values()) {
+      g.status = groupStatus(g.statuses); g.instance_name = `${g.lots} BMs`; g.template_name = [...g.templates].join(', '); delete g.statuses; delete g.templates;
+    }
+    return { operations: out.slice(0, 100) };
   }
   if (a === 'test') {
     const op = readOpInput(body);
@@ -490,6 +540,18 @@ async function ops(sql, req, body, a) {
   if (a === 'status') {
     const id = int(body.id); const status = str(body.status, 20);
     if (!['running', 'paused', 'canceled'].includes(status)) bad('Status inválido.');
+    if (body.group) {
+      // Campanha com vários números: aplica em todos os lotes que ainda não terminaram.
+      const rows = await sql`update wa_operations set status = ${status},
+          finished_at = case when ${status} = 'canceled' then now() else finished_at end
+        where group_id = ${id} and status in ('running','paused') returning id`;
+      if (!rows.length) bad('Esta campanha já terminou.');
+      for (const r of rows) {
+        if (status === 'canceled') await sql`update wa_recipients set status = 'skipped', updated_at = now() where operation_id = ${r.id} and status = 'pending'`;
+        if (status === 'running') kick(req, r.id);
+      }
+      return { id, status, lotes: rows.length };
+    }
     const rows = await sql`update wa_operations set status = ${status},
         finished_at = case when ${status} = 'canceled' then now() else finished_at end
       where id = ${id} and status in ('running','paused') returning id`;
