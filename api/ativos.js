@@ -98,6 +98,33 @@ async function bms(sql, req, body, a) {
     const [bm] = await sql`select * from as_bms where id = ${id}`;
     if (!bm) throw new HttpError(404, 'BM não encontrada.');
     if (a === 'diag') return { bm: bm.name, etapas: await diagnose(bm) };
+    // Migra templates aprovados de uma conta do WhatsApp para outra da mesma BM (sem nova revisão da Meta).
+    // dry=1: só mostra moeda das contas e quantos templates aprovados existem na origem.
+    if (a === 'migrate') {
+      const token = decrypt(bm.token_enc);
+      const src = String(body.source || '').replace(/\D/g, '');
+      const dst = String(body.dest || '').replace(/\D/g, '');
+      if (!src || !dst || src === dst) throw new HttpError(400, 'Informe a conta de origem e a de destino.');
+      const info = async (w) => {
+        const d = await graph(`/${w}?fields=id,name,currency,owner_business_info`, token);
+        const t = await graph(`/${w}/message_templates?fields=name,status,language,category&limit=500`, token);
+        const list = t.data || [];
+        return { id: d.id, name: d.name, currency: d.currency, owner: d.owner_business_info,
+          templates: list.length, approved: list.filter((x) => x.status === 'APPROVED').map((x) => `${x.name} (${x.language}, ${x.category})`) };
+      };
+      const origem = await info(src);
+      const destino = await info(dst);
+      if (body.dry) return { origem, destino };
+      const out = { migrados: [], falhas: {} };
+      for (let page = 0; page < 10; page++) {
+        const r = await graph(`/${dst}/migrate_message_templates`, token, { method: 'POST', body: JSON.stringify({ source_waba_id: src, page_number: page }) });
+        out.migrados.push(...(r.migrated_templates || []));
+        Object.assign(out.falhas, r.failed_templates || {});
+        if (!(r.migrated_templates || []).length && !Object.keys(r.failed_templates || {}).length) break;
+      }
+      await logActivity(sql, `Templates migrados (${bm.name}): ${src} → ${dst}, ${out.migrados.length} ok, ${Object.keys(out.falhas).length} falhas`);
+      return { origem, destino, ...out };
+    }
     if (a === 'delete') {
       await sql`delete from as_templates where bm_ref = ${id}`;
       await sql`delete from as_numbers where bm_ref = ${id}`;
