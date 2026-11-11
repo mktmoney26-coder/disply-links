@@ -338,6 +338,8 @@ async function createSplit(sql, req, body) {
   let left = Math.min(avail, capacity, base.quantity && base.quantity > 0 ? base.quantity : avail);
   const created = [];
   let offset = 0; let groupId = null;
+  const mix = body.distribution === 'mix';
+  const seed = crypto.randomBytes(6).toString('hex');
   try {
     for (let i = 0; i < parts.length && left > 0; i++) {
       const p = parts[i]; const n = Math.min(p.limit, left); const tag = TAGS[i] || String(i + 1);
@@ -346,9 +348,16 @@ async function createSplit(sql, req, body) {
                 ${base.button_param || null}, ${base.name_fallback}, ${base.list_id}, ${n}, ${base.tps}, ${groupId}, ${tag}, 'paused') returning id`;
       if (!groupId) { groupId = row.id; await sql`update wa_operations set group_id = ${groupId} where id = ${row.id}`; }
       created.push({ id: row.id, tag, quantity: n });
-      await sql`insert into wa_recipients (operation_id, name, phone)
-        select ${row.id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
-        where c.list_id = ${base.list_id}::int and o.phone is null order by c.id offset ${offset}::int limit ${n}::int`;
+      if (mix) {
+        // Misturado: mesma ordem sorteada (fixa por campanha) para todos os lotes, então ninguém se repete.
+        await sql`insert into wa_recipients (operation_id, name, phone)
+          select ${row.id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
+          where c.list_id = ${base.list_id}::int and o.phone is null order by md5(c.phone || ${seed}), c.id offset ${offset}::int limit ${n}::int`;
+      } else {
+        await sql`insert into wa_recipients (operation_id, name, phone)
+          select ${row.id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
+          where c.list_id = ${base.list_id}::int and o.phone is null order by c.id offset ${offset}::int limit ${n}::int`;
+      }
       offset += n; left -= n;
     }
   } catch (err) {

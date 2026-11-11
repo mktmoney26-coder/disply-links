@@ -181,6 +181,57 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .modal-bg[hidden]{display:none}
   .modal{background:var(--card);color:var(--ink);border-radius:14px;padding:18px;width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
   body.present main{max-width:none} body.present #ibHint{display:none}
+  /* ---------- Assistente de nova operação ---------- */
+  .wz{padding:22px 24px}
+  .wz-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+  .wz-steps{list-style:none;margin:0 0 22px;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;counter-reset:s}
+  .wz-steps li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--soft);color:var(--muted);cursor:pointer;position:relative;min-height:48px}
+  .wz-steps li span{flex:0 0 28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;background:var(--card);border:1.5px solid var(--line);color:var(--muted)}
+  .wz-steps li b{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wz-steps li.cur{background:linear-gradient(120deg,rgba(0,212,163,.14),rgba(0,123,255,.14));color:var(--ink)}
+  .wz-steps li.cur span{background:linear-gradient(120deg,#00D4A3,#007BFF);color:#fff;border-color:transparent}
+  .wz-steps li.done{color:var(--ink)} .wz-steps li.done span{background:var(--ok-bg);color:var(--ok);border-color:transparent;font-size:0}
+  .wz-steps li.done span::after{content:"✓";font-size:14px}
+  .wz-panel{display:flex;flex-direction:column;gap:16px;animation:wzin .25s ease}
+  .wz-panel[hidden]{display:none}
+  @keyframes wzin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .wz-field label,.wz-label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}
+  .wz-field input#opName{font-size:18px;font-weight:600;min-height:52px}
+  .wz-choice{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .wz-opt{text-align:left;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:14px 16px;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:3px}
+  .wz-opt span{font-size:12.5px;color:var(--muted)}
+  .wz-opt[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+  .wz-box{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--bg)}
+  .wz-box[hidden]{display:none}
+  .wz-leads{border-radius:14px;padding:16px 18px;background:linear-gradient(120deg,rgba(0,212,163,.12),rgba(0,123,255,.12));border:1px solid var(--line)}
+  .wz-leads-n{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap} .wz-leads-n strong{font-size:34px;letter-spacing:-.02em;line-height:1} .wz-leads-n span{font-weight:600}
+  .wz-need{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--card)}
+  .wz-need-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap} .wz-need-top strong{font-size:26px;letter-spacing:-.02em}
+  .wz-need-cap{font-weight:700;font-size:13px;padding:4px 10px;border-radius:99px} .wz-need-cap.ok{background:var(--ok-bg);color:var(--ok)} .wz-need-cap.warn{background:var(--warn-bg);color:var(--warn)}
+  .wz-meter{height:8px;border-radius:99px;background:var(--off-bg);overflow:hidden;margin-top:10px} .wz-meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#00D4A3,#007BFF);transition:width .4s ease}
+  .wz-nums{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+  .wz-num{display:flex;align-items:flex-start;gap:12px;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--card);cursor:pointer;flex-wrap:wrap;transition:border-color .15s,box-shadow .15s}
+  .wz-num:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+  .wz-num.on{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+  .wz-num:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .wz-num-tag{flex:0 0 32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;background:var(--soft);color:var(--muted)}
+  .wz-num.on .wz-num-tag,.wz-lot .wz-num-tag{background:linear-gradient(120deg,#00D4A3,#007BFF);color:#fff}
+  .wz-num-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px} .wz-num-body b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .wz-num-body>span{font-size:13px;color:var(--muted)}
+  .wz-num-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .wz-num-meta .badge{white-space:normal;line-height:1.3}
+  .wz-summary .wz-lot-name{flex:1}
+  .wz-num-lim{flex:1 0 100%;display:flex;align-items:center;gap:8px;margin:4px 0 0 44px;font-size:12.5px;color:var(--muted);font-weight:600}
+  .wz-num-lim input{max-width:130px;min-height:36px;padding:6px 10px}
+  .wz-lots{display:flex;flex-direction:column;gap:8px}
+  .wz-lots-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+  .wz-lot{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .wz-lot-name{flex:0 1 260px;min-width:0;display:flex;flex-direction:column} .wz-lot-name b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px} .wz-lot-name span{font-size:12px;color:var(--muted)}
+  .wz-lot-bar{flex:1;height:8px;border-radius:99px;background:var(--off-bg);overflow:hidden} .wz-lot-bar i{display:block;height:100%;background:linear-gradient(90deg,#00D4A3,#007BFF)}
+  .wz-lot-n{font-variant-numeric:tabular-nums;min-width:64px;text-align:right}
+  .wz-summary{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--card)}
+  .wz-sum-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px} .wz-sum-row span{color:var(--muted)} .wz-sum-row b{text-align:right}
+  .wz-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+  @media (max-width:760px){.wz{padding:16px}.wz-steps{grid-template-columns:repeat(4,1fr)}.wz-steps li{justify-content:center;padding:8px}.wz-steps li b{display:none}.wz-lot-bar{display:none}}
   /* ---------- Inbox estilo WhatsApp ---------- */
   .wa{--wa-panel:#fff;--wa-head:#f0f2f5;--wa-line:#e9edef;--wa-ink:#111b21;--wa-sub:#667781;--wa-chatbg:#efeae2;--wa-in:#fff;--wa-out:#d9fdd3;--wa-green:#00a884;--wa-hover:#f5f6f6;--wa-active:#f0f2f5;--wa-unread:#25d366;--wa-pill:#e7fce3;--wa-pill-ink:#008069;--wa-doodle:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' opacity='.07'%3E%3Ccircle cx='22' cy='24' r='8'/%3E%3Cpath d='M60 18h22v14H60zM66 32v6l6-6'/%3E%3Cpath d='M120 20l8 8-8 8-8-8z'/%3E%3Cpath d='M20 78c6-10 18-10 24 0'/%3E%3Ccircle cx='86' cy='80' r='3'/%3E%3Ccircle cx='98' cy='74' r='3'/%3E%3Cpath d='M130 70l10 16h-20z'/%3E%3Cpath d='M18 128h16M26 120v16'/%3E%3Cpath d='M64 122c0-6 10-6 10 0s10 6 10 0'/%3E%3Crect x='112' y='116' width='22' height='16' rx='4'/%3E%3C/svg%3E");
     display:grid;grid-template-columns:68px minmax(280px,380px) 1fr;height:max(560px,calc(100vh - 190px));border:1px solid var(--wa-line);border-radius:14px;overflow:hidden;background:var(--wa-panel);color:var(--wa-ink)}
@@ -381,27 +432,96 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     </div>
 
     <!-- Nova operação -->
-    <div class="card" id="opForm" hidden>
-      <h2>Nova operação</h2>
-      <div class="split">
-        <div class="main stack">
-          <div><label for="opName">Nome da operação</label><input id="opName" type="text" maxlength="120" placeholder="Ex.: Black Friday – Lote 1"></div>
-          <div class="grid">
-            <div><label for="opInst">Instância (número que envia)</label><select id="opInst"></select></div>
-            <div><label for="opTpl">Template aprovado</label><select id="opTpl"></select></div>
+    <div class="card wz" id="opForm" hidden>
+      <div class="wz-top">
+        <h2 style="margin:0">Nova operação</h2>
+        <button class="btn ghost" type="button" id="btnOpCancel">Cancelar</button>
+      </div>
+      <ol class="wz-steps" id="wzSteps">
+        <li data-step="1"><span>1</span><b>Projeto e lista</b></li>
+        <li data-step="2"><span>2</span><b>Números</b></li>
+        <li data-step="3"><span>3</span><b>Mensagem</b></li>
+        <li data-step="4"><span>4</span><b>Revisar e enviar</b></li>
+      </ol>
+
+      <!-- Etapa 1 -->
+      <section class="wz-panel" data-panel="1">
+        <div class="wz-field"><label for="opName">Nome do projeto</label><input id="opName" type="text" maxlength="120" placeholder="Ex.: Black Friday Sorridi"></div>
+        <div class="wz-field">
+          <span class="wz-label">Lista de contatos</span>
+          <div class="wz-choice" role="group" aria-label="Origem da lista">
+            <button type="button" class="wz-opt" id="wzListNew" aria-pressed="true"><b>Subir planilha</b><span>CSV ou Excel. Os números são verificados na hora.</span></button>
+            <button type="button" class="wz-opt" id="wzListOld" aria-pressed="false"><b>Usar lista salva</b><span>Escolha uma lista já importada.</span></button>
           </div>
-          <div class="card soft" style="padding:12px 14px">
-            <label class="row" style="gap:8px;font-weight:700;margin:0"><input id="opSplitOn" type="checkbox" style="width:18px;height:18px"> Dividir a lista entre vários números (lotes A, B, C…)</label>
-            <div id="opSplit" class="stack" style="margin-top:10px" hidden>
-              <p class="small muted" style="margin:0">Cada número envia um lote até o limite diário dele. O lote A é o número escolhido acima. O mesmo template (mesmo nome e idioma) precisa estar aprovado em todos os números.</p>
-              <div class="wrap"><table>
-                <thead><tr><th style="width:36px"></th><th>Lote</th><th>Número</th><th style="width:130px">Limite</th><th>Template</th></tr></thead>
-                <tbody id="opSplitRows"></tbody>
-              </table></div>
-              <p id="opSplitSum" class="small" style="margin:0"></p>
+        </div>
+        <div id="opImport" class="wz-box">
+            <div class="grid">
+              <div><label for="opLName">Nome da lista</label><input id="opLName" type="text" maxlength="120"></div>
+              <div><label for="opLFile">Planilha (CSV ou Excel)</label><input id="opLFile" type="file" accept=".csv,.txt,.xlsx,.xls"></div>
             </div>
+            <div id="opLCheck"></div>
+            <div class="row"><button class="btn primary" type="button" id="opLImport" disabled>Importar lista</button><span id="opLMsg" class="small" role="status"></span></div>
           </div>
-          <div id="opProfile" class="row" style="gap:14px;padding:12px;border:1px solid var(--line);border-radius:10px" hidden>
+        <div id="wzOldBox" class="wz-box" hidden>
+          <label for="opList">Lista salva</label><select id="opList"></select>
+        </div>
+        <div class="wz-leads" id="wzLeads" hidden></div>
+      </section>
+
+      <!-- Etapa 2 -->
+      <section class="wz-panel" data-panel="2" hidden>
+        <div class="wz-need" id="wzNeed"></div>
+        <div class="row" style="justify-content:space-between">
+          <span class="wz-label" style="margin:0">Escolha os números (a ordem da escolha define os lotes A, B, C…)</span>
+          <button type="button" class="btn ghost" id="wzAuto">Sugerir automaticamente</button>
+        </div>
+        <div class="wz-nums" id="opNums"></div>
+        <div class="grid">
+          <div class="wz-field"><label for="opQty">Quantos leads enviar</label><input id="opQty" type="number" min="1"></div>
+          <div class="wz-field"><label for="opDist">Como dividir os leads entre os números</label>
+            <select id="opDist"><option value="seq">Na ordem da planilha (A recebe os primeiros)</option><option value="mix">Misturado (sorteio, cada lote fica parecido)</option></select></div>
+        </div>
+        <div class="wz-lots" id="opLots"></div>
+        <select id="opInst" hidden aria-hidden="true"></select>
+      </section>
+
+      <!-- Etapa 3 -->
+      <section class="wz-panel" data-panel="3" hidden>
+        <div class="split">
+          <div class="main stack">
+            <div class="wz-field"><label for="opTpl">Template</label><select id="opTpl"></select>
+              <p id="opTplCommon" class="small muted" style="margin:4px 0 0"></p></div>
+            <p id="opTplInfo" class="small muted" style="margin:0"></p>
+            <div id="opMediaBox" class="stack" hidden>
+            <h3 style="margin:0">Mídia do cabeçalho</h3>
+            <div class="grid">
+              <div><label for="opMediaFile">Enviar imagem (JPG/PNG até 3,5 MB)</label><input id="opMediaFile" type="file" accept="image/jpeg,image/png"></div>
+              <div><label for="opMediaUrl">ou link público (obrigatório para vídeo/documento)</label><input id="opMediaUrl" type="url" placeholder="https://..."></div>
+            </div>
+            <p id="opMediaMsg" class="small" role="status" style="margin:0"></p>
+          </div>
+            <div id="opHeaderVarBox" hidden><label for="opHeaderVar">Variável do cabeçalho</label><input id="opHeaderVar" type="text"></div>
+            <div id="opVarsBox" class="stack" hidden>
+            <h3 style="margin:0">Variáveis do template</h3>
+            <p class="small muted" style="margin:0">Escreva o texto de cada variável. Clique nos campos para inserir dados do contato.</p>
+            <div id="opVars" class="stack"></div>
+            <div style="max-width:320px"><label for="opFallback">Se o contato não tiver nome, usar</label><input id="opFallback" type="text" value="cliente" maxlength="40"></div>
+          </div>
+            <div id="opBtnBox" hidden><label for="opBtnParam">Final do link do botão</label><input id="opBtnParam" type="text"><p id="opBtnHint" class="small muted" style="margin:4px 0 0"></p></div>
+          </div>
+          <aside class="side">
+            <span class="small muted" style="display:block;font-weight:600;margin-bottom:6px">Prévia (1º contato da lista)</span>
+            <div class="phone"><div class="bubble" id="preview"><div class="text muted">Escolha o template.</div></div></div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Etapa 4 -->
+      <section class="wz-panel" data-panel="4" hidden>
+        <div class="split">
+          <div class="main stack">
+            <div class="wz-summary" id="wzSummary"></div>
+            <div id="opProfile" class="row" style="gap:14px;padding:12px;border:1px solid var(--line);border-radius:10px" hidden>
             <div id="opPhoto" style="width:64px;height:64px;border-radius:99px;background:var(--soft);overflow:hidden;flex:0 0 64px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">sem foto</div>
             <div style="flex:1 1 220px">
               <strong>Foto de perfil do número</strong>
@@ -411,63 +531,33 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
               <span id="opPhotoMsg" class="small" role="status" style="margin-left:8px"></span>
             </div>
           </div>
-          <p id="opTplInfo" class="small muted" style="margin:0"></p>
-
-          <div id="opMediaBox" class="stack" hidden>
-            <h3 style="margin:0">Mídia do cabeçalho</h3>
             <div class="grid">
-              <div><label for="opMediaFile">Enviar imagem (JPG/PNG até 3,5 MB)</label><input id="opMediaFile" type="file" accept="image/jpeg,image/png"></div>
-              <div><label for="opMediaUrl">ou link público (obrigatório para vídeo/documento)</label><input id="opMediaUrl" type="url" placeholder="https://..."></div>
+              <div class="wz-field"><label for="opTps">Velocidade (mensagens por segundo, por número)</label><input id="opTps" type="number" min="1" max="80" value="40"></div>
             </div>
-            <p id="opMediaMsg" class="small" role="status" style="margin:0"></p>
-          </div>
-
-          <div id="opHeaderVarBox" hidden><label for="opHeaderVar">Variável do cabeçalho</label><input id="opHeaderVar" type="text"></div>
-
-          <div id="opVarsBox" class="stack" hidden>
-            <h3 style="margin:0">Variáveis do template</h3>
-            <p class="small muted" style="margin:0">Escreva o texto de cada variável. Clique nos campos para inserir dados do contato.</p>
-            <div id="opVars" class="stack"></div>
-            <div style="max-width:320px"><label for="opFallback">Se o contato não tiver nome, usar</label><input id="opFallback" type="text" value="cliente" maxlength="40"></div>
-          </div>
-
-          <div id="opBtnBox" hidden><label for="opBtnParam">Final do link do botão</label><input id="opBtnParam" type="text"><p id="opBtnHint" class="small muted" style="margin:4px 0 0"></p></div>
-
-          <div class="card soft" id="opImport" hidden>
-            <div class="grid">
-              <div><label for="opLName">Nome da lista</label><input id="opLName" type="text" maxlength="120"></div>
-              <div><label for="opLFile">Planilha (CSV ou Excel)</label><input id="opLFile" type="file" accept=".csv,.txt,.xlsx,.xls"></div>
+            <div class="wz-box">
+              <b>Enviar teste</b>
+              <div class="row" style="margin-top:8px">
+                <div style="flex:1 1 220px"><label for="opTestPhone" class="small">Seu WhatsApp (com DDD)</label><input id="opTestPhone" type="tel" placeholder="31 99999-9999"></div>
+                <button class="btn ghost" type="button" id="btnTest" style="align-self:flex-end">Enviar teste</button>
+              </div>
+              <p id="opTestMsg" class="small" role="status" style="margin:8px 0 0"></p>
             </div>
-            <div id="opLCheck"></div>
-            <div class="row"><button class="btn primary" type="button" id="opLImport" disabled>Importar e usar nesta operação</button><span id="opLMsg" class="small" role="status"></span></div>
           </div>
-          <div class="grid">
-            <div><label for="opList">Lista de contatos</label><select id="opList"></select><p id="opListInfo" class="small muted" style="margin:4px 0 0"></p>
-              <button type="button" class="linkbtn small" id="opListNew">+ Importar planilha nova aqui</button></div>
-            <div><label for="opQty">Quantidade a enviar</label><input id="opQty" type="number" min="1"></div>
-            <div><label for="opTps">Velocidade (mensagens/segundo)</label><input id="opTps" type="number" min="1" max="80" value="40"></div>
-          </div>
-
-          <div class="card" style="padding:14px;background:var(--soft)">
-            <h3>Enviar teste</h3>
-            <div class="row">
-              <div style="flex:1 1 220px"><label for="opTestPhone" class="small">Seu WhatsApp (com DDD)</label><input id="opTestPhone" type="tel" placeholder="31 99999-9999"></div>
-              <button class="btn ghost" type="button" id="btnTest" style="align-self:flex-end">Enviar teste</button>
-            </div>
-            <p id="opTestMsg" class="small" role="status" style="margin:8px 0 0"></p>
-          </div>
-
-          <div class="row">
-            <button class="btn primary" type="button" id="btnStart">Iniciar operação</button>
-            <button class="btn danger" type="button" id="btnStartConfirm" hidden>Confirmar: enviar agora</button>
-            <button class="btn ghost" type="button" id="btnOpCancel">Cancelar</button>
-          </div>
-          <p id="opMsg" class="err" role="alert" style="margin:0"></p>
+          <aside class="side">
+            <span class="small muted" style="display:block;font-weight:600;margin-bottom:6px">Prévia</span>
+            <div class="phone"><div class="bubble" id="preview2"></div></div>
+          </aside>
         </div>
-        <aside class="side">
-          <span class="small muted" style="display:block;font-weight:600;margin-bottom:6px">Prévia (1º contato da lista)</span>
-          <div class="phone"><div class="bubble" id="preview"><div class="text muted">Escolha a instância e o template.</div></div></div>
-        </aside>
+      </section>
+
+      <p id="opMsg" class="err" role="alert" style="margin:12px 0 0"></p>
+      <div class="wz-foot">
+        <button class="btn ghost" type="button" id="wzBack">Voltar</button>
+        <div class="row">
+          <button class="btn primary" type="button" id="wzNext">Continuar</button>
+          <button class="btn primary" type="button" id="btnStart" hidden>Iniciar operação</button>
+          <button class="btn danger" type="button" id="btnStartConfirm" hidden>Confirmar: enviar agora</button>
+        </div>
       </div>
     </div>
 
@@ -1272,22 +1362,75 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   importer({ file: 'lFile', name: 'lName', check: 'lCheck', btn: 'btnImport', msg: 'lMsg' }, () => setTimeout(() => { $('lCheck').innerHTML = ''; }, 8000));
   importer({ file: 'opLFile', name: 'opLName', check: 'opLCheck', btn: 'opLImport', msg: 'opLMsg' }, (id) => {
     $('opList').value = String(id); $('opList').dispatchEvent(new Event('change'));
-    setTimeout(() => { $('opImport').hidden = true; $('opLCheck').innerHTML = ''; setMsg('opLMsg', ''); }, 2500);
+    setListMode('old');
   });
-  $('opListNew').onclick = () => { $('opImport').hidden = !$('opImport').hidden; if (!$('opImport').hidden) $('opLFile').focus(); };
 
   // ================= NOVA OPERAÇÃO =================
+  // ---------- Assistente de nova operação (4 etapas) ----------
+  const wz = { step: 1, listMode: 'new' };
   function resetOpForm() {
     ['opName', 'opMediaUrl', 'opHeaderVar', 'opBtnParam', 'opQty', 'opTestPhone'].forEach((x) => { $(x).value = ''; });
-    $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40';
-    state.tpl = null; state.mediaUrl = ''; $('opVars').innerHTML = '';
-    $('opSplitOn').checked = false; split.sel.clear(); split.qtyTouched = false; renderSplit();
-    ['opMsg', 'opTestMsg', 'opMediaMsg'].forEach((x) => { $(x).textContent = ''; });
-    $('btnStartConfirm').hidden = true; $('btnStart').hidden = false; $('opProfile').hidden = true;
-    $('opTpl').innerHTML = '<option value="">Escolha a instância</option>';
-    applyTemplate();
+    $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40'; $('opDist').value = 'seq';
+    state.tpl = null; state.mediaUrl = ''; state.sample = null; state.leads = 0; $('opVars').innerHTML = '';
+    ['opMsg', 'opTestMsg', 'opMediaMsg', 'opLMsg'].forEach((x) => { $(x).textContent = ''; });
+    $('opLCheck').innerHTML = ''; $('opLFile').value = ''; $('opLName').value = '';
+    split.sel.clear(); split.tplLists.clear(); split.qtyTouched = false;
+    $('opInst').value = ''; $('opList').value = ''; $('opProfile').hidden = true;
+    $('opTpl').innerHTML = '<option value="">Escolha…</option>';
+    setListMode('new'); renderLeads(); applyTemplate(); go(1);
   }
-  $('btnNewOp').onclick = () => { resetOpForm(); $('opDetail').hidden = true; $('opForm').hidden = false; $('opName').focus(); };
+  function setListMode(m) {
+    wz.listMode = m;
+    $('wzListNew').setAttribute('aria-pressed', String(m === 'new')); $('wzListOld').setAttribute('aria-pressed', String(m === 'old'));
+    $('opImport').hidden = m !== 'new'; $('wzOldBox').hidden = m !== 'old';
+  }
+  $('opName').addEventListener('input', () => { $('opMsg').textContent = ''; });
+  $('wzListNew').onclick = () => setListMode('new');
+  $('wzListOld').onclick = () => setListMode('old');
+  function go(n) {
+    wz.step = n;
+    document.querySelectorAll('#opForm .wz-panel').forEach((p) => { p.hidden = p.dataset.panel !== String(n); });
+    document.querySelectorAll('#wzSteps li').forEach((li) => {
+      const k = Number(li.dataset.step); li.classList.toggle('done', k < n); li.classList.toggle('cur', k === n);
+      if (k === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+    });
+    $('wzBack').style.visibility = n > 1 ? 'visible' : 'hidden';
+    $('wzNext').hidden = n === 4; $('btnStart').hidden = n !== 4; $('btnStartConfirm').hidden = true;
+    $('opMsg').textContent = '';
+    if (n === 2) renderNums();
+    if (n === 3) loadCommonTemplates();
+    if (n === 4) renderSummary();
+    $('opForm').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  function stepError(n) {
+    if (n === 1) {
+      if (!$('opName').value.trim()) return 'Dê um nome ao projeto.';
+      if (!$('opList').value) return wz.listMode === 'new' ? 'Suba a planilha e clique em Importar lista.' : 'Escolha a lista.';
+      if (!state.leads) return 'A lista não tem contatos disponíveis.';
+    }
+    if (n === 2) {
+      const parts = selParts();
+      if (!parts.length) return 'Escolha pelo menos um número.';
+      if (parts.some((p) => !p.limit)) return 'Informe o limite de cada número escolhido.';
+      if (!(Number($('opQty').value) > 0)) return 'Informe quantos leads enviar.';
+    }
+    if (n === 3) {
+      const t = state.tpl; if (!t) return 'Escolha o template.';
+      const info = t.info;
+      if (info.needsMedia && !/^https:\/\/\S+$/.test(state.mediaUrl || $('opMediaUrl').value)) return 'Este template precisa de mídia: envie a imagem ou cole o link público (https://).';
+      const vars = collectVars(); for (const v of info.bodyVars) if (!String(vars[v] || '').trim()) return `Preencha a variável {{${v}}}.`;
+      if (info.headerType === 'TEXT' && info.headerVars.length && !$('opHeaderVar').value.trim()) return 'Preencha a variável do cabeçalho.';
+      if (info.dynamicButton && !$('opBtnParam').value.trim()) return 'Preencha o final do link do botão.';
+    }
+    return '';
+  }
+  $('wzNext').onclick = () => { const e = stepError(wz.step); if (e) { $('opMsg').textContent = e; return; } go(wz.step + 1); };
+  $('wzBack').onclick = () => { if (wz.step > 1) go(wz.step - 1); };
+  document.querySelectorAll('#wzSteps li').forEach((li) => { li.onclick = () => {
+    const k = Number(li.dataset.step); if (k >= wz.step) { for (let i = wz.step; i < k; i++) { const e = stepError(i); if (e) { $('opMsg').textContent = e; return; } } }
+    go(k);
+  }; });
+  $('btnNewOp').onclick = () => { $('opDetail').hidden = true; $('opForm').hidden = false; resetOpForm(); $('opName').focus(); };
   $('btnOpCancel').onclick = () => { $('opForm').hidden = true; };
 
   // Escolheu um número das BMs que ainda não é instância: conecta na hora com o token da BM.
@@ -1401,8 +1544,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     finally { $('opPhotoFile').value = ''; }
   };
 
-  // ---------- Dividir entre vários números ----------
-  const split = { sel: new Map(), tpl: new Map() };
+  // ---------- Etapa 2: números (cada número escolhido vira um lote: A, B, C…) ----------
+  const split = { sel: new Map(), tplLists: new Map(), qtyTouched: false };
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   function tierLimit(t) {
     if (/^\d+$/.test(String(t || ''))) return Number(t);
     const m = /TIER_(\d+)(K)?/i.exec(String(t || ''));
@@ -1410,94 +1554,157 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     return /UNLIMITED/i.test(String(t || '')) ? 100000 : null;
   }
   const instById = (id) => state.instances.find((i) => String(i.id) === String(id));
-  const splitOn = () => $('opSplitOn').checked;
-  async function tplStatusFor(id) {
-    if (!state.tpl) return null;
-    const key = id + '|' + state.tpl.name + '|' + state.tpl.language;
-    if (split.tpl.has(key)) return split.tpl.get(key);
-    split.tpl.set(key, 'loading');
-    try {
-      const { templates } = await api('r=templates&instance=' + encodeURIComponent(id));
-      const t = templates.find((x) => x.name === state.tpl.name && x.language === state.tpl.language);
-      split.tpl.set(key, !t ? 'missing' : t.status === 'APPROVED' ? 'ok' : 'pending:' + t.status);
-    } catch (e) { split.tpl.set(key, 'error'); }
-    renderSplit();
-    return split.tpl.get(key);
+  const selParts = () => [...split.sel.entries()].map(([id, limit]) => ({ instance_id: Number(id), limit: Number(limit) || 0 }));
+  const capacity = () => selParts().reduce((a, p) => a + p.limit, 0);
+  const planned = () => Math.min(Number($('opQty').value) || state.leads || 0, state.leads || Infinity, capacity());
+  function lots() {
+    let left = planned();
+    return selParts().map((p, i) => { const n = Math.max(0, Math.min(p.limit, left)); left -= n; return { ...p, tag: LETTERS[i], n }; });
   }
-  function splitParts() {
-    const main = $('opInst').value; if (!main || String(main).startsWith('asset:')) return [];
-    const parts = [{ instance_id: Number(main), limit: Number(split.sel.get(String(main))) || 0 }];
-    for (const i of state.instances) if (i.active && String(i.id) !== String(main) && split.sel.has(String(i.id))) parts.push({ instance_id: i.id, limit: Number(split.sel.get(String(i.id))) || 0 });
-    return parts;
-  }
-  function renderSplit() {
-    $('opSplit').hidden = !splitOn();
-    if (!splitOn()) return;
-    const main = $('opInst').value; const tb = $('opSplitRows'); tb.innerHTML = '';
-    if (!main || String(main).startsWith('asset:')) { tb.append(el('tr', {}, el('td', { colSpan: 5, class: 'muted', text: 'Escolha primeiro o número principal (lote A).' }))); $('opSplitSum').textContent = ''; return; }
-    if (!split.sel.has(String(main))) split.sel.set(String(main), tierLimit((instById(main) || {}).limit_tier) || 1000);
-    const order = [instById(main), ...state.instances.filter((i) => i.active && String(i.id) !== String(main))].filter(Boolean);
-    let letter = 0;
-    for (const i of order) {
-      const isMain = String(i.id) === String(main); const on = isMain || split.sel.has(String(i.id));
-      const cb = el('input', { type: 'checkbox', style: 'width:18px;height:18px', 'aria-label': 'Usar ' + i.name });
-      cb.checked = on; cb.disabled = isMain;
-      cb.onchange = () => { if (cb.checked) { split.sel.set(String(i.id), tierLimit(i.limit_tier) || 1000); tplStatusFor(i.id); } else split.sel.delete(String(i.id)); renderSplit(); };
-      const lim = el('input', { type: 'number', min: '1', step: '1', style: 'min-height:36px;padding:6px 8px', value: on ? String(split.sel.get(String(i.id))) : '', 'aria-label': 'Limite de ' + i.name });
-      lim.disabled = !on;
-      lim.oninput = () => { split.sel.set(String(i.id), Number(lim.value) || 0); splitSummary(); };
-      const tierTxt = tierLimit(i.limit_tier) ? 'limite da Meta: ' + num(tierLimit(i.limit_tier)) + '/dia' : 'limite não identificado';
-      const nameCell = el('td', {}, el('strong', { text: i.name }), el('div', { class: 'small muted', text: (i.bm ? i.bm + ' · ' : '') + tierTxt }));
-      let tplCell;
-      if (!state.tpl) tplCell = td('Escolha o template', 'muted');
-      else if (isMain) tplCell = el('td', {}, badge('Aprovado', 'ok'));
-      else if (!on) tplCell = td('—', 'muted');
-      else {
-        const st = split.tpl.get(i.id + '|' + state.tpl.name + '|' + state.tpl.language);
-        if (st === undefined) { tplStatusFor(i.id); tplCell = td('Verificando…', 'muted'); }
-        else if (st === 'loading') tplCell = td('Verificando…', 'muted');
-        else if (st === 'ok') tplCell = el('td', {}, badge('Aprovado', 'ok'));
-        else if (st === 'missing') tplCell = el('td', {}, badge('Não tem este template', 'bad'));
-        else if (String(st).startsWith('pending:')) tplCell = el('td', {}, badge('Em análise (' + st.slice(8) + ')', 'warn'));
-        else tplCell = el('td', {}, badge('Erro ao verificar', 'bad'));
-      }
-      tb.append(el('tr', {}, el('td', {}, cb), td(on ? 'Lote ' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[letter++] : '', on ? '' : 'muted'), nameCell, el('td', {}, lim), tplCell));
+  function syncMain() {
+    const main = selParts()[0]; const id = main ? String(main.instance_id) : '';
+    if ($('opInst').value !== id) {
+      $('opInst').value = id; state.tpl = null; split.tplLists.clear();
+      if (id) loadProfile(id); else $('opProfile').hidden = true;
     }
-    splitSummary();
+    if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || '';
   }
-  function splitSummary() {
-    const parts = splitParts(); const box = $('opSplitSum');
-    if (parts.length < 2) { box.textContent = 'Marque pelo menos mais um número para dividir.'; box.className = 'small muted'; return; }
-    const cap = parts.reduce((s, p) => s + p.limit, 0);
-    const avail = state.available || 0;
-    const want = Math.min(avail || cap, cap);
-    let left = Math.min(Number($('opQty').value) || want, cap);
-    const lots = parts.map((p, i) => { const n = Math.max(0, Math.min(p.limit, left)); left -= n; return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i] + ': ' + num(n); });
-    const bms = parts.map((p) => (instById(p.instance_id) || {}).bm_ref).filter(Boolean);
-    const sameBm = bms.length !== new Set(bms).size;
-    const bad = parts.some((p) => { if (String(p.instance_id) === String($('opInst').value)) return false; const st = state.tpl && split.tpl.get(p.instance_id + '|' + state.tpl.name + '|' + state.tpl.language); return st && st !== 'ok' && st !== 'loading'; });
-    box.className = 'small' + (bad || (avail && avail > cap) || sameBm ? ' err' : '');
-    box.textContent = `${parts.length} números · capacidade ${num(cap)} · lista ${avail ? num(avail) : '—'} → ${lots.join(' · ')}`
-      + (avail > cap ? ` · ${num(avail - cap)} contato(s) ficam de fora (aumente os limites ou adicione números).` : '')
-      + (sameBm ? ' · Atenção: há números da mesma BM, e eles dividem o mesmo limite diário.' : '')
-      + (bad ? ' · Algum número não tem o template aprovado.' : '');
-    if (avail) { $('opQty').max = Math.min(avail, cap); if (!split.qtyTouched) $('opQty').value = Math.min(avail, cap); }
+  async function toggleNum(key) {
+    $('opMsg').textContent = '';
+    if (key.startsWith('asset:')) {
+      // Número monitorado em Ativos que ainda não é instância: conecta agora com o token da BM.
+      try {
+        const r = await post('r=instances&a=from-asset', { phone_number_id: key.slice(6) });
+        await loadInstances(); key = String(r.id);
+      } catch (err) { $('opMsg').textContent = 'Não consegui conectar o número: ' + err.message; return; }
+    }
+    if (split.sel.has(key)) split.sel.delete(key);
+    else split.sel.set(key, tierLimit((instById(key) || {}).limit_tier) || 1000);
+    syncMain(); renderNums();
   }
-  $('opSplitOn').onchange = () => { if (splitOn() && state.available) $('opQty').value = Math.min(state.available, splitParts().reduce((s, p) => s + p.limit, 0) || state.available); renderSplit(); };
-  $('opQty').addEventListener('input', () => { split.qtyTouched = true; if (splitOn()) splitSummary(); });
-
-  $('opInst').onchange = async () => {
-    if (!(await ensureInstance($('opInst'), 'opMsg'))) return;
-    loadProfile($('opInst').value);
-    state.templates = []; const id = $('opInst').value; const sel = $('opTpl'); sel.innerHTML = '';
-    if (!id) { sel.append(el('option', { value: '', text: 'Escolha a instância' })); applyTemplate(); return; }
-    const { templates } = await api('r=templates&instance=' + encodeURIComponent(id));
-    state.templates = templates.filter((t) => t.status === 'APPROVED' && !t.info.carousel);
-    sel.append(el('option', { value: '', text: state.templates.length ? 'Escolha…' : 'Nenhum template aprovado (sincronize em Templates)' }));
-    for (const t of state.templates) sel.append(el('option', { value: t.id, text: `${t.name} · ${t.category} · ${t.language}` }));
-    state.tpl = null; applyTemplate(); renderSplit();
+  function renderNums() {
+    const leads = state.leads || 0, cap = capacity();
+    const need = $('wzNeed'); need.innerHTML = '';
+    const pct = leads ? Math.min(100, Math.round((Math.min(cap, leads) / leads) * 100)) : 0;
+    const ok = cap >= leads && leads > 0;
+    const maxLim = Math.max(1000, ...state.instances.filter((i) => i.active).map((i) => tierLimit(i.limit_tier) || 0));
+    need.append(
+      el('div', { class: 'wz-need-top' }, el('div', {}, el('strong', { text: num(leads) }), el('span', { text: ' leads na lista' })),
+        el('div', { class: 'wz-need-cap ' + (ok ? 'ok' : 'warn'), text: ok ? `Capacidade ${num(cap)} · suficiente` : `Capacidade ${num(cap)} · faltam ${num(Math.max(0, leads - cap))}` })),
+      el('div', { class: 'wz-meter' }, el('i', { style: `width:${pct}%` })),
+      el('p', { class: 'small muted', style: 'margin:6px 0 0', text: ok ? 'Pode seguir. Se quiser, ajuste quantos leads enviar abaixo.'
+        : `Com números de ${num(maxLim)}/dia, você precisa de ${Math.ceil(leads / maxLim)} número(s) no total. Escolha mais números ou envie só parte da lista.` }));
+    const box = $('opNums'); box.innerHTML = '';
+    const order = [...split.sel.keys()];
+    const selBms = new Map(); for (const k of order) { const i = instById(k); if (i && i.bm_ref) selBms.set(k, i.bm_ref); }
+    const cards = [...state.instances.filter((i) => i.active).map((i) => ({ key: String(i.id), i })),
+      ...((Array.isArray(state.available) ? state.available : []).filter((n) => n.health !== 'BLOCKED').map((n) => ({ key: 'asset:' + n.phone_number_id, n })))];
+    if (!cards.length) box.append(el('p', { class: 'muted', text: 'Nenhum número conectado. Cadastre a BM em Ativos Meta › BMs.' }));
+    for (const c of cards) {
+      const on = split.sel.has(c.key); const idx = order.indexOf(c.key);
+      const i = c.i || {}; const n = c.n || {};
+      const bm = i.bm || n.bm || i.name || ''; const phone = i.display_phone || n.display_phone || '';
+      const lim = tierLimit(i.limit_tier || n.limit_tier);
+      const card = el('div', { class: 'wz-num' + (on ? ' on' : ''), role: 'button', tabindex: '0', 'aria-pressed': String(on) });
+      card.onclick = (e) => { if (e.target.closest('input')) return; toggleNum(c.key); };
+      card.onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('input')) { e.preventDefault(); toggleNum(c.key); } };
+      card.append(el('span', { class: 'wz-num-tag', text: on ? LETTERS[idx] : '+' }));
+      const body = el('div', { class: 'wz-num-body' }, el('b', { text: bm }), el('span', { text: phone }));
+      const meta = el('div', { class: 'wz-num-meta' });
+      if (c.n) meta.append(badge('Não conectado · conecta ao escolher', 'off'));
+      else {
+        meta.append(badge(lim ? num(lim) + '/dia' : 'limite ?', 'info'));
+        if (i.quality) meta.append(badge({ GREEN: 'Qualidade alta', YELLOW: 'Qualidade média', RED: 'Qualidade baixa' }[i.quality] || i.quality, i.quality === 'GREEN' ? 'ok' : i.quality === 'RED' ? 'bad' : 'warn'));
+      }
+      if (on && i.bm_ref) { const twin = order.find((k) => k !== c.key && selBms.get(k) === i.bm_ref); if (twin) meta.append(badge('Mesma BM de ' + (instById(twin) || {}).display_phone + ': dividem o limite', 'warn')); }
+      body.append(meta);
+      card.append(body);
+      if (on) {
+        const inp = el('input', { type: 'number', min: '1', value: String(split.sel.get(c.key)), 'aria-label': 'Limite deste número', title: 'Limite de envios deste número' });
+        inp.oninput = () => { split.sel.set(c.key, Number(inp.value) || 0); if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || ''; renderLots(); renderNeedOnly(); };
+        card.append(el('label', { class: 'wz-num-lim' }, el('span', { text: 'Enviar até' }), inp));
+      }
+      box.append(card);
+    }
+    renderLots();
+  }
+  function renderNeedOnly() { const keep = document.activeElement; const id = keep && keep.closest('.wz-num') ? null : null; /* evita redesenhar os cartões enquanto digita */
+    const leads = state.leads || 0, cap = capacity(); const ok = cap >= leads && leads > 0;
+    const capEl = document.querySelector('#wzNeed .wz-need-cap'); if (capEl) { capEl.className = 'wz-need-cap ' + (ok ? 'ok' : 'warn'); capEl.textContent = ok ? `Capacidade ${num(cap)} · suficiente` : `Capacidade ${num(cap)} · faltam ${num(Math.max(0, leads - cap))}`; }
+    const m = document.querySelector('#wzNeed .wz-meter i'); if (m) m.style.width = (leads ? Math.min(100, Math.round((Math.min(cap, leads) / leads) * 100)) : 0) + '%';
+  }
+  function renderLots() {
+    const box = $('opLots'); box.innerHTML = '';
+    const L = lots(); if (!L.length) return;
+    const total = L.reduce((a, l) => a + l.n, 0);
+    box.append(el('div', { class: 'wz-lots-head' }, el('b', { text: `${num(total)} leads em ${L.length} ${L.length > 1 ? 'lotes' : 'lote'}` }),
+      el('span', { class: 'small muted', text: $('opDist').value === 'mix' ? 'Leads sorteados entre os lotes' : 'Leads na ordem da planilha' })));
+    for (const l of L) {
+      const i = instById(l.instance_id) || {};
+      const row = el('div', { class: 'wz-lot' }, el('span', { class: 'wz-num-tag', text: l.tag }),
+        el('div', { class: 'wz-lot-name' }, el('b', { text: i.bm || i.name || '' }), el('span', { text: i.display_phone || '' })),
+        el('div', { class: 'wz-lot-bar' }, el('i', { style: `width:${l.limit ? Math.round((l.n / l.limit) * 100) : 0}%` })),
+        el('strong', { class: 'wz-lot-n', text: num(l.n) }));
+      box.append(row);
+    }
+    const out = (state.leads || 0) - total;
+    if (out > 0) box.append(el('p', { class: 'small', style: 'margin:6px 0 0;color:var(--warn)', text: `${num(out)} lead(s) ficam de fora desta operação.` }));
+  }
+  $('opQty').addEventListener('input', () => { split.qtyTouched = true; renderLots(); });
+  $('opDist').onchange = renderLots;
+  $('wzAuto').onclick = () => {
+    // Sugestão: maiores limites primeiro, uma BM por vez (números da mesma BM dividem o limite).
+    split.sel.clear(); const used = new Set(); let cap = 0;
+    const cand = state.instances.filter((i) => i.active).sort((a, b) => (tierLimit(b.limit_tier) || 1000) - (tierLimit(a.limit_tier) || 1000));
+    for (const i of cand) {
+      if (cap >= (state.leads || 0)) break;
+      if (i.bm_ref && used.has(i.bm_ref)) continue;
+      const lim = tierLimit(i.limit_tier) || 1000; split.sel.set(String(i.id), lim); cap += lim; if (i.bm_ref) used.add(i.bm_ref);
+    }
+    split.qtyTouched = false; syncMain(); renderNums();
   };
-  $('opTpl').onchange = () => { state.tpl = state.templates.find((t) => String(t.id) === $('opTpl').value) || null; applyTemplate(); renderSplit(); };
+
+  // ---------- Etapa 3: só templates aprovados em todos os números escolhidos ----------
+  async function templatesOf(id) {
+    if (!split.tplLists.has(id)) { const { templates } = await api('r=templates&instance=' + encodeURIComponent(id)); split.tplLists.set(id, templates); }
+    return split.tplLists.get(id);
+  }
+  async function loadCommonTemplates() {
+    const ids = selParts().map((p) => String(p.instance_id)); const sel = $('opTpl'); const cur = state.tpl ? state.tpl.name + '|' + state.tpl.language : '';
+    sel.innerHTML = '<option value="">Carregando…</option>'; $('opTplCommon').textContent = '';
+    let lists; try { lists = await Promise.all(ids.map(templatesOf)); } catch (err) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; $('opMsg').textContent = err.message; return; }
+    const ok = (t) => t.status === 'APPROVED' && !t.info.carousel;
+    let common = lists[0].filter(ok);
+    for (const l of lists.slice(1)) common = common.filter((t) => l.some((x) => ok(x) && x.name === t.name && x.language === t.language));
+    state.templates = common; sel.innerHTML = '';
+    sel.append(el('option', { value: '', text: common.length ? 'Escolha…' : 'Nenhum template aprovado em comum' }));
+    for (const t of common) sel.append(el('option', { value: t.id, text: `${t.name} · ${t.category === 'MARKETING' ? 'Marketing' : t.category === 'UTILITY' ? 'Utilidade' : t.category} · ${t.language}` }));
+    $('opTplCommon').textContent = ids.length > 1
+      ? (common.length ? `Só aparecem os templates aprovados nos ${ids.length} números escolhidos.` : 'Nenhum template está aprovado em todos os números escolhidos. Suba o mesmo template em Ativos Meta › Criar template e sincronize em Instâncias.')
+      : (common.length ? '' : 'Este número não tem template aprovado. Sincronize em Instâncias ou crie em Ativos Meta › Criar template.');
+    const again = common.find((t) => t.name + '|' + t.language === cur);
+    if (again) { sel.value = String(again.id); if (!state.tpl || state.tpl.id !== again.id) { state.tpl = again; applyTemplate(); } }
+    else if (state.tpl) { state.tpl = null; applyTemplate(); }
+  }
+  $('opTpl').onchange = () => { state.tpl = state.templates.find((t) => String(t.id) === $('opTpl').value) || null; applyTemplate(); };
+
+  // ---------- Etapa 4: resumo ----------
+  function renderSummary() {
+    const box = $('wzSummary'); box.innerHTML = '';
+    const L = lots(); const total = L.reduce((a, l) => a + l.n, 0);
+    const listName = ((state.lists || []).find((l) => String(l.id) === $('opList').value) || {}).name || '';
+    const row = (k, v) => el('div', { class: 'wz-sum-row' }, el('span', { text: k }), el('b', { text: v }));
+    box.append(el('h3', { style: 'margin:0 0 10px', text: $('opName').value }),
+      row('Lista', `${listName} · ${num(state.leads)} leads`),
+      row('Vão receber agora', `${num(total)} leads`),
+      row('Template', state.tpl ? state.tpl.name : '—'),
+      row('Divisão', L.length > 1 ? `${L.length} lotes · ${$('opDist').value === 'mix' ? 'sorteio' : 'ordem da planilha'}` : 'um número só'));
+    const lotsBox = el('div', { class: 'wz-lots', style: 'margin-top:10px' });
+    for (const l of L) { const i = instById(l.instance_id) || {}; lotsBox.append(el('div', { class: 'wz-lot' }, el('span', { class: 'wz-num-tag', text: l.tag }), el('div', { class: 'wz-lot-name' }, el('b', { text: i.bm || i.name || '' }), el('span', { text: i.display_phone || '' })), el('strong', { class: 'wz-lot-n', text: num(l.n) }))); }
+    box.append(lotsBox);
+    renderPreview(); $('preview2').innerHTML = $('preview').innerHTML;
+    $('opProfile').querySelector('strong').textContent = 'Foto de perfil do número do lote A';
+  }
 
   function insertAt(input, token) {
     const s = input.selectionStart ?? input.value.length, e = input.selectionEnd ?? s;
@@ -1568,16 +1775,22 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     } catch (err) { setMsg('opMediaMsg', err.message); }
   };
 
+  function renderLeads() {
+    const b = $('wzLeads'); b.innerHTML = ''; b.hidden = !$('opList').value;
+    if (!$('opList').value) return;
+    if (state.leads == null) { b.append(el('span', { class: 'muted', text: 'Contando…' })); return; }
+    const maxLim = Math.max(1000, ...state.instances.filter((i) => i.active).map((i) => tierLimit(i.limit_tier) || 0));
+    const nNums = Math.max(1, Math.ceil((state.leads || 0) / maxLim));
+    b.append(el('div', { class: 'wz-leads-n' }, el('strong', { text: num(state.leads) }), el('span', { text: 'leads prontos para envio' })),
+      el('p', { class: 'small muted', style: 'margin:4px 0 0', text: `Sem os que pediram SAIR. Com números de ${num(maxLim)}/dia, isso pede ${nNums} número(s). Na próxima etapa o sistema sugere quais usar.` }));
+  }
   $('opList').onchange = async () => {
-    state.sample = null; state.available = 0; $('opListInfo').textContent = '';
-    const id = $('opList').value; if (!id) { renderPreview(); return; }
+    state.sample = null; state.leads = null; split.qtyTouched = false; renderLeads();
+    const id = $('opList').value; if (!id) { state.leads = 0; renderLeads(); renderPreview(); return; }
     const d = await api('r=lists&a=sample&id=' + encodeURIComponent(id));
-    state.sample = d.sample; state.available = d.available;
-    $('opQty').max = d.available;
-    const mainLimit = tierLimit((instById($('opInst').value) || {}).limit_tier) || 2000;
-    $('opQty').value = splitOn() ? Math.min(d.available, splitParts().reduce((s, p) => s + p.limit, 0) || d.available) : (Math.min(d.available, mainLimit) || '');
-    $('opListInfo').textContent = num(d.available) + ' disponível(is) (sem os que pediram SAIR).' + (!splitOn() && d.available > mainLimit ? ` A lista passa do limite deste número (${num(mainLimit)}/dia): use “Dividir a lista entre vários números”.` : '');
-    renderPreview(); renderSplit();
+    state.sample = d.sample; state.leads = d.available;
+    if (!$('opName').value.trim()) $('opName').value = ((state.lists || []).find((l) => String(l.id) === id) || {}).name || '';
+    renderLeads(); renderPreview();
   };
 
   function opPayload() {
@@ -1586,8 +1799,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       name: $('opName').value, instance_id: Number($('opInst').value), template_id: t ? t.id : null,
       header_value: t && t.info.needsMedia ? (state.mediaUrl || $('opMediaUrl').value) : $('opHeaderVar').value,
       body_vars: collectVars(), button_param: $('opBtnParam').value, name_fallback: $('opFallback').value,
-      list_id: Number($('opList').value), quantity: Number($('opQty').value), tps: Number($('opTps').value),
-      split: splitOn() && splitParts().length > 1 ? splitParts() : undefined
+      list_id: Number($('opList').value), quantity: planned(), tps: Number($('opTps').value),
+      split: selParts().length > 1 ? selParts() : undefined, distribution: $('opDist').value
     };
   }
   $('btnTest').onclick = async () => {
@@ -1611,12 +1824,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   };
   $('btnStart').onclick = () => {
     $('opMsg').textContent = '';
-    if (!state.tpl || !$('opList').value) { $('opMsg').textContent = 'Escolha template e lista.'; return; }
+    for (const n of [1, 2, 3]) { const e = stepError(n); if (e) { $('opMsg').textContent = e; go(n); return; } }
     $('btnStart').hidden = true; $('btnStartConfirm').hidden = false;
-    const parts = splitOn() ? splitParts() : [];
-    if (splitOn() && parts.length < 2) { $('opMsg').textContent = 'Marque pelo menos mais um número para dividir, ou desligue a divisão.'; $('btnStart').hidden = false; $('btnStartConfirm').hidden = true; return; }
-    const cap = parts.length > 1 ? parts.reduce((s2, p) => s2 + p.limit, 0) : Infinity;
-    $('btnStartConfirm').textContent = `Confirmar: enviar para ${num(Math.min(Number($('opQty').value) || state.available, state.available || Infinity, cap))} contato(s)` + (parts.length > 1 ? ` em ${parts.length} números (lotes A–${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[parts.length - 1]})` : '');
+    const parts = selParts();
+    $('btnStartConfirm').textContent = `Confirmar: enviar para ${num(planned())} lead(s)` + (parts.length > 1 ? ` em ${parts.length} números (lotes A–${LETTERS[parts.length - 1]})` : '');
   };
   $('btnStartConfirm').onclick = async () => {
     $('btnStartConfirm').disabled = true;
