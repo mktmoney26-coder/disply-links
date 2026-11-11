@@ -345,6 +345,61 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
   .login .card{width:100%;max-width:400px;padding:28px}
   .login img{height:38px;display:block;margin:0 auto 18px}
+  /* Criar template (estilo Gerenciador do WhatsApp) */
+  .tn-h{margin:0;font-size:16px;display:flex;align-items:center;gap:8px}
+  .tn-h span{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--neutral-bg);font-size:13px}
+  .tn-lbl{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
+  .tn-cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .tn-cat{font:inherit;text-align:left;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+  .tn-cat span{font-size:13px;color:var(--muted)}
+  .tn-cat[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .tn-sec{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px}
+  .tn-sec p{margin:0}
+  .tn-sec-h{display:flex;align-items:center;gap:8px}
+  .tn-opt{font-size:12px;color:var(--muted);background:var(--soft);border-radius:99px;padding:2px 8px}
+  .tn-seg{flex-wrap:wrap;max-width:100%}
+  .tn-under{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .tn-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .tn-drop{display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px dashed var(--line);border-radius:10px;padding:18px;cursor:pointer;text-align:center;margin:0}
+  .tn-drop:hover,.tn-drop.over{border-color:var(--accent);background:var(--soft)}
+  .tn-editor{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+  .tn-editor textarea{border:0;border-radius:0;resize:vertical;min-height:150px}
+  .tn-editor textarea:focus{outline:none}
+  .tn-editor:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+  .tn-tools{display:flex;align-items:center;gap:2px;padding:4px 6px;border-bottom:1px solid var(--line);background:var(--soft);flex-wrap:wrap}
+  .tn-tools button{font:inherit;border:0;background:transparent;color:var(--ink);min-width:34px;min-height:34px;border-radius:6px;cursor:pointer;font-size:14px}
+  .tn-tools button:hover{background:var(--neutral-bg)}
+  .tn-tools-sp{flex:1}
+  .tn-tools .tn-addvar{color:var(--accent);font-weight:700;padding:0 8px}
+  .tn-emojis{display:flex;flex-wrap:wrap;gap:2px;padding:6px;border-bottom:1px solid var(--line)}
+  .tn-emojis button{font-size:20px;border:0;background:transparent;cursor:pointer;width:36px;height:36px;border-radius:6px}
+  .tn-emojis button:hover{background:var(--soft)}
+  .tn-btngrp{display:flex;flex-direction:column;gap:8px}
+  .tn-btngrp>span{font-size:13px;font-weight:700;color:var(--muted)}
+  .tn-bcard{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--card)}
+  .tn-bcard-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .tn-bcard-h b{font-size:14px}
+  .tn-x{font:inherit;border:0;background:transparent;color:var(--muted);cursor:pointer;min-width:34px;min-height:34px;border-radius:6px;font-size:18px}
+  .tn-x:hover{background:var(--soft);color:var(--bad)}
+  .tn-inline{display:flex;align-items:stretch}
+  .tn-inline input{border-top-right-radius:0;border-bottom-right-radius:0}
+  .tn-inline span{display:flex;align-items:center;padding:0 10px;border:1px solid var(--line);border-left:0;border-radius:0 7px 7px 0;background:var(--soft);font-size:14px;color:var(--muted);white-space:nowrap}
+  .tn-addwrap{position:relative;display:inline-block}
+  .tn-menu{position:absolute;z-index:30;top:calc(100% + 4px);left:0;min-width:280px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:6px}
+  .tn-menu .grp{font-size:12px;font-weight:700;color:var(--muted);padding:8px 10px 4px;text-transform:uppercase;letter-spacing:.03em}
+  .tn-menu button{display:flex;flex-direction:column;align-items:flex-start;width:100%;font:inherit;border:0;background:transparent;color:var(--ink);text-align:left;padding:8px 10px;border-radius:7px;cursor:pointer}
+  .tn-menu button span{font-size:12px;color:var(--muted)}
+  .tn-menu button:hover:not(:disabled){background:var(--soft)}
+  .tn-menu button:disabled{opacity:.45;cursor:not-allowed}
+  .tn-side{position:sticky;top:16px}
+  .tn-bubble{border-top-left-radius:0}
+  .tn-bubble .text b{font-weight:700} .tn-bubble .text code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+  .tn-bubble .hdr{padding:8px 8px 0;font-weight:700;font-size:15px}
+  .tn-bubble .media video{width:100%;height:100%;object-fit:cover}
+  .tn-bubble .doc{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:8px;padding:12px;font-size:13px}
+  .tn-bubble .time{text-align:right;font-size:11px;color:var(--muted);padding:0 8px 2px}
+  #tnPreviewBtns{max-width:330px;display:flex;flex-direction:column;gap:3px;margin-top:3px}
+  #tnPreviewBtns div{background:var(--bubble);border-radius:8px;padding:9px;text-align:center;color:#1F8FD8;font-weight:600;font-size:14px;box-shadow:0 1px 1px rgba(0,0,0,.12)}
 </style>
 </head>
 <body>
@@ -764,37 +819,103 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
       <!-- ================= ATIVOS: TEMPLATES ================= -->
       <div class="view" id="view-tplnovo" hidden>
-        <p class="small muted" style="margin:0">Monte o template uma vez e envie para aprovação em todas as contas que marcar. Depois de aprovado, sincronize os templates em Disparos › Instâncias para usar nas operações.</p>
+        <p class="small muted" style="margin:0">Monte o template como no Gerenciador do WhatsApp e envie para aprovação em todas as contas que marcar. Depois de aprovado, sincronize os templates em Disparos › Instâncias para usar nas operações.</p>
         <div class="split">
           <div class="main stack">
             <div class="card stack">
-              <div class="grid">
-                <div><label for="tnName">Nome do template</label><input id="tnName" type="text" maxlength="512" placeholder="promo_black_friday"><p class="small muted" style="margin:4px 0 0">Só minúsculas, números e _. Ajusto sozinho.</p></div>
-                <div><label for="tnCat">Categoria</label><select id="tnCat"><option value="MARKETING">Marketing</option><option value="UTILITY">Utilidade</option></select></div>
-                <div><label for="tnLang">Idioma</label><select id="tnLang"><option value="pt_BR">Português (BR)</option><option value="en_US">Inglês (EUA)</option><option value="es">Espanhol</option></select></div>
-              </div>
-              <div class="grid">
-                <div><label for="tnHead">Cabeçalho</label><select id="tnHead"><option value="">Nenhum</option><option value="TEXT">Texto</option><option value="IMAGE">Imagem</option><option value="VIDEO">Vídeo</option><option value="DOCUMENT">Documento (PDF)</option></select></div>
-                <div id="tnHeadTextBox" hidden><label for="tnHeadText">Texto do cabeçalho</label><input id="tnHeadText" type="text" maxlength="60"></div>
-                <div id="tnHeadFileBox" hidden><label for="tnHeadFile">Arquivo de exemplo</label><input id="tnHeadFile" type="file" accept="image/jpeg,image/png,video/mp4,application/pdf"><p class="small muted" id="tnHeadFileHint" style="margin:4px 0 0"></p></div>
-              </div>
-              <div><label for="tnBody">Texto da mensagem</label><textarea id="tnBody" maxlength="1024" rows="6" placeholder="Oi {{1}}! Temos uma condição especial pra você…"></textarea>
-                <p class="small muted" style="margin:4px 0 0">Use {{1}}, {{2}}… para as variáveis. <button type="button" class="linkbtn small" id="tnAddVar">+ Inserir variável</button> <span id="tnBodyCount"></span></p></div>
-              <div id="tnVars" class="grid"></div>
-              <div><label for="tnFooter">Rodapé (opcional)</label><input id="tnFooter" type="text" maxlength="60" placeholder="Responda SAIR para não receber mais"></div>
+              <h3 class="tn-h"><span>1</span> Configurar template</h3>
               <div>
-                <strong>Botões</strong>
-                <div id="tnBtns" class="stack" style="margin-top:8px"></div>
-                <div class="row" style="margin-top:8px">
-                  <button type="button" class="btn ghost" id="tnAddUrl">+ Link</button>
-                  <button type="button" class="btn ghost" id="tnAddQuick">+ Resposta rápida</button>
-                  <button type="button" class="btn ghost" id="tnAddPhone">+ Ligar</button>
+                <span class="tn-lbl">Categoria</span>
+                <div class="tn-cats" id="tnCats" role="group" aria-label="Categoria">
+                  <button type="button" class="tn-cat" data-cat="MARKETING" aria-pressed="true"><b>📣 Marketing</b><span>Ofertas, promoções, novidades, convites e recuperação de clientes.</span></button>
+                  <button type="button" class="tn-cat" data-cat="UTILITY" aria-pressed="false"><b>🔔 Utilidade</b><span>Avisos sobre pedido, conta, agendamento ou cobrança já existentes.</span></button>
                 </div>
               </div>
+              <div class="grid">
+                <div><label for="tnName">Nome do template</label><input id="tnName" type="text" maxlength="512" placeholder="promo_black_friday">
+                  <p class="small muted" style="margin:4px 0 0">Só minúsculas, números e _ (ajusto sozinho). <span id="tnNameCount">0/512</span></p></div>
+                <div><label for="tnLang">Idioma</label><select id="tnLang"><option value="pt_BR">Português (BR)</option><option value="en_US">Inglês (EUA)</option><option value="es">Espanhol</option><option value="es_MX">Espanhol (MEX)</option><option value="pt_PT">Português (POR)</option></select></div>
+              </div>
             </div>
+
+            <div class="card stack">
+              <h3 class="tn-h"><span>2</span> Conteúdo</h3>
+              <div class="grid">
+                <div><label for="tnVarType">Tipo de variável</label>
+                  <select id="tnVarType"><option value="number">Número — {{1}}, {{2}}</option><option value="name">Nome — {{primeiro_nome}}</option></select>
+                  <p class="small muted" style="margin:4px 0 0">Com nome, fica mais fácil saber o que vai em cada variável na hora do disparo.</p></div>
+              </div>
+
+              <section class="tn-sec">
+                <div class="tn-sec-h"><b>Cabeçalho</b><span class="tn-opt">Opcional</span></div>
+                <p class="small muted">Um título curto ou uma mídia no topo da mensagem.</p>
+                <div class="seg tn-seg" id="tnHeadSeg" role="group" aria-label="Tipo de cabeçalho">
+                  <button type="button" data-h="" aria-pressed="true">Nenhum</button>
+                  <button type="button" data-h="TEXT" aria-pressed="false">Texto</button>
+                  <button type="button" data-h="IMAGE" aria-pressed="false">🖼 Imagem</button>
+                  <button type="button" data-h="VIDEO" aria-pressed="false">🎬 Vídeo</button>
+                  <button type="button" data-h="DOCUMENT" aria-pressed="false">📄 Documento</button>
+                </div>
+                <div id="tnHeadTextBox" hidden>
+                  <label for="tnHeadText">Texto do cabeçalho</label>
+                  <input id="tnHeadText" type="text" maxlength="60" placeholder="Oferta especial">
+                  <div class="tn-under"><button type="button" class="linkbtn small" id="tnHeadVar">+ Adicionar variável</button><span class="small muted" id="tnHeadCount">0/60</span></div>
+                </div>
+                <div id="tnHeadFileBox" hidden>
+                  <label class="tn-drop" for="tnHeadFile" id="tnDrop">
+                    <b id="tnDropTitle">Escolher arquivo de exemplo</b>
+                    <span class="small muted" id="tnHeadFileHint"></span>
+                  </label>
+                  <input id="tnHeadFile" type="file" class="tn-file">
+                  <p class="small muted" style="margin:6px 0 0">A Meta usa este arquivo só como exemplo para aprovar. No disparo você escolhe a mídia de cada campanha.</p>
+                </div>
+              </section>
+
+              <section class="tn-sec">
+                <div class="tn-sec-h"><b>Corpo</b></div>
+                <p class="small muted">O texto principal. Use variáveis para personalizar com o nome do cliente, cupom, data etc.</p>
+                <div class="tn-editor">
+                  <div class="tn-tools" role="toolbar" aria-label="Formatação">
+                    <button type="button" data-wrap="*" title="Negrito" aria-label="Negrito"><b>B</b></button>
+                    <button type="button" data-wrap="_" title="Itálico" aria-label="Itálico"><i>I</i></button>
+                    <button type="button" data-wrap="~" title="Tachado" aria-label="Tachado"><s>S</s></button>
+                    <button type="button" data-wrap="```" title="Monoespaçado" aria-label="Monoespaçado"><code>&lt;/&gt;</code></button>
+                    <button type="button" id="tnEmojiBtn" title="Emoji" aria-label="Emoji" aria-expanded="false">😊</button>
+                    <span class="tn-tools-sp"></span>
+                    <button type="button" id="tnAddVar" class="tn-addvar">+ Adicionar variável</button>
+                  </div>
+                  <div class="tn-emojis" id="tnEmojis" hidden></div>
+                  <textarea id="tnBody" maxlength="1024" rows="7" placeholder="Oi {{1}}! Temos uma condição especial pra você…"></textarea>
+                </div>
+                <div class="tn-under"><span class="small muted">*negrito* · _itálico_ · ~tachado~ · ```mono```</span><span class="small muted" id="tnBodyCount">0/1024</span></div>
+              </section>
+
+              <section class="tn-sec" id="tnSamplesSec" hidden>
+                <div class="tn-sec-h"><b>Amostras de variáveis</b></div>
+                <p class="small muted">A Meta exige um exemplo para cada variável na análise. Não use dados reais de clientes.</p>
+                <div id="tnVars" class="grid"></div>
+              </section>
+
+              <section class="tn-sec">
+                <div class="tn-sec-h"><b>Rodapé</b><span class="tn-opt">Opcional</span></div>
+                <input id="tnFooter" type="text" maxlength="60" placeholder="Responda SAIR para não receber mais" aria-label="Rodapé">
+                <div class="tn-under"><span></span><span class="small muted" id="tnFooterCount">0/60</span></div>
+              </section>
+
+              <section class="tn-sec">
+                <div class="tn-sec-h"><b>Botões</b><span class="tn-opt">Opcional</span></div>
+                <p class="small muted">Até 10 botões. Respostas rápidas ficam agrupadas antes dos botões de ação. Com mais de 3, o WhatsApp mostra "Ver todas as opções".</p>
+                <div id="tnBtns" class="stack"></div>
+                <div class="tn-addwrap">
+                  <button type="button" class="btn ghost" id="tnAddBtn" aria-expanded="false" aria-haspopup="true">+ Adicionar botão ▾</button>
+                  <div class="tn-menu" id="tnBtnMenu" hidden role="menu"></div>
+                </div>
+              </section>
+            </div>
+
             <div class="card">
               <div class="row" style="justify-content:space-between">
-                <h3 style="margin:0">Contas que vão receber</h3>
+                <h3 class="tn-h" style="margin:0"><span>3</span> Contas que vão receber</h3>
                 <div class="row"><input id="tnFilter" type="text" placeholder="Filtrar BM ou conta" style="min-width:200px"><button type="button" class="btn ghost" id="tnAll">Marcar todas</button></div>
               </div>
               <div class="wrap"><table>
@@ -807,9 +928,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
               <span id="tnMsg" class="small" role="status"></span>
             </div>
           </div>
-          <aside class="side">
-            <span class="small muted" style="display:block;font-weight:600;margin-bottom:6px">Prévia</span>
-            <div class="phone"><div class="bubble" id="tnPreview"></div></div>
+          <aside class="side tn-side">
+            <span class="small muted" style="display:block;font-weight:600;margin-bottom:6px">Prévia do template</span>
+            <div class="phone"><div class="bubble tn-bubble" id="tnPreview"></div><div id="tnPreviewBtns"></div></div>
+            <p class="small muted" id="tnCheck" style="margin:8px 0 0"></p>
           </aside>
         </div>
       </div>
@@ -1438,6 +1560,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     for (const v of info.bodyVars) if (!String((c.vars || {})[v] || '').trim()) return `Preencha a variável {{${v}}}.`;
     if (info.headerType === 'TEXT' && info.headerVars.length && !String(c.header || '').trim()) return 'Preencha a variável do cabeçalho.';
     if (info.dynamicButton && !String(c.btn || '').trim()) return 'Preencha o final do link do botão.';
+    if (info.copyCode && !/^[A-Za-z0-9]{1,15}$/.test(String((c.vars || {})._cupom || '').trim())) return 'Preencha o código da oferta (até 15 letras ou números, sem espaço).';
     return '';
   }
   const cfgFields = (c) => ({ template_id: c && c.tpl ? c.tpl.id : null, header_value: c && c.tpl && c.tpl.info.needsMedia ? c.mediaUrl : (c ? c.header : ''), body_vars: c ? c.vars : {}, button_param: c ? c.btn : '' });
@@ -1869,7 +1992,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('opMediaBox').hidden = !(info && info.needsMedia);
     $('opHeaderVarBox').hidden = !(info && info.headerType === 'TEXT' && info.headerVars.length);
     $('opBtnBox').hidden = !(info && info.dynamicButton);
-    $('opVarsBox').hidden = !(info && info.bodyVars.length);
+    $('opVarsBox').hidden = !(info && (info.bodyVars.length || info.copyCode));
     $('opVars').innerHTML = '';
     $('opTplInfo').textContent = info ? `Cabeçalho: ${headerLabel(info.headerType)} · ${info.bodyVars.length} variável(is) · botões: ${info.buttons.map((b) => b.text).join(', ') || 'nenhum'}` : '';
     if (info) {
@@ -1877,6 +2000,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         const inp = el('input', { type: 'text', id: 'var_' + v, 'data-var': v, placeholder: 'Ex.: {primeiro_nome}' });
         inp.oninput = renderPreview;
         $('opVars').append(el('div', {}, el('label', { for: 'var_' + v, text: 'Variável {{' + v + '}}' }), inp, chipRow(inp)));
+      }
+      if (info.copyCode) {
+        const inp = el('input', { type: 'text', id: 'var__cupom', 'data-var': '_cupom', maxlength: '15', placeholder: 'Ex.: BLACK20' });
+        inp.oninput = renderPreview;
+        $('opVars').append(el('div', {}, el('label', { for: 'var__cupom', text: 'Código da oferta (botão Copiar código)' }), inp,
+          el('p', { class: 'small muted', style: 'margin:4px 0 0', text: 'Até 15 letras ou números, sem espaço. O cliente copia com um toque.' })));
       }
       if (info.dynamicButton) $('opBtnHint').textContent = 'Link aprovado: ' + info.dynamicButton.url;
       if (info.headerType === 'TEXT' && info.headerVars.length) { $('opHeaderVarBox').querySelector('.chips')?.remove(); $('opHeaderVarBox').append(chipRow($('opHeaderVar'))); }
@@ -3152,10 +3281,24 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     for (const a of list) tb.append(el('tr', {}, td(fmt(a.created_at)), td(a.text)));
   }
 
-  // ---------- Criar template em várias BMs ----------
-  const tn = { targets: [], sel: new Set(), btns: [], result: new Map(), busy: false };
+  // ---------- Criar template em várias BMs (estilo Gerenciador do WhatsApp) ----------
+  const tn = { targets: [], sel: new Set(), btns: [], result: new Map(), busy: false, cat: 'MARKETING', head: '', mediaUrl: '' };
+  const tnExamples = {};
+  const TN_MEDIA = { IMAGE: 'image/jpeg,image/png', VIDEO: 'video/mp4', DOCUMENT: 'application/pdf' };
+  const TN_MEDIA_MB = { IMAGE: 5, VIDEO: 16, DOCUMENT: 16 };
+  const TN_BTN = {
+    QUICK_REPLY: { label: 'Personalizado', group: 'qr', max: 10, hint: 'Resposta rápida com o texto que você quiser.' },
+    OPT_OUT: { label: 'Desativar marketing', group: 'qr', max: 1, hint: 'Botão "Parar promoções": quem tocar sai da lista.', marketing: true },
+    URL: { label: 'Acessar o site', group: 'cta', max: 2, hint: 'Link fixo ou com final variável. Máximo 2.' },
+    PHONE_NUMBER: { label: 'Ligar', group: 'cta', max: 1, hint: 'Liga para um telefone. Máximo 1.' },
+    VOICE_CALL: { label: 'Ligar no WhatsApp', group: 'cta', max: 1, hint: 'Chamada de voz pelo WhatsApp. O número precisa ter chamadas ativadas.' },
+    COPY_CODE: { label: 'Copiar código da oferta', group: 'cta', max: 1, hint: 'Cupom que o cliente copia com um toque. Máximo 1.' }
+  };
   const tnSlug = (v) => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 512);
-  const tnVarsOf = (t) => [...new Set([...String(t || '').matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  const tnVarsOf = (t) => [...new Set([...String(t || '').matchAll(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g)].map((m) => m[1]))];
+  const tnNamed = () => $('tnVarType').value === 'name';
+  const tnIsMedia = () => ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tn.head);
+
   async function loadTargets() {
     const tb = $('tnTargets');
     try { tn.targets = await api('r=tpl-bulk'); } catch (err) { tb.innerHTML = ''; empty(tb, 5, err.message); return; }
@@ -3190,103 +3333,284 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('tnAll').textContent = all ? 'Marcar todas' : 'Desmarcar todas';
     renderTargets();
   };
-  $('tnName').onblur = () => { $('tnName').value = tnSlug($('tnName').value); };
-  $('tnHead').onchange = () => {
-    const h = $('tnHead').value;
-    $('tnHeadTextBox').hidden = h !== 'TEXT'; $('tnHeadFileBox').hidden = !['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h);
-    $('tnHeadFile').accept = { IMAGE: 'image/jpeg,image/png', VIDEO: 'video/mp4', DOCUMENT: 'application/pdf' }[h] || '';
-    $('tnHeadFileHint').textContent = { IMAGE: 'JPG ou PNG, até 5 MB.', VIDEO: 'MP4, até 16 MB.', DOCUMENT: 'PDF, até 16 MB.' }[h] || '';
+
+  // Configuração
+  document.querySelectorAll('#tnCats .tn-cat').forEach((b) => {
+    b.onclick = () => {
+      tn.cat = b.dataset.cat;
+      document.querySelectorAll('#tnCats .tn-cat').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      tnRenderBtns(); tnPreview();
+    };
+  });
+  $('tnName').oninput = () => { $('tnNameCount').textContent = `${$('tnName').value.length}/512`; };
+  $('tnName').onblur = () => { $('tnName').value = tnSlug($('tnName').value); $('tnNameCount').textContent = `${$('tnName').value.length}/512`; };
+
+  // Cabeçalho
+  document.querySelectorAll('#tnHeadSeg button').forEach((b) => {
+    b.onclick = () => {
+      tn.head = b.dataset.h;
+      document.querySelectorAll('#tnHeadSeg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      $('tnHeadTextBox').hidden = tn.head !== 'TEXT'; $('tnHeadFileBox').hidden = !tnIsMedia();
+      if (tnIsMedia()) {
+        const f = $('tnHeadFile').files[0];
+        if (f && !TN_MEDIA[tn.head].split(',').includes(f.type)) { $('tnHeadFile').value = ''; tnSetMedia(); }
+        $('tnHeadFile').accept = TN_MEDIA[tn.head];
+        $('tnHeadFileHint').textContent = { IMAGE: 'JPG ou PNG, até 5 MB', VIDEO: 'MP4, até 16 MB', DOCUMENT: 'PDF, até 16 MB' }[tn.head];
+        tnSetMedia();
+      }
+      tnRenderVars(); tnPreview();
+    };
+  });
+  function tnSetMedia() {
+    if (tn.mediaUrl) { URL.revokeObjectURL(tn.mediaUrl); tn.mediaUrl = ''; }
+    const f = $('tnHeadFile').files[0];
+    if (f) tn.mediaUrl = URL.createObjectURL(f);
+    $('tnDropTitle').textContent = f ? `${f.name} · ${(f.size / 1048576).toFixed(1)} MB (trocar)` : `Escolher ${{ IMAGE: 'imagem', VIDEO: 'vídeo', DOCUMENT: 'documento' }[tn.head] || 'arquivo'} de exemplo`;
     tnPreview();
+  }
+  $('tnHeadFile').onchange = tnSetMedia;
+  const drop = $('tnDrop');
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) { $('tnHeadFile').files = e.dataTransfer.files; tnSetMedia(); } };
+  $('tnHeadText').oninput = () => { $('tnHeadCount').textContent = `${$('tnHeadText').value.length}/60`; tnRenderVars(); tnPreview(); };
+
+  // Variáveis
+  function tnNextVar() {
+    if (!tnNamed()) return String(Math.max(0, ...tnVarsOf($('tnBody').value).filter((v) => /^\d+$/.test(v)).map(Number)) + 1);
+    const used = tnVarsOf($('tnHeadText').value + ' ' + $('tnBody').value);
+    let i = 1; while (used.includes('variavel_' + i)) i++;
+    return 'variavel_' + i;
+  }
+  function tnInsert(input, token, selectName) {
+    const s0 = input.selectionStart ?? input.value.length, e0 = input.selectionEnd ?? s0;
+    input.value = input.value.slice(0, s0) + token + input.value.slice(e0);
+    input.focus();
+    if (selectName && tnNamed()) input.setSelectionRange(s0 + 2, s0 + token.length - 2); else input.setSelectionRange(s0 + token.length, s0 + token.length);
+    input.dispatchEvent(new Event('input'));
+  }
+  $('tnAddVar').onclick = () => tnInsert($('tnBody'), `{{${tnNextVar()}}}`, true);
+  $('tnHeadVar').onclick = () => {
+    if (tnVarsOf($('tnHeadText').value).length) { setMsg('tnMsg', 'O cabeçalho aceita só 1 variável.'); return; }
+    tnInsert($('tnHeadText'), `{{${tnNamed() ? tnNextVar() : '1'}}}`, true);
   };
-  $('tnAddVar').onclick = () => {
-    const ta = $('tnBody'); const n = (tnVarsOf(ta.value).slice(-1)[0] || 0) + 1; const tok = `{{${n}}}`;
-    const s0 = ta.selectionStart ?? ta.value.length; ta.value = ta.value.slice(0, s0) + tok + ta.value.slice(ta.selectionEnd ?? s0);
-    ta.focus(); tnRenderVars(); tnPreview();
-  };
-  const tnExamples = {};
+  $('tnVarType').onchange = () => { tnRenderVars(); tnPreview(); };
   function tnRenderVars() {
     const box = $('tnVars'); box.innerHTML = '';
-    for (const v of tnVarsOf($('tnBody').value)) {
-      const inp = el('input', { type: 'text', maxlength: '200', id: 'tnVar' + v, placeholder: v === 1 ? 'Maria' : 'exemplo' });
-      inp.value = tnExamples[v] || ''; inp.oninput = () => { tnExamples[v] = inp.value; tnPreview(); };
-      box.append(el('div', {}, el('label', { for: 'tnVar' + v, text: `Exemplo para {{${v}}}` }), inp));
+    const items = [];
+    for (const v of tnVarsOf($('tnHeadText').value)) if (tn.head === 'TEXT') items.push({ key: 'h:' + v, label: `Cabeçalho {{${v}}}` });
+    for (const v of tnVarsOf($('tnBody').value)) items.push({ key: v, label: `Corpo {{${v}}}` });
+    for (const it of items) {
+      const id = 'tnVar_' + it.key.replace(/\W/g, '_');
+      const inp = el('input', { type: 'text', maxlength: '200', id, placeholder: /nome|^1$/.test(it.key) ? 'Maria' : 'Exemplo' });
+      inp.value = tnExamples[it.key] || ''; inp.oninput = () => { tnExamples[it.key] = inp.value; tnPreview(); };
+      box.append(el('div', {}, el('label', { for: id, text: it.label }), inp));
     }
+    $('tnSamplesSec').hidden = !items.length;
     $('tnBodyCount').textContent = `${$('tnBody').value.length}/1024`;
   }
   $('tnBody').oninput = () => { tnRenderVars(); tnPreview(); };
-  ['tnHeadText', 'tnFooter'].forEach((id) => { $(id).oninput = tnPreview; });
-  function tnAddBtn(type) {
-    if (tn.btns.length >= 10) return;
-    tn.btns.push({ type, text: '', url: '', ex: '', phone: '' }); tnRenderBtns(); tnPreview();
+  $('tnFooter').oninput = () => { $('tnFooterCount').textContent = `${$('tnFooter').value.length}/60`; tnPreview(); };
+
+  // Formatação e emojis
+  document.querySelectorAll('.tn-tools [data-wrap]').forEach((b) => {
+    b.onclick = () => {
+      const ta = $('tnBody'), w = b.dataset.wrap; const s0 = ta.selectionStart, e0 = ta.selectionEnd;
+      const sel = ta.value.slice(s0, e0) || 'texto';
+      ta.value = ta.value.slice(0, s0) + w + sel + w + ta.value.slice(e0);
+      ta.focus(); ta.setSelectionRange(s0 + w.length, s0 + w.length + sel.length);
+      ta.dispatchEvent(new Event('input'));
+    };
+  });
+  const TN_EMOJIS = '😀 😃 😍 🥳 😉 🤩 👋 👉 👇 ✅ ✔️ ❌ ⚠️ 🔥 💥 ⭐ 🎉 🎁 💰 💸 🏷️ 🛒 📦 🚚 ⏰ 📅 📍 📞 💬 ❤️ 💙 💚 🙏 👏 💪 🍺 🍻 🎯 🚀 ⚡'.split(' ');
+  TN_EMOJIS.forEach((em) => $('tnEmojis').append(el('button', { type: 'button', text: em, 'aria-label': em, onclick: () => tnInsert($('tnBody'), em) })));
+  $('tnEmojiBtn').onclick = () => { const h = !$('tnEmojis').hidden; $('tnEmojis').hidden = h; $('tnEmojiBtn').setAttribute('aria-expanded', String(!h)); };
+
+  // Botões
+  const tnCountType = (type) => tn.btns.filter((b) => b.type === type).length;
+  function tnMenu() {
+    const m = $('tnBtnMenu'); m.innerHTML = '';
+    const full = tn.btns.length >= 10;
+    for (const [grp, title] of [['qr', 'Respostas rápidas'], ['cta', 'Chamada para ação']]) {
+      m.append(el('div', { class: 'grp', text: title }));
+      for (const [type, d] of Object.entries(TN_BTN)) {
+        if (d.group !== grp) continue;
+        const off = full || tnCountType(type) >= d.max || (d.marketing && tn.cat !== 'MARKETING');
+        const b = el('button', { type: 'button', role: 'menuitem' }, el('b', { text: d.label }), el('span', { text: d.marketing && tn.cat !== 'MARKETING' ? 'Só para templates de Marketing.' : d.hint }));
+        b.disabled = off;
+        b.onclick = () => { tnAddBtn(type); tnCloseMenu(); };
+        m.append(b);
+      }
+    }
   }
-  $('tnAddUrl').onclick = () => tnAddBtn('URL'); $('tnAddQuick').onclick = () => tnAddBtn('QUICK_REPLY'); $('tnAddPhone').onclick = () => tnAddBtn('PHONE_NUMBER');
+  function tnCloseMenu() { $('tnBtnMenu').hidden = true; $('tnAddBtn').setAttribute('aria-expanded', 'false'); }
+  $('tnAddBtn').onclick = (e) => { e.stopPropagation(); const open = $('tnBtnMenu').hidden; if (open) tnMenu(); $('tnBtnMenu').hidden = !open; $('tnAddBtn').setAttribute('aria-expanded', String(open)); };
+  document.addEventListener('click', (e) => { if (!e.target.closest('.tn-addwrap')) tnCloseMenu(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('tnBtnMenu').hidden) { tnCloseMenu(); $('tnAddBtn').focus(); } });
+  function tnAddBtn(type) {
+    const b = { type, text: '', url: '', dyn: false, ex: '', phone: '+55', code: '' };
+    if (type === 'OPT_OUT') { b.text = 'Parar promoções'; if (!$('tnFooter').value.trim()) { $('tnFooter').value = 'Não tem interesse? Toque em Parar promoções'; $('tnFooter').dispatchEvent(new Event('input')); } }
+    if (type === 'COPY_CODE') b.text = 'Copiar código da oferta';
+    if (type === 'VOICE_CALL') b.text = 'Ligar no WhatsApp';
+    tn.btns.push(b);
+    tn.btns.sort((a, c) => (TN_BTN[a.type].group === 'qr' ? 0 : 1) - (TN_BTN[c.type].group === 'qr' ? 0 : 1));
+    tnRenderBtns(); tnPreview();
+  }
   function tnRenderBtns() {
     const box = $('tnBtns'); box.innerHTML = '';
-    tn.btns.forEach((b, i) => {
-      const row = el('div', { class: 'grid', style: 'align-items:end;border:1px solid var(--line);border-radius:10px;padding:10px' });
-      const field = (label, key, ph, max) => { const id = `tnB${i}${key}`; const inp = el('input', { id, type: 'text', maxlength: String(max || 200), placeholder: ph || '' }); inp.value = b[key]; inp.oninput = () => { b[key] = inp.value; tnPreview(); }; return el('div', {}, el('label', { for: id, text: label }), inp); };
-      row.append(field({ URL: 'Texto do botão (link)', QUICK_REPLY: 'Texto do botão (resposta rápida)', PHONE_NUMBER: 'Texto do botão (ligar)' }[b.type], 'text', '', 25));
-      if (b.type === 'URL') {
-        row.append(field('Link (para link variável, termine com {{1}})', 'url', 'https://seusite.com/{{1}}', 2000));
-        row.append(field('Exemplo do final do link (se terminar com {{1}})', 'ex', 'promo', 200));
+    for (const [grp, title] of [['qr', 'Respostas rápidas'], ['cta', 'Chamada para ação']]) {
+      const list = tn.btns.filter((b) => TN_BTN[b.type].group === grp);
+      if (!list.length) continue;
+      const g = el('div', { class: 'tn-btngrp' }, el('span', { text: title }));
+      for (const b of list) {
+        const i = tn.btns.indexOf(b);
+        const field = (label, key, ph, max, extra) => {
+          const id = `tnB${i}${key}`; const inp = el('input', { id, type: 'text', maxlength: String(max), placeholder: ph || '' });
+          inp.value = b[key];
+          const cnt = el('span', { class: 'small muted', text: `${b[key].length}/${max}` });
+          inp.oninput = () => { b[key] = inp.value; cnt.textContent = `${inp.value.length}/${max}`; tnPreview(); };
+          const wrap = extra ? el('div', { class: 'tn-inline' }, inp, el('span', { text: extra })) : inp;
+          return el('div', {}, el('label', { for: id, text: label }), wrap, el('div', { class: 'tn-under' }, el('span'), cnt));
+        };
+        const card = el('div', { class: 'tn-bcard' });
+        card.append(el('div', { class: 'tn-bcard-h' }, el('b', { text: TN_BTN[b.type].label }),
+          el('button', { type: 'button', class: 'tn-x', 'aria-label': 'Remover botão ' + TN_BTN[b.type].label, text: '×', onclick: () => { tn.btns.splice(i, 1); tnRenderBtns(); tnPreview(); } })));
+        const grid = el('div', { class: 'grid' });
+        if (b.type === 'COPY_CODE') {
+          grid.append(field('Código da oferta (exemplo)', 'code', 'BLACK20', 15));
+          card.append(grid, el('p', { class: 'small muted', style: 'margin:0', text: 'No disparo você informa o código real da campanha.' }));
+        } else {
+          grid.append(field('Texto do botão', 'text', { QUICK_REPLY: 'Quero saber mais', OPT_OUT: 'Parar promoções', URL: 'Ver oferta', PHONE_NUMBER: 'Ligar agora', VOICE_CALL: 'Ligar no WhatsApp' }[b.type], 25));
+          if (b.type === 'PHONE_NUMBER') grid.append(field('Telefone (com DDI)', 'phone', '+5531999999999', 20));
+          card.append(grid);
+          if (b.type === 'URL') {
+            const seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Tipo de URL' });
+            for (const [v, t] of [[false, 'Estático'], [true, 'Dinâmico']]) {
+              seg.append(el('button', { type: 'button', 'aria-pressed': String(b.dyn === v), text: t, onclick: () => { b.dyn = v; tnRenderBtns(); tnPreview(); } }));
+            }
+            const g2 = el('div', { class: 'grid' });
+            g2.append(field(b.dyn ? 'Início do link' : 'Link', 'url', 'https://seusite.com/' + (b.dyn ? 'oferta/' : ''), 2000, b.dyn ? '{{1}}' : ''));
+            if (b.dyn) g2.append(field('Exemplo do final do link', 'ex', 'maria123', 200));
+            card.append(el('div', {}, el('span', { class: 'tn-lbl', text: 'Tipo de URL' }), seg,
+              el('p', { class: 'small muted', style: 'margin:6px 0 0', text: b.dyn ? 'O final do link muda em cada disparo (ex.: código de rastreio ou cupom). Você define o final na hora de criar a operação.' : 'O mesmo link para todos.' })), g2);
+          }
+          if (b.type === 'OPT_OUT') card.append(el('p', { class: 'small muted', style: 'margin:0', text: 'Quem tocar entra na lista de SAIR do Disply e não recebe mais disparos. O rodapé explica o botão ao cliente.' }));
+          if (b.type === 'VOICE_CALL') card.append(el('p', { class: 'small muted', style: 'margin:0', text: 'A Meta só aprova se o número tiver chamadas do WhatsApp ativadas.' }));
+        }
+        g.append(card);
       }
-      if (b.type === 'PHONE_NUMBER') row.append(field('Telefone com DDI', 'phone', '+5531999999999', 20));
-      row.append(el('button', { type: 'button', class: 'btn ghost', text: 'Remover', onclick: () => { tn.btns.splice(i, 1); tnRenderBtns(); tnPreview(); } }));
-      box.append(row);
-    });
+      box.append(g);
+    }
+    $('tnAddBtn').disabled = tn.btns.length >= 10;
   }
+
+  // Prévia
+  const tnEsc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function tnFormat(text) {
+    return tnEsc(text)
+      .replace(/```([\s\S]+?)```/g, '<code>$1</code>')
+      .replace(/(^|[\s(])\*(\S(?:[^*\n]*\S)?)\*(?=$|[\s.,!?)])/g, '$1<b>$2</b>')
+      .replace(/(^|[\s(])_(\S(?:[^_\n]*\S)?)_(?=$|[\s.,!?)])/g, '$1<i>$2</i>')
+      .replace(/(^|[\s(])~(\S(?:[^~\n]*\S)?)~(?=$|[\s.,!?)])/g, '$1<s>$2</s>');
+  }
+  function tnFill(text, prefix) { return String(text || '').replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (_, v) => tnExamples[(prefix || '') + v] || `{{${v}}}`); }
   function tnPreview() {
     const b = $('tnPreview'); b.innerHTML = '';
-    const h = $('tnHead').value;
-    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h)) {
-      const m = el('div', { class: 'media' }); const f = $('tnHeadFile').files[0];
-      if (f && h === 'IMAGE') m.append(el('img', { src: URL.createObjectURL(f), alt: '' })); else m.textContent = { IMAGE: 'Imagem', VIDEO: 'Vídeo', DOCUMENT: 'Documento' }[h] + (f ? ' · ' + f.name : '');
-      b.append(m);
+    if (tnIsMedia()) {
+      const f = $('tnHeadFile').files[0];
+      if (tn.head === 'DOCUMENT') b.append(el('div', { class: 'doc' }, el('span', { text: '📄' }), el('span', { text: f ? f.name : 'documento.pdf' })));
+      else {
+        const m = el('div', { class: 'media' });
+        if (f && tn.mediaUrl && tn.head === 'IMAGE') m.append(el('img', { src: tn.mediaUrl, alt: 'Imagem do cabeçalho' }));
+        else if (f && tn.mediaUrl && tn.head === 'VIDEO') { const v = el('video', { src: tn.mediaUrl, controls: '', 'aria-label': 'Vídeo do cabeçalho' }); v.muted = true; m.append(v); }
+        else m.textContent = tn.head === 'IMAGE' ? '🖼 Imagem' : '🎬 Vídeo';
+        b.append(m);
+      }
     }
-    const fill = (t) => String(t || '').replace(/\{\{\s*(\d+)\s*\}\}/g, (_, v) => tnExamples[v] || `{{${v}}}`);
-    if (h === 'TEXT' && $('tnHeadText').value) b.append(el('div', { class: 'text', style: 'font-weight:700;padding-bottom:0', text: $('tnHeadText').value }));
-    b.append(el('div', { class: 'text', text: fill($('tnBody').value) || 'O texto da mensagem aparece aqui.' }));
-    if ($('tnFooter').value) b.append(el('div', { class: 'foot', text: $('tnFooter').value }));
-    if (tn.btns.length) { const bx = el('div', { class: 'btns' }); tn.btns.forEach((x) => bx.append(el('div', { text: x.text || 'Botão' }))); b.append(bx); }
+    if (tn.head === 'TEXT' && $('tnHeadText').value.trim()) b.append(el('div', { class: 'hdr', text: tnFill($('tnHeadText').value, 'h:') }));
+    const body = $('tnBody').value;
+    const t = el('div', { class: 'text' });
+    if (body.trim()) t.innerHTML = tnFormat(tnFill(body)); else { t.textContent = 'O texto da mensagem aparece aqui.'; t.classList.add('muted'); }
+    b.append(t);
+    if ($('tnFooter').value.trim()) b.append(el('div', { class: 'foot', text: $('tnFooter').value }));
+    b.append(el('div', { class: 'time', text: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }));
+    const bx = $('tnPreviewBtns'); bx.innerHTML = '';
+    const icon = { QUICK_REPLY: '↩', OPT_OUT: '↩', URL: '↗', PHONE_NUMBER: '📞', VOICE_CALL: '📞', COPY_CODE: '⧉' };
+    const show = tn.btns.length > 3 ? tn.btns.slice(0, 2) : tn.btns;
+    show.forEach((x) => bx.append(el('div', { text: `${icon[x.type]} ${x.text || TN_BTN[x.type].label}` })));
+    if (tn.btns.length > 3) bx.append(el('div', { text: '☰ Ver todas as opções' }));
+    const problem = tnValidate(true);
+    $('tnCheck').textContent = problem ? '⚠ ' + problem : '✓ Pronto para enviar à Meta.';
+    $('tnCheck').className = 'small ' + (problem ? 'muted' : 'okmsg');
   }
-  $('tnHeadFile').onchange = tnPreview;
 
+  // Montagem para a API da Meta
   function tnComponents(handle) {
-    const comps = []; const h = $('tnHead').value;
-    if (h === 'TEXT') {
+    const named = tnNamed(); const comps = [];
+    if (tn.head === 'TEXT') {
       const t = $('tnHeadText').value.trim(); const hv = tnVarsOf(t);
-      comps.push(hv.length ? { type: 'HEADER', format: 'TEXT', text: t, example: { header_text: [tnExamples['h'] || 'exemplo'] } } : { type: 'HEADER', format: 'TEXT', text: t });
-    } else if (h) comps.push({ type: 'HEADER', format: h, example: { header_handle: [handle] } });
+      const c = { type: 'HEADER', format: 'TEXT', text: t };
+      if (hv.length) c.example = named ? { header_text_named_params: [{ param_name: hv[0], example: tnExamples['h:' + hv[0]] }] } : { header_text: [tnExamples['h:' + hv[0]]] };
+      comps.push(c);
+    } else if (tnIsMedia()) comps.push({ type: 'HEADER', format: tn.head, example: { header_handle: [handle] } });
     const body = $('tnBody').value.trim(); const vars = tnVarsOf(body);
-    comps.push(vars.length ? { type: 'BODY', text: body, example: { body_text: [vars.map((v) => tnExamples[v])] } } : { type: 'BODY', text: body });
+    const bc = { type: 'BODY', text: body };
+    if (vars.length) bc.example = named ? { body_text_named_params: vars.map((v) => ({ param_name: v, example: tnExamples[v] })) } : { body_text: [vars.map((v) => tnExamples[v])] };
+    comps.push(bc);
     if ($('tnFooter').value.trim()) comps.push({ type: 'FOOTER', text: $('tnFooter').value.trim() });
     if (tn.btns.length) comps.push({ type: 'BUTTONS', buttons: tn.btns.map((b) => {
-      if (b.type === 'URL') return /\{\{1\}\}\s*$/.test(b.url) ? { type: 'URL', text: b.text.trim(), url: b.url.trim(), example: [b.url.trim().replace(/\{\{1\}\}\s*$/, b.ex.trim() || 'exemplo')] } : { type: 'URL', text: b.text.trim(), url: b.url.trim() };
+      if (b.type === 'URL') {
+        const base = b.url.trim().replace(/\{\{\s*1\s*\}\}\s*$/, '');
+        return b.dyn ? { type: 'URL', text: b.text.trim(), url: base + '{{1}}', example: [base + b.ex.trim()] } : { type: 'URL', text: b.text.trim(), url: base };
+      }
       if (b.type === 'PHONE_NUMBER') return { type: 'PHONE_NUMBER', text: b.text.trim(), phone_number: '+' + b.phone.replace(/\D/g, '') };
+      if (b.type === 'COPY_CODE') return { type: 'COPY_CODE', example: b.code.trim() };
+      if (b.type === 'VOICE_CALL') return { type: 'VOICE_CALL', text: b.text.trim() };
       return { type: 'QUICK_REPLY', text: b.text.trim() };
     }) });
     return comps;
   }
-  function tnValidate() {
-    $('tnName').value = tnSlug($('tnName').value);
-    if (!$('tnName').value) return 'Dê um nome ao template.';
-    const body = $('tnBody').value.trim(); if (!body) return 'Escreva o texto da mensagem.';
+  function tnValidate(quiet) {
+    if (!quiet) $('tnName').value = tnSlug($('tnName').value);
+    if (!tnSlug($('tnName').value)) return 'Dê um nome ao template.';
+    const named = tnNamed();
+    const body = $('tnBody').value.trim(); if (!body) return 'Escreva o texto do corpo.';
+    const okName = (v) => (named ? /^[a-z][a-z0-9_]*$/.test(v) : /^\d+$/.test(v));
+    const hv = tn.head === 'TEXT' ? tnVarsOf($('tnHeadText').value) : [];
     const vars = tnVarsOf(body);
-    if (vars.some((v, i) => v !== i + 1)) return 'As variáveis precisam ser em sequência: {{1}}, {{2}}, {{3}}…';
-    if (vars.some((v) => !String(tnExamples[v] || '').trim())) return 'Preencha um exemplo para cada variável (a Meta exige).';
-    if (/^\s*\{\{\s*\d+\s*\}\}|\{\{\s*\d+\s*\}\}[\s.!?]*$/.test(body)) return 'A Meta não aceita variável no começo ou no fim do texto. Coloque uma palavra antes/depois.';
-    const h = $('tnHead').value;
-    if (h === 'TEXT' && !$('tnHeadText').value.trim()) return 'Escreva o texto do cabeçalho.';
-    if (h === 'TEXT' && tnVarsOf($('tnHeadText').value).length) return 'Variável no cabeçalho ainda não é suportada aqui. Tire a variável do cabeçalho.';
-    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h)) {
-      const f = $('tnHeadFile').files[0]; if (!f) return 'Escolha o arquivo de exemplo do cabeçalho.';
-      if (f.size > (h === 'IMAGE' ? 5 : 16) * 1024 * 1024) return 'Arquivo grande demais para o cabeçalho.';
+    for (const v of [...hv, ...vars]) if (!okName(v)) return named ? `Variável {{${v}}}: use só minúsculas, números e _, começando com letra (ex.: {{primeiro_nome}}).` : `Variável {{${v}}}: no tipo Número use {{1}}, {{2}}… Para nomes, mude o Tipo de variável.`;
+    if (!named && vars.some((v, i) => Number(v) !== i + 1)) return 'As variáveis do corpo precisam estar em ordem: {{1}}, {{2}}, {{3}}…';
+    if (/^\s*\{\{[^}]+\}\}|\{\{[^}]+\}\}[\s.!?]*$/.test(body)) return 'A Meta não aceita variável no começo ou no fim do corpo. Coloque uma palavra antes/depois.';
+    if (/\{\{[^}]+\}\}\s*\{\{[^}]+\}\}/.test(body)) return 'Não deixe duas variáveis juntas; coloque texto entre elas.';
+    if (vars.length && body.replace(/\{\{[^}]+\}\}/g, '').trim().split(/\s+/).length < vars.length * 3) return 'Texto curto demais para tantas variáveis. A Meta reprova; escreva mais ou use menos variáveis.';
+    for (const v of vars) if (!String(tnExamples[v] || '').trim()) return `Preencha a amostra da variável {{${v}}}.`;
+    if (tn.head === 'TEXT') {
+      if (!$('tnHeadText').value.trim()) return 'Escreva o texto do cabeçalho ou escolha Nenhum.';
+      if (hv.length > 1) return 'O cabeçalho aceita só 1 variável.';
+      if (hv.length && !String(tnExamples['h:' + hv[0]] || '').trim()) return 'Preencha a amostra da variável do cabeçalho.';
+      if (named && hv.length && vars.includes(hv[0])) return 'Use nomes diferentes para a variável do cabeçalho e do corpo.';
     }
+    if (tnIsMedia()) {
+      const f = $('tnHeadFile').files[0]; if (!f) return `Escolha o arquivo de exemplo do cabeçalho (${{ IMAGE: 'imagem', VIDEO: 'vídeo', DOCUMENT: 'PDF' }[tn.head]}).`;
+      if (!TN_MEDIA[tn.head].split(',').includes(f.type)) return 'Formato de arquivo não aceito para este cabeçalho.';
+      if (f.size > TN_MEDIA_MB[tn.head] * 1048576) return `Arquivo grande demais (máximo ${TN_MEDIA_MB[tn.head]} MB).`;
+    }
+    if (tnVarsOf($('tnFooter').value).length) return 'O rodapé não aceita variáveis.';
+    const texts = [];
     for (const b of tn.btns) {
-      if (!b.text.trim()) return 'Escreva o texto de todos os botões.';
-      if (b.type === 'URL' && !/^https?:\/\/\S+$/.test(b.url.trim())) return 'O link do botão precisa começar com https://';
-      if (b.type === 'URL' && /\{\{1\}\}\s*$/.test(b.url) && !b.ex.trim()) return 'Preencha o exemplo do final do link.';
-      if (b.type === 'PHONE_NUMBER' && b.phone.replace(/\D/g, '').length < 10) return 'Telefone do botão inválido.';
+      const name = TN_BTN[b.type].label;
+      if (TN_BTN[b.type].marketing && tn.cat !== 'MARKETING') return `O botão "${name}" só vale para templates de Marketing.`;
+      if (b.type === 'COPY_CODE') { if (!/^[A-Za-z0-9]{1,15}$/.test(b.code.trim())) return 'Código da oferta: até 15 letras ou números, sem espaço.'; continue; }
+      if (!b.text.trim()) return `Escreva o texto do botão "${name}".`;
+      if (/\{\{/.test(b.text)) return 'Texto de botão não aceita variável.';
+      const k = b.text.trim().toLowerCase(); if (texts.includes(k)) return `Dois botões com o mesmo texto ("${b.text.trim()}"). A Meta não aceita.`; texts.push(k);
+      if (b.type === 'URL') {
+        const base = b.url.trim().replace(/\{\{\s*1\s*\}\}\s*$/, '');
+        if (!/^https?:\/\/[^\s{}]+\.[^\s{}]+/.test(base)) return 'O link do botão precisa começar com https:// e ser um endereço válido.';
+        if (b.dyn && !b.ex.trim()) return 'Preencha o exemplo do final do link dinâmico.';
+        if (b.dyn && /\s/.test(b.ex.trim())) return 'O exemplo do final do link não pode ter espaço.';
+      }
+      if (b.type === 'PHONE_NUMBER' && b.phone.replace(/\D/g, '').length < 10) return 'Telefone do botão inválido. Use DDI + DDD + número.';
     }
     return '';
   }
@@ -3298,8 +3622,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     tn.busy = true; tnCount(); targets.forEach((t) => tn.result.set(t.waba_id, { state: 'wait', text: 'Na fila…' })); renderTargets();
     const handles = {};
     try {
-      const h = $('tnHead').value; const f = $('tnHeadFile').files[0];
-      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h) && f) {
+      const f = $('tnHeadFile').files[0];
+      if (tnIsMedia() && f) {
         const uploadId = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
         const CH = 2.5 * 1024 * 1024; const parts = Math.ceil(f.size / CH);
         for (let i = 0; i < parts; i++) {
@@ -3315,16 +3639,20 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         }
         post('r=tpl-bulk&a=cleanup', { upload_id: uploadId }).catch(() => {});
       }
-      const needsHandle = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h);
       const queue = targets.filter((t) => tn.result.get(t.waba_id).state === 'wait');
       let done = 0, ok = 0;
+      const tpl = (handle) => {
+        const o = { name: $('tnName').value, category: tn.cat, language: $('tnLang').value, components: tnComponents(handle) };
+        if (tnNamed() && (tnVarsOf($('tnBody').value).length || tnVarsOf($('tnHeadText').value).length)) o.parameter_format = 'NAMED';
+        return o;
+      };
       const worker = async () => {
         for (let t = queue.shift(); t; t = queue.shift()) {
           tn.result.set(t.waba_id, { state: 'wait', text: 'Enviando…' }); renderTargets();
-          if (needsHandle && !handles[t.app_id]) tn.result.set(t.waba_id, { state: 'err', text: 'Sem mídia para o app desta BM (token sem app identificado).' });
+          if (tnIsMedia() && !handles[t.app_id]) tn.result.set(t.waba_id, { state: 'err', text: 'Sem mídia para o app desta BM (token sem app identificado).' });
           else {
             try {
-              const r = await post('r=tpl-bulk&a=create', { waba_id: t.waba_id, template: { name: $('tnName').value, category: $('tnCat').value, language: $('tnLang').value, components: tnComponents(handles[t.app_id]) } });
+              const r = await post('r=tpl-bulk&a=create', { waba_id: t.waba_id, template: tpl(handles[t.app_id]) });
               if (r.ok) { ok++; tn.result.set(t.waba_id, { state: 'ok', status: r.status }); } else tn.result.set(t.waba_id, { state: 'err', text: r.erro });
             } catch (err) { tn.result.set(t.waba_id, { state: 'err', text: err.message }); }
           }
@@ -3337,7 +3665,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     } catch (err) { setMsg('tnMsg', err.message); }
     finally { tn.busy = false; renderTargets(); }
   };
-  tnRenderVars(); tnPreview();
+  tnRenderVars(); tnRenderBtns(); tnPreview();
 
   // ---------- Copiar (vale para todo o sistema) ----------
   document.addEventListener('click', async (e) => {

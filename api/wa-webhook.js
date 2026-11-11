@@ -6,7 +6,7 @@ const { decrypt, verifyToken } = require('../lib/secrets');
 const { normalizePhone } = require('../lib/meta');
 
 const RANK = { sending: 0, sent: 1, delivered: 2, read: 3 };
-const OPT_OUT = /^\s*(sair|parar|pare|stop|cancelar|descadastrar|n[aã]o quero mais)\s*[.!]*\s*$/i;
+const OPT_OUT = /^\s*(sair|parar|pare|stop|cancelar|descadastrar|n[aã]o quero mais|parar promo[cç][oõ]es|stop promotions)\s*[.!]*\s*$/i;
 
 function readRaw(req) {
   // Lê o corpo cru (necessário para conferir a assinatura). Não tocamos em req.body,

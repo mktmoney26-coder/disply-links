@@ -291,6 +291,7 @@ async function templatesBulk(sql, req, body, a) {
     if (!/^[a-z0-9_]{1,512}$/.test(name)) throw new HttpError(400, 'Nome do template: só letras minúsculas, números e _.');
     if (!['MARKETING', 'UTILITY'].includes(t.category)) throw new HttpError(400, 'Categoria inválida.');
     const payload = { name, language: clean(t.language, 10) || 'pt_BR', category: t.category, components: Array.isArray(t.components) ? t.components : [] };
+    if (t.parameter_format === 'NAMED') payload.parameter_format = 'NAMED';
     try {
       const r = await graph(`/${waba}/message_templates`, decrypt(row.token_enc), { method: 'POST', body: JSON.stringify(payload) });
       await logActivity(sql, `Template ${name} enviado para aprovação em ${row.name} (${waba}): ${r.status || 'PENDING'}`);

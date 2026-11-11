@@ -305,6 +305,7 @@ async function validateOp(sql, op) {
   for (const v of info.bodyVars) if (!op.body_vars_obj[v]) bad(`Preencha a variável {{${v}}}.`);
   if (info.headerType === 'TEXT' && info.headerVars.length && !op.header_value) bad('Preencha a variável do cabeçalho.');
   if (info.dynamicButton && !op.button_param) bad('Preencha o final do link do botão.');
+  if (info.copyCode && !/^[A-Za-z0-9]{1,15}$/.test(String(op.body_vars_obj._cupom || '').trim())) bad('Preencha o código da oferta (até 15 letras ou números, sem espaço).');
   const inst = (await sql`select * from wa_instances where id = ${op.instance_id} and active`)[0];
   if (!inst) bad('Instância inativa ou não encontrada.');
   return { tpl, info, inst };
