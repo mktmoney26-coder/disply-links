@@ -98,6 +98,28 @@ async function bms(sql, req, body, a) {
     const [bm] = await sql`select * from as_bms where id = ${id}`;
     if (!bm) throw new HttpError(404, 'BM não encontrada.');
     if (a === 'diag') return { bm: bm.name, etapas: await diagnose(bm) };
+    // Troca a moeda de cobrança de uma conta do WhatsApp (API de migração de moeda da Meta).
+    // step=start (cria a conta nova na moeda), status, complete (passa os números para a conta nova).
+    if (a === 'currency') {
+      const token = decrypt(bm.token_enc);
+      const waba = String(body.waba || '').replace(/\D/g, '');
+      const step = String(body.step || 'status');
+      if (step === 'start') {
+        if (!waba) throw new HttpError(400, 'Informe a conta do WhatsApp.');
+        const cur = String(body.currency || 'BRL').toUpperCase().slice(0, 3);
+        const r = await graph(`/${waba}/set_payment_method_migration_intent`, token, { method: 'POST', body: JSON.stringify({ currency: cur }) });
+        await logActivity(sql, `Troca de moeda iniciada (${bm.name}): conta ${waba} para ${cur}`);
+        return r;
+      }
+      const mig = String(body.migration_id || '').replace(/\D/g, '');
+      if (!mig) throw new HttpError(400, 'Informe o migration_id.');
+      if (step === 'complete') {
+        const r = await graph(`/${mig}/resume_migration`, token, { method: 'POST', body: '{}' });
+        await logActivity(sql, `Troca de moeda concluída (${bm.name}): migração ${mig}`);
+        return r;
+      }
+      return await graph(`/${mig}`, token);
+    }
     // Migra templates aprovados de uma conta do WhatsApp para outra da mesma BM (sem nova revisão da Meta).
     // dry=1: só mostra moeda das contas e quantos templates aprovados existem na origem.
     if (a === 'migrate') {
