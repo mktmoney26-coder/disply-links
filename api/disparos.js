@@ -414,10 +414,17 @@ async function ops(sql, req, body, a) {
       const row = { id: l.id, tag: l.tag || null, number: inst ? inst.display_phone : null, name: inst ? inst.name : null, sent: null, delivered: null, error: null };
       try {
         const digits = String(inst.display_phone || '').replace(/\D/g, '');
-        const d = await meta.graph(`/${inst.waba_id}?fields=analytics.start(${start}).end(${end}).granularity(DAY).phone_numbers(["${digits}"])`, decrypt(inst.token_enc));
+        const tok = decrypt(inst.token_enc);
+        const d = await meta.graph(`/${inst.waba_id}?fields=analytics.start(${start}).end(${end}).granularity(HALF_HOUR).phone_numbers(["${digits}"])`, tok);
         const pts = (d.analytics && d.analytics.data_points) || [];
         row.sent = pts.reduce((a, p) => a + (p.sent || 0), 0); row.delivered = pts.reduce((a, p) => a + (p.delivered || 0), 0);
-        row.days = pts.filter((p) => p.sent || p.delivered).map((p) => ({ day: new Date(p.start * 1000).toISOString().slice(0, 10), sent: p.sent, delivered: p.delivered }));
+        // Mensagens cobradas pela Meta (entregues e cobráveis), por categoria.
+        try {
+          const pa = await meta.graph(`/${inst.waba_id}?fields=pricing_analytics.start(${start}).end(${end}).granularity(HALF_HOUR).phone_numbers(["${digits}"]).dimensions(["PRICING_CATEGORY","PRICING_TYPE"])`, tok);
+          const pp = ((pa.pricing_analytics && pa.pricing_analytics.data) || []).flatMap((x) => x.data_points || []);
+          row.billable = pp.reduce((a, p) => a + (p.volume || 0), 0);
+          row.cost = Math.round(pp.reduce((a, p) => a + (p.cost || 0), 0) * 100) / 100;
+        } catch (e2) { row.billable_error = e2.message; }
       } catch (e) { row.error = e.message; }
       out.push(row);
     }
