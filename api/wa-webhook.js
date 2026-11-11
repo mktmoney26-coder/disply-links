@@ -40,11 +40,15 @@ function validSignature(raw, header, secret) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+// Token de verificação público para configurar o webhook nos apps das BMs pelo painel da Meta.
+// Só confirma o endereço do webhook; não dá acesso a nada.
+const PUBLIC_VERIFY = 'disply-webhook';
+
 module.exports = async (req, res) => {
   // Verificação inicial feita pela Meta ao salvar o webhook
   if (req.method === 'GET') {
     const q = req.query || {};
-    if (q['hub.mode'] === 'subscribe' && q['hub.verify_token'] === verifyToken()) {
+    if (q['hub.mode'] === 'subscribe' && (q['hub.verify_token'] === verifyToken() || q['hub.verify_token'] === PUBLIC_VERIFY)) {
       res.status(200).setHeader('Content-Type', 'text/plain');
       res.end(String(q['hub.challenge'] || ''));
       return;
