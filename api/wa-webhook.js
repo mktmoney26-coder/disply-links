@@ -97,6 +97,13 @@ module.exports = async (req, res) => {
           const phone = normalizePhone(m.from) || String(m.from); // mesmo formato das listas (com o nono dígito)
           await sql`insert into wa_inbound (instance_id, phone, name, text, wamid, msg_type)
             values (${inst.id}, ${phone}, ${names[m.from] || null}, ${describeMessage(m).slice(0, 4000)}, ${m.id}, ${String(m.type || 'text')})`;
+          // Quem respondeu leu a mensagem: marca como lida mesmo que a pessoa tenha desligado a confirmação de leitura.
+          try {
+            await sql`update wa_recipients set status = 'read', updated_at = now()
+              where phone = ${phone} and status in ('sent','delivered') and sent_at > now() - interval '30 days'
+                and operation_id in (select id from wa_operations where instance_id = ${inst.id})`;
+            await sql`update wa_outbound set status = 'read' where instance_id = ${inst.id} and phone = ${phone} and status in ('sent','delivered')`;
+          } catch (e) { console.error('marcar lida:', e.message); }
           const text = m.text ? m.text.body : m.button ? m.button.text : '';
           if (OPT_OUT.test(String(text || ''))) {
             await sql`insert into wa_optouts (phone, instance_id) values (${phone}, ${inst.id}) on conflict (phone) do nothing`;
