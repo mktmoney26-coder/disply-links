@@ -552,6 +552,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
             </div>
             <div class="wz-box">
               <b>Enviar teste</b>
+              <p class="small muted" style="margin:4px 0 0">Com vários números escolhidos, o teste sai de cada um deles (um por número).</p>
               <div class="row" style="margin-top:8px">
                 <div style="flex:1 1 220px"><label for="opTestPhone" class="small">WhatsApp para teste (com DDD) · vários: separe por vírgula ou ;</label><input id="opTestPhone" type="text" inputmode="tel" placeholder="31 99999-9999, 11 98888-7777"></div>
                 <button class="btn ghost" type="button" id="btnTest" style="align-self:flex-end">Enviar teste</button>
@@ -1886,6 +1887,20 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   $('btnTest').onclick = async () => {
     const phones = [...new Set($('opTestPhone').value.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean))].slice(0, 10);
     if (!phones.length) { setMsg('opTestMsg', 'Digite pelo menos um número.'); return; }
+    if (selParts().length > 1) {
+      // Operação com vários números: testa cada número escolhido (um envio por número para cada telefone).
+      $('btnTest').disabled = true; const res = []; let ok = 0, total = 0;
+      for (let k = 0; k < phones.length; k++) {
+        setMsg('opTestMsg', `Testando cada número${phones.length > 1 ? ` (telefone ${k + 1} de ${phones.length})` : ''}…`, true);
+        try {
+          const r = await post('r=ops&a=test', { ...opPayload(), phone: phones[k], sample: state.sample || {} });
+          (r.results || []).forEach((x) => { total++; if (x.ok) ok++; res.push((x.ok ? '✓ ' : '✗ ') + x.number + (phones.length > 1 ? ' → ' + phones[k] : '') + (x.ok ? '' : ': ' + x.error)); });
+        } catch (err) { res.push('✗ ' + phones[k] + ': ' + err.message); total++; }
+      }
+      $('btnTest').disabled = false;
+      setMsg('opTestMsg', `${ok} de ${total} teste(s) aceito(s) pela Meta. ` + res.join(' · '), ok === total);
+      return;
+    }
     if (phones.length > 1) {
       // Vários números: envia um por um e mostra o resultado de cada.
       $('btnTest').disabled = true; const res = [];

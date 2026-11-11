@@ -413,6 +413,27 @@ async function ops(sql, req, body, a) {
     const phone = meta.normalizePhone(body.phone);
     if (!phone) bad('Telefone de teste inválido.');
     const sample = body.sample && typeof body.sample === 'object' ? body.sample : {};
+    // Operação dividida em lotes: envia o teste por cada número escolhido (mesmo template em todos).
+    if (Array.isArray(body.split) && body.split.length > 1) {
+      const results = [];
+      const ids = [...new Set(body.split.map((x) => int(x && x.instance_id)).filter(Boolean))].slice(0, 20);
+      for (const iid of ids) {
+        const i2 = (await sql`select * from wa_instances where id = ${iid}`)[0];
+        const label = i2 ? (i2.display_phone || i2.name) : String(iid);
+        try {
+          if (!i2) throw new Error('número não encontrado');
+          let t2 = tpl;
+          if (iid !== inst.id) {
+            t2 = (await sql`select * from wa_templates where instance_id = ${iid} and name = ${tpl.name} and language = ${tpl.language}`)[0];
+            if (!t2) throw new Error(`não tem o template “${tpl.name}”`);
+            if (t2.status !== 'APPROVED') throw new Error(`template “${tpl.name}” não aprovado`);
+          }
+          const r2 = await sendOne({ op: { ...op, instance_id: iid, template_id: t2.id }, tpl: t2, info, inst: i2, token: decrypt(i2.token_enc) }, { name: str(sample.name, 120), phone });
+          results.push({ number: label, ok: r2.ok, error: r2.ok ? null : r2.error });
+        } catch (e) { results.push({ number: label, ok: false, error: e.message }); }
+      }
+      return { ok: results.every((x) => x.ok), results };
+    }
     const r = await sendOne({ op, tpl, info, inst, token: decrypt(inst.token_enc) }, { name: str(sample.name, 120), phone });
     if (!r.ok) bad('A Meta recusou o teste: ' + r.error);
     return { ok: true, wamid: r.wamid };
