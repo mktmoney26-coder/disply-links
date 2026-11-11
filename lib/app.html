@@ -1972,21 +1972,38 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       split: selParts().length > 1 ? selParts() : undefined, distribution: $('opDist').value, include_optouts: Boolean(state.inclOpt)
     };
   }
+  // Depois do envio, acompanha a entrega de cada teste pelo webhook (entregue, lida ou falhou com o motivo).
+  async function watchTests(list, head) {
+    const items = list.filter((x) => x.wamid); if (!items.length) return;
+    const lbl = { sent: 'enviado, aguardando entrega', delivered: 'entregue ✓', read: 'entregue e lido ✓', failed: 'NÃO entregue' };
+    for (const wait of [4000, 8000, 15000, 30000, 60000]) {
+      await new Promise((r) => setTimeout(r, wait));
+      let rows = []; try { rows = (await api('r=ops&a=test-status&wamids=' + encodeURIComponent(items.map((x) => x.wamid).join(',')))).rows || []; } catch (e) { return; }
+      const by = Object.fromEntries(rows.map((r) => [r.wamid, r]));
+      const lines = items.map((x) => { const r = by[x.wamid] || {}; return `${r.status === 'failed' ? '✗' : r.status === 'delivered' || r.status === 'read' ? '✓' : '…'} ${x.label}: ${lbl[r.status] || 'aguardando'}${r.status === 'failed' && r.error ? ' — ' + r.error : ''}`; });
+      const failed = rows.filter((r) => r.status === 'failed').length;
+      const pending = items.length - rows.filter((r) => ['delivered', 'read', 'failed'].includes(r.status)).length;
+      setMsg('opTestMsg', `${head} Entrega: ` + lines.join(' · '), !failed);
+      if (!pending) return;
+    }
+  }
   $('btnTest').onclick = async () => {
     const phones = [...new Set($('opTestPhone').value.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean))].slice(0, 10);
     if (!phones.length) { setMsg('opTestMsg', 'Digite pelo menos um número.'); return; }
     if (selParts().length > 1) {
       // Operação com vários números: testa cada número escolhido (um envio por número para cada telefone).
-      $('btnTest').disabled = true; const res = []; let ok = 0, total = 0;
+      $('btnTest').disabled = true; const res = []; const sent = []; let ok = 0, total = 0;
       for (let k = 0; k < phones.length; k++) {
         setMsg('opTestMsg', `Testando cada número${phones.length > 1 ? ` (telefone ${k + 1} de ${phones.length})` : ''}…`, true);
         try {
           const r = await post('r=ops&a=test', { ...opPayload(), phone: phones[k], sample: state.sample || {} });
-          (r.results || []).forEach((x) => { total++; if (x.ok) ok++; res.push((x.ok ? '✓ ' : '✗ ') + x.number + (phones.length > 1 ? ' → ' + phones[k] : '') + (x.ok ? '' : ': ' + x.error)); });
+          (r.results || []).forEach((x) => { total++; if (x.ok) { ok++; sent.push({ label: x.number + (phones.length > 1 ? ' → ' + phones[k] : ''), wamid: x.wamid }); } res.push((x.ok ? '✓ ' : '✗ ') + x.number + (phones.length > 1 ? ' → ' + phones[k] : '') + (x.ok ? '' : ': ' + x.error)); });
         } catch (err) { res.push('✗ ' + phones[k] + ': ' + err.message); total++; }
       }
       $('btnTest').disabled = false;
-      setMsg('opTestMsg', `${ok} de ${total} teste(s) aceito(s) pela Meta. ` + res.join(' · '), ok === total);
+      const head = `${ok} de ${total} teste(s) aceito(s) pela Meta.` + (ok < total ? ' ' + res.filter((x) => x.startsWith('✗')).join(' · ') + '.' : '');
+      setMsg('opTestMsg', head + ' Acompanhando a entrega…', ok === total);
+      watchTests(sent, head);
       return;
     }
     if (phones.length > 1) {
@@ -2003,7 +2020,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       return;
     }
     setMsg('opTestMsg', 'Enviando teste…', true);
-    try { await post('r=ops&a=test', { ...opPayload(), phone: phones[0], sample: state.sample || {} }); setMsg('opTestMsg', 'Teste aceito pela Meta. Confira no seu WhatsApp.', true); }
+    try {
+      const r = await post('r=ops&a=test', { ...opPayload(), phone: phones[0], sample: state.sample || {} });
+      setMsg('opTestMsg', 'Teste aceito pela Meta. Acompanhando a entrega…', true);
+      watchTests([{ label: phones[0], wamid: r.wamid }], 'Teste aceito pela Meta.');
+    }
     catch (err) {
       setMsg('opTestMsg', err.message);
       // Número adicionado mas ainda não ativado na API oficial: oferece ativar na hora.

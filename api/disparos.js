@@ -289,6 +289,12 @@ function readOpInput(body) {
   };
 }
 
+// Guarda o envio de teste para acompanhar a entrega pelo webhook (entregue / falhou e o motivo).
+async function logTest(sql, instId, phone, tplName, r) {
+  if (!r || !r.ok || !r.wamid) return;
+  try { await sql`insert into wa_outbound (instance_id, phone, text, wamid) values (${instId}, ${phone}, ${'[Teste] ' + tplName}, ${r.wamid})`; } catch (e) {}
+}
+
 async function validateOp(sql, op) {
   const tpl = (await sql`select * from wa_templates where id = ${op.template_id} and instance_id = ${op.instance_id}`)[0];
   if (!tpl) bad('Escolha um template desta instância.');
@@ -384,6 +390,17 @@ async function createSplit(sql, req, body) {
 }
 
 async function ops(sql, req, body, a) {
+  if (req.method === 'GET' && a === 'test-status') {
+    const ids = String(req.query.wamids || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 50);
+    const rows = ids.length ? await sql`select o.wamid, o.status, o.error, o.created_at, i.display_phone, i.name from wa_outbound o
+      left join wa_instances i on i.id = o.instance_id where o.wamid = any(${ids}::text[])` : [];
+    return { rows };
+  }
+  if (req.method === 'GET' && a === 'tests') {
+    // Últimos testes (48h), com status de entrega.
+    return { rows: await sql`select o.wamid, o.phone, o.text, o.status, o.error, o.created_at, i.display_phone, i.name from wa_outbound o
+      left join wa_instances i on i.id = o.instance_id where o.text like '[Teste]%' and o.created_at > now() - interval '48 hours' order by o.created_at desc limit 100` };
+  }
   if (req.method === 'GET' && a === 'failures') {
     const id = int(req.query.id);
     return { rows: await sql`select name, phone, error from wa_recipients where operation_id = ${id} and status = 'failed' order by id limit 50000` };
@@ -439,7 +456,8 @@ async function ops(sql, req, body, a) {
             const own = readOpInput({ ...body, ...part, instance_id: iid, template_id: part.template_id });
             const v = await validateOp(sql, own);
             const r3 = await sendOne({ op: own, tpl: v.tpl, info: v.info, inst: v.inst, token: decrypt(v.inst.token_enc) }, { name: str(sample.name, 120), phone });
-            results.push({ number: label, ok: r3.ok, error: r3.ok ? null : r3.error });
+            await logTest(sql, iid, phone, v.tpl.name, r3);
+            results.push({ number: label, ok: r3.ok, error: r3.ok ? null : r3.error, wamid: r3.wamid || null });
             continue;
           }
           let t2 = tpl;
@@ -449,13 +467,15 @@ async function ops(sql, req, body, a) {
             if (t2.status !== 'APPROVED') throw new Error(`template “${tpl.name}” não aprovado`);
           }
           const r2 = await sendOne({ op: { ...op, instance_id: iid, template_id: t2.id }, tpl: t2, info, inst: i2, token: decrypt(i2.token_enc) }, { name: str(sample.name, 120), phone });
-          results.push({ number: label, ok: r2.ok, error: r2.ok ? null : r2.error });
+          await logTest(sql, iid, phone, t2.name, r2);
+          results.push({ number: label, ok: r2.ok, error: r2.ok ? null : r2.error, wamid: r2.wamid || null });
         } catch (e) { results.push({ number: label, ok: false, error: e.message }); }
       }
       return { ok: results.every((x) => x.ok), results };
     }
     const r = await sendOne({ op, tpl, info, inst, token: decrypt(inst.token_enc) }, { name: str(sample.name, 120), phone });
     if (!r.ok) bad('A Meta recusou o teste: ' + r.error);
+    await logTest(sql, inst.id, phone, tpl.name, r);
     return { ok: true, wamid: r.wamid };
   }
   if (a === 'run') {
