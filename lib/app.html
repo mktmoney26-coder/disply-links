@@ -732,8 +732,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           </form>
         </div>
         <div class="card"><div class="wrap"><table>
-          <thead><tr><th>Perfil</th><th>BM</th><th>Fornecedor</th><th>Lançada em</th><th>Contas</th><th>Números</th><th>Última consulta</th><th>Situação</th><th>Ações</th></tr></thead>
-          <tbody id="bmRows"><tr><td colspan="9" class="muted">Carregando…</td></tr></tbody>
+          <thead><tr><th>Perfil</th><th>BM</th><th>Fornecedor</th><th>Lançada em</th><th>Contas</th><th>Números</th><th>Última consulta</th><th>Status na Meta</th><th>Situação</th><th>Ações</th></tr></thead>
+          <tbody id="bmRows"><tr><td colspan="10" class="muted">Carregando…</td></tr></tbody>
         </table></div><p id="bmListMsg" class="small" role="status"></p></div>
         <div class="card" id="bmDiag" hidden>
           <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0" id="bmDiagTitle">Diagnóstico</h2>
@@ -2986,7 +2986,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   async function loadBms() {
     bmList = await api('r=bms');
     const tb = $('bmRows'); tb.innerHTML = '';
-    if (!bmList.length) empty(tb, 9, 'Nenhuma BM cadastrada. Clique em “+ Cadastrar BM”.');
+    if (!bmList.length) empty(tb, 10, 'Nenhuma BM cadastrada. Clique em “+ Cadastrar BM”.');
     for (const b of bmList) {
       const name = tdn(el('strong', { text: b.name }), el('div', { class: 'small muted', text: 'ID ' + b.bm_id }));
       let sit;
@@ -2995,6 +2995,16 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       else if (b.last_error) { sit = el('div', {}, badge('Erro na consulta', 'bad'), el('div', { class: 'small muted', style: 'max-width:240px;margin-top:4px', text: b.last_error })); }
       else if (!b.last_check) sit = badge('Aguardando', 'info');
       else sit = badge('OK', 'ok');
+      // Ativa ou banida na Meta (pelos números e contas do WhatsApp da última consulta).
+      let meta;
+      const nb = b.numeros_banidos || 0, na = b.numeros_ativos || 0, cr = b.contas_reprovadas || 0;
+      if (!b.last_check) meta = badge('—', 'off');
+      else if (na === 0 && (nb > 0 || (b.contas && cr >= b.contas))) meta = badge('Banida', 'bad');
+      else if (nb > 0 || cr > 0) meta = badge('Parcial', 'warn');
+      else if (na > 0) meta = badge('Ativa', 'ok');
+      else meta = badge('Sem número ativo', 'warn');
+      const metaInfo = [na ? `${na} número(s) ativo(s)` : '', nb ? `${nb} banido(s)` : '', cr ? `${cr} conta(s) reprovada(s)` : '', b.numeros_sinalizados ? `${b.numeros_sinalizados} sinalizado(s)` : ''].filter(Boolean).join(' · ');
+      const metaTd = tdn(meta, metaInfo ? el('div', { class: 'small muted', style: 'margin-top:4px', text: metaInfo }) : '');
       const acts = tdn(
         el('button', { class: 'link', type: 'button', text: 'Editar', onclick: () => openBmForm(b) }),
         el('button', { class: 'link', type: 'button', text: 'Consultar', onclick: async (e) => { e.target.disabled = true; setMsg('bmListMsg', 'Consultando ' + b.name + '…', true); try { const r = await post('r=check', { id: b.id }); await loadBms(); const now = bmList.find((x) => x.id === b.id); if (now && now.last_error && String(now.last_error).startsWith('Parcial')) setMsg('bmListMsg', 'Consulta feita, mas uma ou mais contas desta BM estão sem acesso. Veja a coluna Situação.'); else if (now && now.last_error) setMsg('bmListMsg', 'A consulta de ' + b.name + ' falhou. Veja a coluna Situação ou clique em Diagnóstico.'); else setMsg('bmListMsg', 'Consulta feita' + (r.alerts ? ': ' + r.alerts + ' alerta(s) novo(s).' : '. Nenhuma mudança desde a última consulta.'), true); } catch (err) { setMsg('bmListMsg', err.message); } refreshBadges(); } }),
@@ -3002,7 +3012,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         el('button', { class: 'link', type: 'button', text: b.active ? 'Pausar' : 'Reativar', onclick: async () => { await post('r=bms', { id: b.id, active: !b.active }, 'PATCH'); loadBms(); refreshBadges(); } }),
         removeButton(b)
       );
-      tb.append(el('tr', {}, td(b.profile || '—'), name, td(b.supplier || '—'), td(fmtDate(b.launched_at)), td(b.contas), td(b.numeros), td(fmt(b.last_check)), tdn(sit), acts));
+      tb.append(el('tr', {}, td(b.profile || '—'), name, td(b.supplier || '—'), td(fmtDate(b.launched_at)), td(b.contas), td(b.numeros), td(fmt(b.last_check)), metaTd, tdn(sit), acts));
     }
   }
   async function diagBm(b) {

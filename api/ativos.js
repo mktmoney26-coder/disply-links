@@ -65,10 +65,16 @@ async function numberRows(sql) {
 async function bms(sql, req, body, a) {
   if (req.method === 'GET') {
     return sql`select b.id, b.profile, b.name, b.bm_id, b.waba_ids, b.supplier, b.launched_at, b.active, b.last_check, b.last_error, b.created_at,
-        coalesce(w.c, 0)::int as contas, coalesce(n.c, 0)::int as numeros
+        coalesce(w.c, 0)::int as contas, coalesce(n.c, 0)::int as numeros,
+        coalesce(w.rejected, 0)::int as contas_reprovadas, coalesce(n.banned, 0)::int as numeros_banidos,
+        coalesce(n.ativos, 0)::int as numeros_ativos, coalesce(n.flagged, 0)::int as numeros_sinalizados
       from as_bms b
-      left join (select bm_ref, count(*) as c from as_wabas group by bm_ref) w on w.bm_ref = b.id
-      left join (select bm_ref, count(*) as c from as_numbers group by bm_ref) n on n.bm_ref = b.id
+      left join (select bm_ref, count(*) as c, sum(case when review_status = 'REJECTED' then 1 else 0 end) as rejected from as_wabas group by bm_ref) w on w.bm_ref = b.id
+      left join (select bm_ref, count(*) as c,
+          sum(case when status in ('BANNED','RESTRICTED','DISCONNECTED') then 1 else 0 end) as banned,
+          sum(case when status = 'CONNECTED' and coalesce(health, 'AVAILABLE') <> 'BLOCKED' then 1 else 0 end) as ativos,
+          sum(case when status = 'FLAGGED' then 1 else 0 end) as flagged
+        from as_numbers group by bm_ref) n on n.bm_ref = b.id
       order by b.active desc, b.name`;
   }
   if (req.method === 'POST' && a === 'create') {
