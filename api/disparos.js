@@ -399,6 +399,31 @@ function groupStatus(list) {
 }
 
 async function ops(sql, req, body, a) {
+  if (req.method === 'GET' && a === 'meta-delivered') {
+    // Contagem oficial da Meta (WhatsApp Manager › Insights): enviadas e entregues por número no período da campanha.
+    // Serve mesmo quando o webhook não registrou as entregas.
+    const id = int(req.query.id);
+    const op = (await sql`select * from wa_operations where id = ${id}`)[0];
+    if (!op) throw new HttpError(404, 'Operação não encontrada.');
+    const lots = op.group_id ? await sql`select o.id, o.tag, o.created_at, o.finished_at, o.instance_id from wa_operations o where o.group_id = ${op.group_id} order by o.id` : [op];
+    const start = Math.floor(new Date(req.query.from || Math.min(...lots.map((l) => new Date(l.created_at)))).getTime() / 1000) - 3600;
+    const end = Math.floor((req.query.to ? new Date(req.query.to).getTime() : Date.now()) / 1000) + 3600;
+    const out = [];
+    for (const l of lots) {
+      const inst = (await sql`select * from wa_instances where id = ${l.instance_id}`)[0];
+      const row = { id: l.id, tag: l.tag || null, number: inst ? inst.display_phone : null, name: inst ? inst.name : null, sent: null, delivered: null, error: null };
+      try {
+        const digits = String(inst.display_phone || '').replace(/\D/g, '');
+        const d = await meta.graph(`/${inst.waba_id}?fields=analytics.start(${start}).end(${end}).granularity(DAY).phone_numbers(["${digits}"])`, decrypt(inst.token_enc));
+        const pts = (d.analytics && d.analytics.data_points) || [];
+        row.sent = pts.reduce((a, p) => a + (p.sent || 0), 0); row.delivered = pts.reduce((a, p) => a + (p.delivered || 0), 0);
+        row.days = pts.filter((p) => p.sent || p.delivered).map((p) => ({ day: new Date(p.start * 1000).toISOString().slice(0, 10), sent: p.sent, delivered: p.delivered }));
+      } catch (e) { row.error = e.message; }
+      out.push(row);
+    }
+    const sum = (k) => out.reduce((a, r) => a + (r[k] || 0), 0);
+    return { from: new Date(start * 1000), to: new Date(end * 1000), lots: out, sent: sum('sent'), delivered: sum('delivered') };
+  }
   if (req.method === 'GET' && a === 'test-status') {
     const ids = String(req.query.wamids || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 50);
     const rows = ids.length ? await sql`select o.wamid, o.status, o.error, o.created_at, i.display_phone, i.name from wa_outbound o
