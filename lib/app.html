@@ -553,7 +553,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
             <div class="wz-box">
               <b>Enviar teste</b>
               <div class="row" style="margin-top:8px">
-                <div style="flex:1 1 220px"><label for="opTestPhone" class="small">Seu WhatsApp (com DDD)</label><input id="opTestPhone" type="tel" placeholder="31 99999-9999"></div>
+                <div style="flex:1 1 220px"><label for="opTestPhone" class="small">WhatsApp para teste (com DDD) · vários: separe por vírgula ou ;</label><input id="opTestPhone" type="text" inputmode="tel" placeholder="31 99999-9999, 11 98888-7777"></div>
                 <button class="btn ghost" type="button" id="btnTest" style="align-self:flex-end">Enviar teste</button>
               </div>
               <p id="opTestMsg" class="small" role="status" style="margin:8px 0 0"></p>
@@ -1884,8 +1884,23 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     };
   }
   $('btnTest').onclick = async () => {
+    const phones = [...new Set($('opTestPhone').value.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean))].slice(0, 10);
+    if (!phones.length) { setMsg('opTestMsg', 'Digite pelo menos um número.'); return; }
+    if (phones.length > 1) {
+      // Vários números: envia um por um e mostra o resultado de cada.
+      $('btnTest').disabled = true; const res = [];
+      for (let k = 0; k < phones.length; k++) {
+        setMsg('opTestMsg', `Enviando teste ${k + 1} de ${phones.length}…`, true);
+        try { await post('r=ops&a=test', { ...opPayload(), phone: phones[k], sample: state.sample || {} }); res.push('✓ ' + phones[k]); }
+        catch (err) { res.push('✗ ' + phones[k] + ': ' + err.message); }
+      }
+      $('btnTest').disabled = false;
+      const ok = res.filter((r) => r.startsWith('✓')).length;
+      setMsg('opTestMsg', `${ok} de ${phones.length} teste(s) aceito(s) pela Meta. ` + res.join(' · '), ok === phones.length);
+      return;
+    }
     setMsg('opTestMsg', 'Enviando teste…', true);
-    try { await post('r=ops&a=test', { ...opPayload(), phone: $('opTestPhone').value, sample: state.sample || {} }); setMsg('opTestMsg', 'Teste aceito pela Meta. Confira no seu WhatsApp.', true); }
+    try { await post('r=ops&a=test', { ...opPayload(), phone: phones[0], sample: state.sample || {} }); setMsg('opTestMsg', 'Teste aceito pela Meta. Confira no seu WhatsApp.', true); }
     catch (err) {
       setMsg('opTestMsg', err.message);
       // Número adicionado mas ainda não ativado na API oficial: oferece ativar na hora.
