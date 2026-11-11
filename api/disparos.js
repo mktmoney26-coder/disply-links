@@ -309,6 +309,8 @@ const TAGS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 async function createSplit(sql, req, body) {
   const base = readOpInput(body);
   if (!base.name) bad('Dê um nome para a operação.');
+  // Opcional: incluir quem pediu SAIR (o número pode estar em outra lista, de outro nicho).
+  const incl = body.include_optouts === true;
   const parts = [];
   const seen = new Set();
   for (const p of body.split.slice(0, 50)) {
@@ -333,7 +335,7 @@ async function createSplit(sql, req, body) {
   }
   if (problems.length) bad('Não dá para dividir: ' + problems.join('; ') + '.');
   const avail = (await sql`select count(*)::int as n from wa_contacts c left join wa_optouts o on o.phone = c.phone
-    where c.list_id = ${base.list_id} and o.phone is null`)[0].n;
+    where c.list_id = ${base.list_id} and (o.phone is null or ${incl}::boolean)`)[0].n;
   if (!avail) bad('A lista não tem contatos disponíveis.');
   const capacity = parts.reduce((s, p) => s + p.limit, 0);
   let left = Math.min(avail, capacity, base.quantity && base.quantity > 0 ? base.quantity : avail);
@@ -353,11 +355,11 @@ async function createSplit(sql, req, body) {
         // Misturado: mesma ordem sorteada (fixa por campanha) para todos os lotes, então ninguém se repete.
         await sql`insert into wa_recipients (operation_id, name, phone)
           select ${row.id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
-          where c.list_id = ${base.list_id}::int and o.phone is null order by md5(c.phone || ${seed}), c.id offset ${offset}::int limit ${n}::int`;
+          where c.list_id = ${base.list_id}::int and (o.phone is null or ${incl}::boolean) order by md5(c.phone || ${seed}), c.id offset ${offset}::int limit ${n}::int`;
       } else {
         await sql`insert into wa_recipients (operation_id, name, phone)
           select ${row.id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
-          where c.list_id = ${base.list_id}::int and o.phone is null order by c.id offset ${offset}::int limit ${n}::int`;
+          where c.list_id = ${base.list_id}::int and (o.phone is null or ${incl}::boolean) order by c.id offset ${offset}::int limit ${n}::int`;
       }
       offset += n; left -= n;
     }
@@ -436,9 +438,10 @@ async function ops(sql, req, body, a) {
   if (req.method === 'POST') {
     const op = readOpInput(body);
     if (!op.name) bad('Dê um nome para a operação.');
+    const incl = body.include_optouts === true;
     await validateOp(sql, op);
     const avail = (await sql`select count(*)::int as n from wa_contacts c left join wa_optouts o on o.phone = c.phone
-      where c.list_id = ${op.list_id} and o.phone is null`)[0].n;
+      where c.list_id = ${op.list_id} and (o.phone is null or ${incl}::boolean)`)[0].n;
     if (!avail) bad('A lista não tem contatos disponíveis.');
     const qty = Math.min(avail, op.quantity && op.quantity > 0 ? op.quantity : avail);
     const rows = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps)
@@ -448,7 +451,7 @@ async function ops(sql, req, body, a) {
     try {
       await sql`insert into wa_recipients (operation_id, name, phone)
         select ${id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
-        where c.list_id = ${op.list_id}::int and o.phone is null order by c.id limit ${qty}::int`;
+        where c.list_id = ${op.list_id}::int and (o.phone is null or ${incl}::boolean) order by c.id limit ${qty}::int`;
     } catch (err) {
       await sql`delete from wa_operations where id = ${id}`; // não deixa operação pela metade
       throw err;

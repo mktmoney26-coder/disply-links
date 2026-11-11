@@ -1371,7 +1371,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   function resetOpForm() {
     ['opName', 'opMediaUrl', 'opHeaderVar', 'opBtnParam', 'opQty', 'opTestPhone'].forEach((x) => { $(x).value = ''; });
     $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40'; $('opDist').value = 'seq';
-    state.tpl = null; state.mediaUrl = ''; state.sample = null; state.leads = 0; $('opVars').innerHTML = '';
+    state.tpl = null; state.mediaUrl = ''; state.sample = null; state.leads = 0; state.inclOpt = false; state.listBlocked = 0; $('opVars').innerHTML = '';
     ['opMsg', 'opTestMsg', 'opMediaMsg', 'opLMsg'].forEach((x) => { $(x).textContent = ''; });
     $('opLCheck').innerHTML = ''; $('opLFile').value = ''; $('opLName').value = '';
     split.sel.clear(); split.tplLists.clear(); split.qtyTouched = false;
@@ -1699,6 +1699,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const row = (k, v) => el('div', { class: 'wz-sum-row' }, el('span', { text: k }), el('b', { text: v }));
     box.append(el('h3', { style: 'margin:0 0 10px', text: $('opName').value }),
       row('Lista', `${listName} · ${num(state.leads)} leads`),
+      row('Quem pediu SAIR', state.listBlocked ? (state.inclOpt ? `incluídos (${num(state.listBlocked)})` : `fora (${num(state.listBlocked)})`) : 'ninguém na lista'),
       row('Vão receber agora', `${num(total)} leads`),
       row('Template', state.tpl ? state.tpl.name : '—'),
       row('Divisão', L.length > 1 ? `${L.length} lotes · ${$('opDist').value === 'mix' ? 'sorteio' : 'ordem da planilha'}` : 'um número só'));
@@ -1785,14 +1786,24 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const maxLim = Math.max(1000, ...state.instances.filter((i) => i.active).map((i) => tierLimit(i.limit_tier) || 0));
     const nNums = Math.max(1, Math.ceil((state.leads || 0) / maxLim));
     b.append(el('div', { class: 'wz-leads-n' }, el('strong', { text: num(state.leads) }), el('span', { text: 'leads prontos para envio' })),
-      el('p', { class: 'small muted', style: 'margin:4px 0 0', text: (state.listBlocked ? `${num(state.listTotal)} na lista − ${num(state.listBlocked)} que pediram SAIR (não recebem mais disparos). ` : 'Ninguém desta lista pediu SAIR. ')
+      el('p', { class: 'small muted', style: 'margin:4px 0 0', text: (state.listBlocked ? (state.inclOpt ? `Lista completa: inclui os ${num(state.listBlocked)} que pediram SAIR. ` : `${num(state.listTotal)} na lista − ${num(state.listBlocked)} que pediram SAIR. `) : 'Ninguém desta lista pediu SAIR. ')
         + `Com números de ${num(maxLim)}/dia, isso pede ${nNums} número(s). Na próxima etapa o sistema sugere quais usar.` }));
+    if (state.listBlocked) {
+      const opt = (incl, title, sub) => {
+        const bt = el('button', { type: 'button', class: 'wz-opt', 'aria-pressed': String(Boolean(state.inclOpt) === incl) }, el('b', { text: title }), el('span', { text: sub }));
+        bt.onclick = () => { state.inclOpt = incl; state.leads = incl ? state.listTotal : state.listTotal - state.listBlocked; split.qtyTouched = false; renderLeads(); };
+        return bt;
+      };
+      b.append(el('div', { class: 'wz-choice', style: 'margin-top:12px', role: 'group', 'aria-label': 'Quem pediu SAIR' },
+        opt(false, `Tirar quem pediu SAIR (${num(state.listTotal - state.listBlocked)})`, 'Recomendado. Respeita quem pediu para não receber mais.'),
+        opt(true, `Lista completa (${num(state.listTotal)})`, 'Use quando o SAIR veio de outro nicho/cliente. Quem pedir SAIR de novo pode denunciar o número.')));
+    }
   }
   $('opList').onchange = async () => {
     state.sample = null; state.leads = null; split.qtyTouched = false; renderLeads();
     const id = $('opList').value; if (!id) { state.leads = 0; renderLeads(); renderPreview(); return; }
     const d = await api('r=lists&a=sample&id=' + encodeURIComponent(id));
-    state.sample = d.sample; state.leads = d.available; state.listTotal = d.total; state.listBlocked = d.blocked || 0;
+    state.sample = d.sample; state.leads = d.available; state.listTotal = d.total; state.listBlocked = d.blocked || 0; state.inclOpt = false;
     if (!$('opName').value.trim()) $('opName').value = ((state.lists || []).find((l) => String(l.id) === id) || {}).name || '';
     renderLeads(); renderPreview();
   };
@@ -1804,7 +1815,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       header_value: t && t.info.needsMedia ? (state.mediaUrl || $('opMediaUrl').value) : $('opHeaderVar').value,
       body_vars: collectVars(), button_param: $('opBtnParam').value, name_fallback: $('opFallback').value,
       list_id: Number($('opList').value), quantity: planned(), tps: Number($('opTps').value),
-      split: selParts().length > 1 ? selParts() : undefined, distribution: $('opDist').value
+      split: selParts().length > 1 ? selParts() : undefined, distribution: $('opDist').value, include_optouts: Boolean(state.inclOpt)
     };
   }
   $('btnTest').onclick = async () => {
