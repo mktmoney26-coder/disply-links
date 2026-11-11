@@ -220,6 +220,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .wz-num-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .wz-num-meta .badge{white-space:normal;line-height:1.3}
   .wz-summary .wz-lot-name{flex:1}
+  .wz-mini{min-height:34px;padding:6px 10px;font-size:13px}
   .wz-num-lim{flex:1 0 100%;display:flex;align-items:center;gap:8px;margin:4px 0 0 44px;font-size:12.5px;color:var(--muted);font-weight:600}
   .wz-num-lim input{max-width:130px;min-height:36px;padding:6px 10px}
   .wz-lots{display:flex;flex-direction:column;gap:8px}
@@ -1607,7 +1608,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const lim = tierLimit(i.limit_tier || n.limit_tier);
       const card = el('div', { class: 'wz-num' + (on ? ' on' : ''), role: 'button', tabindex: '0', 'aria-pressed': String(on) });
       card.onclick = (e) => { if (e.target.closest('input')) return; toggleNum(c.key); };
-      card.onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('input')) { e.preventDefault(); toggleNum(c.key); } };
+      card.onkeydown = (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('input, button')) { e.preventDefault(); toggleNum(c.key); } };
       card.append(el('span', { class: 'wz-num-tag', text: on ? LETTERS[idx] : '+' }));
       const body = el('div', { class: 'wz-num-body' }, el('b', { text: bm }), el('span', { text: phone }));
       const meta = el('div', { class: 'wz-num-meta' });
@@ -1622,6 +1623,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (on && i.bm_ref) { const twin = order.find((k) => k !== c.key && selBms.get(k) === i.bm_ref); if (twin) meta.append(badge('Mesma BM de ' + (instById(twin) || {}).display_phone + ': dividem o limite', 'warn')); }
       body.append(meta);
       card.append(body);
+      if (!c.n) body.append(el('button', { type: 'button', class: 'linkbtn small', style: 'align-self:flex-start', text: 'Prévia do perfil', onclick: (e) => { e.stopPropagation(); profileCard(i.id); } }));
       if (on) {
         const inp = el('input', { type: 'number', min: '1', value: String(split.sel.get(c.key)), 'aria-label': 'Limite deste número', title: 'Limite de envios deste número' });
         inp.oninput = () => { split.sel.set(c.key, Number(inp.value) || 0); if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || ''; renderLots(); renderNeedOnly(); };
@@ -1704,10 +1706,16 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       row('Template', state.tpl ? state.tpl.name : '—'),
       row('Divisão', L.length > 1 ? `${L.length} lotes · ${$('opDist').value === 'mix' ? 'sorteio' : 'ordem da planilha'}` : 'um número só'));
     const lotsBox = el('div', { class: 'wz-lots', style: 'margin-top:10px' });
-    for (const l of L) { const i = instById(l.instance_id) || {}; lotsBox.append(el('div', { class: 'wz-lot' }, el('span', { class: 'wz-num-tag', text: l.tag }), el('div', { class: 'wz-lot-name' }, el('b', { text: i.bm || i.name || '' }), el('span', { text: i.display_phone || '' })), el('strong', { class: 'wz-lot-n', text: num(l.n) }))); }
+    for (const l of L) {
+      const i = instById(l.instance_id) || {};
+      lotsBox.append(el('div', { class: 'wz-lot' }, el('span', { class: 'wz-num-tag', text: l.tag }),
+        el('div', { class: 'wz-lot-name' }, el('b', { text: i.bm || i.name || '' }), el('span', { text: i.display_phone || '' })),
+        el('button', { type: 'button', class: 'btn ghost wz-mini', text: 'Prévia do perfil', title: 'Imagem com número e foto de perfil para mandar ao cliente', onclick: () => profileCard(l.instance_id) }),
+        el('strong', { class: 'wz-lot-n', text: num(l.n) })));
+    }
     box.append(lotsBox);
     renderPreview(); $('preview2').innerHTML = $('preview').innerHTML;
-    $('opProfile').querySelector('strong').textContent = 'Foto de perfil do número do lote A';
+    $('opProfile').querySelector('strong').textContent = L.length > 1 ? 'Foto de perfil do número do lote A (os outros: botão “Prévia do perfil” em cada lote)' : 'Foto de perfil do número';
   }
 
   function insertAt(input, token) {
