@@ -1,8 +1,8 @@
-// Cria automaticamente o projeto de uma BM na Vercel e cadastra o domínio dela.
+// Cria automaticamente o domínio de uma BM (nome.vercel.app) no projeto principal e cadastra no sistema.
 // Só funciona no projeto principal (STATS_KEY) e precisa da variável VERCEL_TOKEN.
 //
 //   GET  /api/bms                          -> { enabled } (a automação está configurada?)
-//   POST /api/bms { name, label }          -> cria o projeto, conecta o banco e inicia o deploy
+//   POST /api/bms { name, label }          -> adiciona nome.vercel.app ao projeto e cadastra o domínio
 //   GET  /api/bms?projectId=&deploymentId= -> acompanha o deploy; quando pronto, cadastra o domínio
 const { getDb } = require('../lib/db');
 const { guard } = require('../lib/auth');
@@ -111,35 +111,23 @@ module.exports = async (req, res) => {
         return;
       }
 
-      const project = await vercel(cfg, '/v11/projects', {
-        method: 'POST',
-        body: JSON.stringify({
-          name,
-          framework: null,
-          gitRepository: { type: 'github', repo: cfg.repo },
-          environmentVariables: [
-            { key: 'DATABASE_URL', value: cfg.dbUrl, target: 'production', type: 'encrypted' }
-          ]
-        })
-      });
-
-      const repoId = project.link && project.link.repoId;
-      if (!repoId) {
-        res.status(500).json({ erro: 'Projeto criado, mas sem ligação com o GitHub. Confira o acesso da Vercel ao repositório.' });
-        return;
+      // O domínio novo (nome.vercel.app) entra no projeto principal: não cria projeto nem publica nada,
+      // então fica pronto na hora e não gasta o limite diário de publicações da Vercel.
+      const host = `${name}.vercel.app`;
+      const projectId = process.env.VERCEL_PROJECT_ID || 'disply-links';
+      try {
+        await vercel(cfg, `/v10/projects/${encodeURIComponent(projectId)}/domains`, { method: 'POST', body: JSON.stringify({ name: host }) });
+      } catch (err) {
+        if (err.status === 409 || /in use|already|taken|not available/i.test(err.message)) {
+          res.status(400).json({ erro: `O endereço ${host} já está em uso na Vercel. Escolha outro nome.` });
+          return;
+        }
+        throw err;
       }
-
-      const deployment = await vercel(cfg, '/v13/deployments', {
-        method: 'POST',
-        body: JSON.stringify({
-          name,
-          project: project.id,
-          target: 'production',
-          gitSource: { type: 'github', repoId, ref: cfg.branch }
-        })
-      });
-
-      res.status(201).json({ projectId: project.id, deploymentId: deployment.id, name, label });
+      const sql = await getDb();
+      await sql`insert into domains (host, label) values (${host}, ${label || null})
+        on conflict (host) do update set label = coalesce(excluded.label, domains.label)`;
+      res.status(201).json({ state: 'READY', host, name, label });
       return;
     }
 
@@ -147,7 +135,7 @@ module.exports = async (req, res) => {
     res.status(405).json({ erro: 'Método não permitido.' });
   } catch (err) {
     console.error('Erro na automação de BM:', err.message);
-    const msg = err.status === 409 ? 'Já existe um projeto com esse nome na Vercel. Escolha outro.'
+    const msg = err.status === 409 ? 'Esse nome já está em uso na Vercel. Escolha outro.'
       : err.status === 403 || err.status === 401 ? 'O VERCEL_TOKEN não tem permissão. Confira o token e o escopo do time.'
       : err.message;
     res.status(err.status && err.status < 500 ? 400 : 500).json({ erro: msg });

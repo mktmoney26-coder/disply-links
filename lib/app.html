@@ -936,18 +936,18 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       </table>
     </div>
     <div id="autoBox" style="margin-top:18px;padding:16px;border:1px solid var(--accent);border-radius:12px" hidden>
-      <strong>+ Nova BM automática</strong>
-      <p class="small muted" style="margin:4px 0 12px">Cria o projeto na Vercel, conecta o banco, publica e cadastra o domínio sozinho (cerca de 1 minuto).</p>
+      <strong>+ Novo domínio automático</strong>
+      <p class="small muted" style="margin:4px 0 12px">Cria o domínio da BM na Vercel e cadastra no sistema na hora.</p>
       <form id="autoForm" class="row">
         <div style="flex:2 1 220px">
-          <label for="aName">Nome do projeto (vira o domínio)</label>
+          <label for="aName">Nome (vira o domínio)</label>
           <input id="aName" type="text" required placeholder="sorridi-ofertas" autocapitalize="off" spellcheck="false" pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]">
         </div>
         <div style="flex:1 1 200px">
           <label for="aLabel">BM / cliente</label>
           <input id="aLabel" type="text" maxlength="80" placeholder="Sorridi Clínica">
         </div>
-        <button class="btn primary" type="submit" id="btnAuto" style="align-self:flex-end">Criar BM</button>
+        <button class="btn primary" type="submit" id="btnAuto" style="align-self:flex-end">Criar domínio</button>
       </form>
       <p class="small muted" style="margin:8px 0 0">Use letras minúsculas, números e hífen, sem “disply”. O domínio fica <code>nome.vercel.app</code> (ou parecido, se o nome já existir).</p>
       <p id="autoMsg" class="small" role="status" style="margin:8px 0 0;font-weight:600"></p>
@@ -2340,11 +2340,18 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   $('autoForm').onsubmit = async (e) => {
     e.preventDefault();
     const msg = $('autoMsg'); const btn = $('btnAuto');
-    msg.className = 'small'; msg.textContent = 'Criando o projeto na Vercel…';
+    msg.className = 'small'; msg.textContent = 'Criando o domínio…';
     btn.disabled = true;
     try {
       const label = $('aLabel').value;
       const p = await api('/api/bms', { method: 'POST', body: JSON.stringify({ name: $('aName').value, label }) });
+      if (p.state === 'READY' && p.host) {
+        msg.textContent = 'Pronto! Domínio ' + p.host + ' criado e cadastrado. Já pode criar os links nele.';
+        $('aName').value = ''; $('aLabel').value = '';
+        await loadDomains();
+        $('host').value = p.host;
+        return;
+      }
       const q = '/api/bms?projectId=' + encodeURIComponent(p.projectId) + '&deploymentId=' + encodeURIComponent(p.deploymentId) + '&label=' + encodeURIComponent(label);
       for (let i = 0; i < 60; i++) {
         await wait(5000);
