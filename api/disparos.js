@@ -41,9 +41,9 @@ async function instances(sql, req, body, a) {
       order by i.created_at desc`;
     // Limite diário e BM de cada número (vem do monitoramento de Ativos).
     try {
-      const tiers = await sql`select n.phone_number_id, n.limit_tier, n.bm_ref, b.name as bm from as_numbers n join as_bms b on b.id = n.bm_ref`;
+      const tiers = await sql`select n.phone_number_id, n.limit_tier, n.bm_ref, n.health, b.name as bm from as_numbers n join as_bms b on b.id = n.bm_ref`;
       const byPn = new Map(tiers.map((t) => [t.phone_number_id, t]));
-      for (const r of rows) { const t = byPn.get(r.phone_number_id); if (t) { r.limit_tier = t.limit_tier; r.bm_ref = t.bm_ref; r.bm = t.bm; } }
+      for (const r of rows) { const t = byPn.get(r.phone_number_id); if (t) { r.limit_tier = t.limit_tier; r.bm_ref = t.bm_ref; r.bm = t.bm; r.health = t.health; } }
     } catch (e) { /* sem Ativos: segue sem limite */ }
     // Números monitorados em Ativos que ainda não viraram instância (conectam com um clique).
     let available = [];

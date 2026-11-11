@@ -1614,7 +1614,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (c.n) meta.append(badge('Não conectado · conecta ao escolher', 'off'));
       else {
         meta.append(badge(lim ? num(lim) + '/dia' : 'limite ?', 'info'));
-        if (i.quality) meta.append(badge({ GREEN: 'Qualidade alta', YELLOW: 'Qualidade média', RED: 'Qualidade baixa' }[i.quality] || i.quality, i.quality === 'GREEN' ? 'ok' : i.quality === 'RED' ? 'bad' : 'warn'));
+        const q = { GREEN: ['Qualidade alta', 'ok'], YELLOW: ['Qualidade média', 'warn'], RED: ['Qualidade baixa', 'bad'] }[i.quality];
+        if (q) meta.append(badge(q[0], q[1]));
+        if (i.health === 'BLOCKED') meta.append(badge('Bloqueado para envio', 'bad'));
+        else if (i.health === 'LIMITED') meta.append(badge('Envio limitado', 'warn'));
       }
       if (on && i.bm_ref) { const twin = order.find((k) => k !== c.key && selBms.get(k) === i.bm_ref); if (twin) meta.append(badge('Mesma BM de ' + (instById(twin) || {}).display_phone + ': dividem o limite', 'warn')); }
       body.append(meta);
