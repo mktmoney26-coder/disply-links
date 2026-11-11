@@ -503,7 +503,14 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       <section class="wz-panel" data-panel="3" hidden>
         <div class="split">
           <div class="main stack">
-            <div class="wz-field"><label for="opTpl">Template</label><select id="opTpl"></select>
+            <div id="opTplModeBox" class="stack" hidden>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="wz-opt" id="opTplSame" aria-pressed="true"><b>Mesmo template em todos</b><span>Só aparecem os aprovados em todos os números.</span></button>
+                <button type="button" class="wz-opt" id="opTplPer" aria-pressed="false"><b>Um template por BM</b><span>Escolha e preencha o template de cada número.</span></button>
+              </div>
+              <div id="opTplTabs" class="chips" hidden></div>
+            </div>
+            <div class="wz-field"><label for="opTpl" id="opTplLabel">Template</label><select id="opTpl"></select>
               <p id="opTplCommon" class="small muted" style="margin:4px 0 0"></p></div>
             <p id="opTplInfo" class="small muted" style="margin:0"></p>
             <div id="opMediaBox" class="stack" hidden>
@@ -1388,7 +1395,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   function resetOpForm() {
     ['opName', 'opMediaUrl', 'opHeaderVar', 'opBtnParam', 'opQty', 'opTestPhone'].forEach((x) => { $(x).value = ''; });
     $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40'; $('opDist').value = 'seq';
-    state.tpl = null; state.mediaUrl = ''; state.sample = null; state.leads = 0; state.inclOpt = false; state.listBlocked = 0; $('opVars').innerHTML = '';
+    state.tpl = null; state.perMode = false; state.per = {}; state.curInst = null; state.mediaUrl = ''; state.sample = null;
+    $('opTplSame').setAttribute('aria-pressed', 'true'); $('opTplPer').setAttribute('aria-pressed', 'false'); state.leads = 0; state.inclOpt = false; state.listBlocked = 0; $('opVars').innerHTML = '';
     ['opMsg', 'opTestMsg', 'opMediaMsg', 'opLMsg'].forEach((x) => { $(x).textContent = ''; });
     $('opLCheck').innerHTML = ''; $('opLFile').value = ''; $('opLName').value = '';
     split.sel.clear(); split.tplLists.clear(); split.qtyTouched = false;
@@ -1419,6 +1427,19 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (n === 4) renderSummary();
     $('opForm').scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
+  // Configuração de template de um número (ou a única, no modo "mesmo template").
+  function curCfg() { return { tpl: state.tpl, mediaUrl: state.mediaUrl || $('opMediaUrl').value, header: $('opHeaderVar').value, btn: $('opBtnParam').value, vars: collectVars() }; }
+  function saveCur() { if (state.perMode && state.curInst) state.per[state.curInst] = curCfg(); }
+  function cfgError(c) {
+    if (!c || !c.tpl) return 'Escolha o template.';
+    const info = c.tpl.info;
+    if (info.needsMedia && !/^https:\/\/\S+$/.test(c.mediaUrl || '')) return 'Este template precisa de mídia: envie a imagem ou cole o link público (https://).';
+    for (const v of info.bodyVars) if (!String((c.vars || {})[v] || '').trim()) return `Preencha a variável {{${v}}}.`;
+    if (info.headerType === 'TEXT' && info.headerVars.length && !String(c.header || '').trim()) return 'Preencha a variável do cabeçalho.';
+    if (info.dynamicButton && !String(c.btn || '').trim()) return 'Preencha o final do link do botão.';
+    return '';
+  }
+  const cfgFields = (c) => ({ template_id: c && c.tpl ? c.tpl.id : null, header_value: c && c.tpl && c.tpl.info.needsMedia ? c.mediaUrl : (c ? c.header : ''), body_vars: c ? c.vars : {}, button_param: c ? c.btn : '' });
   function stepError(n) {
     if (n === 1) {
       if (!$('opName').value.trim()) return 'Dê um nome ao projeto.';
@@ -1432,12 +1453,15 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (!(Number($('opQty').value) > 0)) return 'Informe quantos leads enviar.';
     }
     if (n === 3) {
-      const t = state.tpl; if (!t) return 'Escolha o template.';
-      const info = t.info;
-      if (info.needsMedia && !/^https:\/\/\S+$/.test(state.mediaUrl || $('opMediaUrl').value)) return 'Este template precisa de mídia: envie a imagem ou cole o link público (https://).';
-      const vars = collectVars(); for (const v of info.bodyVars) if (!String(vars[v] || '').trim()) return `Preencha a variável {{${v}}}.`;
-      if (info.headerType === 'TEXT' && info.headerVars.length && !$('opHeaderVar').value.trim()) return 'Preencha a variável do cabeçalho.';
-      if (info.dynamicButton && !$('opBtnParam').value.trim()) return 'Preencha o final do link do botão.';
+      if (state.perMode && selParts().length > 1) {
+        saveCur();
+        for (const p of selParts()) {
+          const e = cfgError(state.per[p.instance_id]);
+          if (e) { const i = instById(p.instance_id) || {}; return `${i.bm || i.name || 'Número'} (${i.display_phone || ''}): ${e}`; }
+        }
+        return '';
+      }
+      return cfgError(curCfg());
     }
     return '';
   }
@@ -1733,8 +1757,60 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!split.tplLists.has(id)) { const { templates } = await api('r=templates&instance=' + encodeURIComponent(id)); split.tplLists.set(id, templates); }
     return split.tplLists.get(id);
   }
+  const tplOk = (t) => t.status === 'APPROVED' && !t.info.carousel;
+  const tplLabel = (t) => `${t.name} · ${t.category === 'MARKETING' ? 'Marketing' : t.category === 'UTILITY' ? 'Utilidade' : t.category} · ${t.language}`;
+  function renderTplTabs() {
+    const box = $('opTplTabs'); box.innerHTML = '';
+    selParts().forEach((p, k) => {
+      const i = instById(p.instance_id) || {}; const cur = state.curInst === p.instance_id;
+      const c = cur ? curCfg() : state.per[p.instance_id]; const done = !cfgError(c);
+      const b = el('button', { type: 'button', class: 'chip', 'aria-pressed': String(cur),
+        style: cur ? 'background:#0f9d77;color:#fff;border-color:transparent;font-weight:600' : '',
+        text: `${done ? '✓ ' : ''}${LETTERS[k]} · ${i.bm || i.name || ''}${i.display_phone ? ' · ' + i.display_phone.slice(-4) : ''}` });
+      b.onclick = () => { saveCur(); loadInstTpl(p.instance_id); };
+      box.append(b);
+    });
+  }
+  async function loadInstTpl(iid) {
+    state.curInst = iid; const sel = $('opTpl');
+    sel.innerHTML = '<option value="">Carregando…</option>';
+    let list; try { list = (await templatesOf(String(iid))).filter(tplOk); } catch (err) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; $('opMsg').textContent = err.message; return; }
+    if (state.curInst !== iid) return;
+    state.templates = list; sel.innerHTML = '';
+    sel.append(el('option', { value: '', text: list.length ? 'Escolha…' : 'Nenhum template aprovado neste número' }));
+    for (const t of list) sel.append(el('option', { value: t.id, text: tplLabel(t) }));
+    const c = state.per[iid] || {};
+    state.tpl = c.tpl ? list.find((t) => t.id === c.tpl.id) || null : null;
+    sel.value = state.tpl ? String(state.tpl.id) : '';
+    applyTemplate();
+    state.mediaUrl = c.mediaUrl || ''; $('opMediaUrl').value = c.mediaUrl || ''; $('opMediaFile').value = ''; $('opMediaMsg').textContent = '';
+    $('opHeaderVar').value = c.header || ''; $('opBtnParam').value = c.btn || '';
+    document.querySelectorAll('#opVars input[data-var]').forEach((inp) => { inp.value = (c.vars || {})[inp.dataset.var] || ''; });
+    const i = instById(iid) || {};
+    $('opTplLabel').textContent = `Template de ${i.bm || i.name || 'este número'} (${i.display_phone || ''})`;
+    $('opTplCommon').textContent = 'Preencha o template de cada BM clicando nas abas acima. As abas com ✓ estão completas.';
+    renderTplTabs(); renderPreview();
+  }
+  function setTplMode(per) {
+    if (state.perMode === per) return;
+    state.perMode = per; state.tpl = null; state.curInst = null;
+    $('opTplSame').setAttribute('aria-pressed', String(!per)); $('opTplPer').setAttribute('aria-pressed', String(per));
+    loadCommonTemplates();
+  }
+  $('opTplSame').onclick = () => setTplMode(false);
+  $('opTplPer').onclick = () => setTplMode(true);
   async function loadCommonTemplates() {
-    const ids = selParts().map((p) => String(p.instance_id)); const sel = $('opTpl'); const cur = state.tpl ? state.tpl.name + '|' + state.tpl.language : '';
+    const ids = selParts().map((p) => String(p.instance_id));
+    $('opTplModeBox').hidden = ids.length < 2;
+    if (ids.length < 2 && state.perMode) { state.perMode = false; $('opTplSame').setAttribute('aria-pressed', 'true'); $('opTplPer').setAttribute('aria-pressed', 'false'); }
+    $('opTplTabs').hidden = !state.perMode;
+    if (state.perMode) {
+      const nums = selParts().map((p) => p.instance_id);
+      for (const k of Object.keys(state.per)) if (!nums.includes(Number(k))) delete state.per[k];
+      await loadInstTpl(nums.includes(state.curInst) ? state.curInst : nums[0]);
+      return;
+    }
+    $('opTplLabel').textContent = 'Template'; const sel = $('opTpl'); const cur = state.tpl ? state.tpl.name + '|' + state.tpl.language : '';
     sel.innerHTML = '<option value="">Carregando…</option>'; $('opTplCommon').textContent = '';
     let lists; try { lists = await Promise.all(ids.map(templatesOf)); } catch (err) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; $('opMsg').textContent = err.message; return; }
     const ok = (t) => t.status === 'APPROVED' && !t.info.carousel;
@@ -1762,13 +1838,13 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       row('Lista', `${listName} · ${num(state.leads)} leads`),
       row('Quem pediu SAIR', state.listBlocked ? (state.inclOpt ? `incluídos (${num(state.listBlocked)})` : `fora (${num(state.listBlocked)})`) : 'ninguém na lista'),
       row('Vão receber agora', `${num(total)} leads`),
-      row('Template', state.tpl ? state.tpl.name : '—'),
+      row('Template', state.perMode && L.length > 1 ? 'um por BM (veja os lotes)' : state.tpl ? state.tpl.name : '—'),
       row('Divisão', L.length > 1 ? `${L.length} lotes · ${$('opDist').value === 'mix' ? 'sorteio' : 'ordem da planilha'}` : 'um número só'));
     const lotsBox = el('div', { class: 'wz-lots', style: 'margin-top:10px' });
     for (const l of L) {
       const i = instById(l.instance_id) || {};
       lotsBox.append(el('div', { class: 'wz-lot' }, el('span', { class: 'wz-num-tag', text: l.tag }),
-        el('div', { class: 'wz-lot-name' }, el('b', { text: i.bm || i.name || '' }), el('span', { text: i.display_phone || '' })),
+        el('div', { class: 'wz-lot-name' }, el('b', { text: i.bm || i.name || '' }), el('span', { text: (i.display_phone || '') + (state.perMode && state.per[l.instance_id] && state.per[l.instance_id].tpl ? ' · ' + state.per[l.instance_id].tpl.name : '') })),
         el('strong', { class: 'wz-lot-n', text: num(l.n) })));
     }
     box.append(lotsBox);
@@ -1818,6 +1894,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   }
   function collectVars() { const o = {}; document.querySelectorAll('#opVars input[data-var]').forEach((i) => { o[i.dataset.var] = i.value; }); return o; }
   function renderPreview() {
+    if (state.perMode && !$('opTplTabs').hidden) renderTplTabs();
     const box = $('preview'); box.innerHTML = '';
     const t = state.tpl;
     if (!t) { box.append(el('div', { class: 'text muted', text: 'Escolha a instância e o template.' })); return; }
@@ -1875,6 +1952,17 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   };
 
   function opPayload() {
+    if (state.perMode && selParts().length > 1) {
+      saveCur();
+      const parts = selParts().map((p) => ({ ...p, ...cfgFields(state.per[p.instance_id]) }));
+      const first = parts[0];
+      return {
+        name: $('opName').value, instance_id: first.instance_id, template_id: first.template_id,
+        header_value: first.header_value, body_vars: first.body_vars, button_param: first.button_param, name_fallback: $('opFallback').value,
+        list_id: Number($('opList').value), quantity: planned(), tps: Number($('opTps').value),
+        split: parts, per_number: true, distribution: $('opDist').value, include_optouts: Boolean(state.inclOpt)
+      };
+    }
     const t = state.tpl;
     return {
       name: $('opName').value, instance_id: Number($('opInst').value), template_id: t ? t.id : null,

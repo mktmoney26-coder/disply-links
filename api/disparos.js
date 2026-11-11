@@ -317,14 +317,24 @@ async function createSplit(sql, req, body) {
     const instance_id = int(p && p.instance_id); const limit = int(p && p.limit);
     if (!instance_id || seen.has(instance_id)) continue;
     if (!limit || limit < 1) bad('Informe o limite de envios de cada número.');
-    seen.add(instance_id); parts.push({ instance_id, limit });
+    const own = body.per_number && p.template_id ? readOpInput({ ...body, ...p, instance_id, template_id: p.template_id }) : null;
+    seen.add(instance_id); parts.push({ instance_id, limit, own });
   }
   if (parts.length < 2) bad('Escolha pelo menos dois números para dividir a lista.');
   if (parts[0].instance_id !== base.instance_id) bad('O primeiro lote precisa ser o número principal.');
   const main = await validateOp(sql, base);
-  // Mesmo template (nome e idioma) aprovado em cada número.
   const problems = [];
-  for (const p of parts) {
+  // Template próprio por número (cada BM com o seu template e as suas variáveis).
+  if (body.per_number) {
+    for (const p of parts) {
+      if (!p.own) { problems.push(`número ${p.instance_id}: escolha o template`); continue; }
+      try { await validateOp(sql, p.own); p.template_id = p.own.template_id; }
+      catch (e) { const inst = (await sql`select name from wa_instances where id = ${p.instance_id}`)[0]; problems.push(`${inst ? inst.name : p.instance_id}: ${e.message}`); }
+    }
+    if (problems.length) bad('Confira os templates: ' + problems.join('; '));
+  }
+  // Mesmo template (nome e idioma) aprovado em cada número.
+  for (const p of body.per_number ? [] : parts) {
     if (p.instance_id === base.instance_id) { p.template_id = base.template_id; continue; }
     const inst = (await sql`select id, name, active from wa_instances where id = ${p.instance_id}`)[0];
     if (!inst || !inst.active) { problems.push(`instância ${p.instance_id} inativa`); continue; }
@@ -346,9 +356,10 @@ async function createSplit(sql, req, body) {
   try {
     for (let i = 0; i < parts.length && left > 0; i++) {
       const p = parts[i]; const n = Math.min(p.limit, left); const tag = TAGS[i] || String(i + 1);
+      const c = p.own || base;
       const [row] = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps, group_id, tag, status)
-        values (${base.name + ' · Lote ' + tag}, ${p.instance_id}, ${p.template_id}, ${base.header_value || null}, ${JSON.stringify(base.body_vars_obj)},
-                ${base.button_param || null}, ${base.name_fallback}, ${base.list_id}, ${n}, ${base.tps}, ${groupId}, ${tag}, 'paused') returning id`;
+        values (${base.name + ' · Lote ' + tag}, ${p.instance_id}, ${p.template_id}, ${c.header_value || null}, ${JSON.stringify(c.body_vars_obj)},
+                ${c.button_param || null}, ${base.name_fallback}, ${base.list_id}, ${n}, ${base.tps}, ${groupId}, ${tag}, 'paused') returning id`;
       if (!groupId) { groupId = row.id; await sql`update wa_operations set group_id = ${groupId} where id = ${row.id}`; }
       created.push({ id: row.id, tag, quantity: n });
       if (mix) {
@@ -422,6 +433,15 @@ async function ops(sql, req, body, a) {
         const label = i2 ? (i2.display_phone || i2.name) : String(iid);
         try {
           if (!i2) throw new Error('número não encontrado');
+          const part = body.split.find((x) => int(x && x.instance_id) === iid) || {};
+          if (body.per_number) {
+            if (!part.template_id) throw new Error('escolha o template');
+            const own = readOpInput({ ...body, ...part, instance_id: iid, template_id: part.template_id });
+            const v = await validateOp(sql, own);
+            const r3 = await sendOne({ op: own, tpl: v.tpl, info: v.info, inst: v.inst, token: decrypt(v.inst.token_enc) }, { name: str(sample.name, 120), phone });
+            results.push({ number: label, ok: r3.ok, error: r3.ok ? null : r3.error });
+            continue;
+          }
           let t2 = tpl;
           if (iid !== inst.id) {
             t2 = (await sql`select * from wa_templates where instance_id = ${iid} and name = ${tpl.name} and language = ${tpl.language}`)[0];
