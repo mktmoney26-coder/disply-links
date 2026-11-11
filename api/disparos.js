@@ -444,7 +444,10 @@ async function ops(sql, req, body, a) {
     // Operação dividida em lotes: envia o teste por cada número escolhido (mesmo template em todos).
     if (Array.isArray(body.split) && body.split.length > 1) {
       const results = [];
-      const ids = [...new Set(body.split.map((x) => int(x && x.instance_id)).filter(Boolean))].slice(0, 20);
+      let ids = [...new Set(body.split.map((x) => int(x && x.instance_id)).filter(Boolean))].slice(0, 20);
+      // Teste só nos números marcados (opcional).
+      if (Array.isArray(body.test_ids) && body.test_ids.length) { const only = body.test_ids.map(int); ids = ids.filter((x) => only.includes(x)); }
+      if (!ids.length) bad('Marque pelo menos um número para o teste.');
       for (const iid of ids) {
         const i2 = (await sql`select * from wa_instances where id = ${iid}`)[0];
         const label = i2 ? (i2.display_phone || i2.name) : String(iid);

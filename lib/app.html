@@ -559,7 +559,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
             </div>
             <div class="wz-box">
               <b>Enviar teste</b>
-              <p class="small muted" style="margin:4px 0 0">Com vários números escolhidos, o teste sai de cada um deles (um por número).</p>
+              <p class="small muted" style="margin:4px 0 0" id="opTestHint">Com vários números escolhidos, o teste sai de cada número marcado abaixo.</p>
+              <div id="opTestPick" class="chips" style="margin-top:6px" hidden></div>
               <div class="row" style="margin-top:8px">
                 <div style="flex:1 1 220px"><label for="opTestPhone" class="small">WhatsApp para teste (com DDD) · vários: separe por vírgula ou ;</label><input id="opTestPhone" type="text" inputmode="tel" placeholder="31 99999-9999, 11 98888-7777"></div>
                 <button class="btn ghost" type="button" id="btnTest" style="align-self:flex-end">Enviar teste</button>
@@ -1395,7 +1396,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   function resetOpForm() {
     ['opName', 'opMediaUrl', 'opHeaderVar', 'opBtnParam', 'opQty', 'opTestPhone'].forEach((x) => { $(x).value = ''; });
     $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40'; $('opDist').value = 'seq';
-    state.tpl = null; state.perMode = false; state.per = {}; state.curInst = null; state.mediaUrl = ''; state.sample = null;
+    state.testSkip = new Set(); state.tpl = null; state.perMode = false; state.per = {}; state.curInst = null; state.mediaUrl = ''; state.sample = null;
     $('opTplSame').setAttribute('aria-pressed', 'true'); $('opTplPer').setAttribute('aria-pressed', 'false'); state.leads = 0; state.inclOpt = false; state.listBlocked = 0; $('opVars').innerHTML = '';
     ['opMsg', 'opTestMsg', 'opMediaMsg', 'opLMsg'].forEach((x) => { $(x).textContent = ''; });
     $('opLCheck').innerHTML = ''; $('opLFile').value = ''; $('opLName').value = '';
@@ -1849,6 +1850,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     }
     box.append(lotsBox);
     renderPreview(); $('preview2').innerHTML = $('preview').innerHTML;
+    renderTestPick();
     renderProfiles();
   }
 
@@ -1972,6 +1974,24 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       split: selParts().length > 1 ? selParts() : undefined, distribution: $('opDist').value, include_optouts: Boolean(state.inclOpt)
     };
   }
+  // Escolha de quais números recebem o teste (todos marcados por padrão).
+  state.testSkip = new Set();
+  function renderTestPick() {
+    const box = $('opTestPick'); box.innerHTML = '';
+    const P = selParts(); box.hidden = P.length < 2; $('opTestHint').hidden = P.length < 2;
+    if (P.length < 2) return;
+    const all = el('button', { type: 'button', class: 'chip', text: 'Marcar todos', onclick: () => { state.testSkip.clear(); renderTestPick(); } });
+    const none = el('button', { type: 'button', class: 'chip', text: 'Desmarcar todos', onclick: () => { P.forEach((p) => state.testSkip.add(p.instance_id)); renderTestPick(); } });
+    P.forEach((p, k) => {
+      const i = instById(p.instance_id) || {}; const on = !state.testSkip.has(p.instance_id);
+      const lab = el('label', { class: 'chip', style: 'cursor:pointer;display:inline-flex;align-items:center;gap:6px' + (on ? ';border-color:#0f9d77' : ';opacity:.6') });
+      const cb = el('input', { type: 'checkbox' }); cb.checked = on;
+      cb.onchange = () => { if (cb.checked) state.testSkip.delete(p.instance_id); else state.testSkip.add(p.instance_id); renderTestPick(); };
+      lab.append(cb, document.createTextNode(`${LETTERS[k]} · ${i.bm || i.name || ''}${i.display_phone ? ' · ' + i.display_phone.slice(-4) : ''}`));
+      box.append(lab);
+    });
+    box.append(all, none);
+  }
   // Depois do envio, acompanha a entrega de cada teste pelo webhook (entregue, lida ou falhou com o motivo).
   async function watchTests(list, head) {
     const items = list.filter((x) => x.wamid); if (!items.length) return;
@@ -1991,12 +2011,14 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const phones = [...new Set($('opTestPhone').value.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean))].slice(0, 10);
     if (!phones.length) { setMsg('opTestMsg', 'Digite pelo menos um número.'); return; }
     if (selParts().length > 1) {
+      const testIds = selParts().map((p) => p.instance_id).filter((id) => !state.testSkip.has(id));
+      if (!testIds.length) { setMsg('opTestMsg', 'Marque pelo menos um número para o teste.'); return; }
       // Operação com vários números: testa cada número escolhido (um envio por número para cada telefone).
       $('btnTest').disabled = true; const res = []; const sent = []; let ok = 0, total = 0;
       for (let k = 0; k < phones.length; k++) {
         setMsg('opTestMsg', `Testando cada número${phones.length > 1 ? ` (telefone ${k + 1} de ${phones.length})` : ''}…`, true);
         try {
-          const r = await post('r=ops&a=test', { ...opPayload(), phone: phones[k], sample: state.sample || {} });
+          const r = await post('r=ops&a=test', { ...opPayload(), test_ids: testIds, phone: phones[k], sample: state.sample || {} });
           (r.results || []).forEach((x) => { total++; if (x.ok) { ok++; sent.push({ label: x.number + (phones.length > 1 ? ' → ' + phones[k] : ''), wamid: x.wamid }); } res.push((x.ok ? '✓ ' : '✗ ') + x.number + (phones.length > 1 ? ' → ' + phones[k] : '') + (x.ok ? '' : ': ' + x.error)); });
         } catch (err) { res.push('✗ ' + phones[k] + ': ' + err.message); total++; }
       }
