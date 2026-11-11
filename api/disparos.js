@@ -213,7 +213,8 @@ async function lists(sql, req, body, a) {
       where c.list_id = ${id} and o.phone is null order by c.id limit 1`;
     const avail = await sql`select count(*)::int as n from wa_contacts c left join wa_optouts o on o.phone = c.phone
       where c.list_id = ${id} and o.phone is null`;
-    return { sample: first[0] || null, available: avail[0].n };
+    const tot = await sql`select count(*)::int as n from wa_contacts where list_id = ${id}`;
+    return { sample: first[0] || null, available: avail[0].n, total: tot[0].n, blocked: tot[0].n - avail[0].n };
   }
   if (req.method === 'GET') {
     const rows = await sql`select l.id, l.name, l.created_at, l.check_summary, count(c.id)::int as total,

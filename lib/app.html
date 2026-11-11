@@ -1785,13 +1785,14 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const maxLim = Math.max(1000, ...state.instances.filter((i) => i.active).map((i) => tierLimit(i.limit_tier) || 0));
     const nNums = Math.max(1, Math.ceil((state.leads || 0) / maxLim));
     b.append(el('div', { class: 'wz-leads-n' }, el('strong', { text: num(state.leads) }), el('span', { text: 'leads prontos para envio' })),
-      el('p', { class: 'small muted', style: 'margin:4px 0 0', text: `Sem os que pediram SAIR. Com números de ${num(maxLim)}/dia, isso pede ${nNums} número(s). Na próxima etapa o sistema sugere quais usar.` }));
+      el('p', { class: 'small muted', style: 'margin:4px 0 0', text: (state.listBlocked ? `${num(state.listTotal)} na lista − ${num(state.listBlocked)} que pediram SAIR (não recebem mais disparos). ` : 'Ninguém desta lista pediu SAIR. ')
+        + `Com números de ${num(maxLim)}/dia, isso pede ${nNums} número(s). Na próxima etapa o sistema sugere quais usar.` }));
   }
   $('opList').onchange = async () => {
     state.sample = null; state.leads = null; split.qtyTouched = false; renderLeads();
     const id = $('opList').value; if (!id) { state.leads = 0; renderLeads(); renderPreview(); return; }
     const d = await api('r=lists&a=sample&id=' + encodeURIComponent(id));
-    state.sample = d.sample; state.leads = d.available;
+    state.sample = d.sample; state.leads = d.available; state.listTotal = d.total; state.listBlocked = d.blocked || 0;
     if (!$('opName').value.trim()) $('opName').value = ((state.lists || []).find((l) => String(l.id) === id) || {}).name || '';
     renderLeads(); renderPreview();
   };
