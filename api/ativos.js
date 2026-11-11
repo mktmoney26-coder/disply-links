@@ -117,7 +117,9 @@ async function bms(sql, req, body, a) {
       if (body.dry) return { origem, destino };
       const out = { migrados: [], falhas: {} };
       for (let page = 0; page < 10; page++) {
-        const r = await graph(`/${dst}/migrate_message_templates`, token, { method: 'POST', body: JSON.stringify({ source_waba_id: src, page_number: page }) });
+        let r;
+        try { r = await graph(`/${dst}/migrate_message_templates`, token, { method: 'POST', body: JSON.stringify({ source_waba_id: src, page_number: page }) }); }
+        catch (err) { if (page > 0 && /no templates found/i.test(err.message)) break; throw err; }
         out.migrados.push(...(r.migrated_templates || []));
         Object.assign(out.falhas, r.failed_templates || {});
         if (!(r.migrated_templates || []).length && !Object.keys(r.failed_templates || {}).length) break;
