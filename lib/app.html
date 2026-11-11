@@ -220,6 +220,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .wz-num-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .wz-num-meta .badge{white-space:normal;line-height:1.3}
   .wz-summary .wz-lot-name{flex:1}
+  .wz-profiles{display:flex;flex-direction:column;gap:8px}
+  .wz-prof{display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);flex-wrap:wrap}
+  .wz-prof .wz-lot-name{flex:1 1 160px}
+  .wz-prof .wz-num-tag{background:linear-gradient(120deg,#00D4A3,#007BFF);color:#fff}
+  .wz-ph{width:46px;height:46px;border-radius:50%;overflow:hidden;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);flex:0 0 46px}
+  .wz-ph img{width:100%;height:100%;object-fit:cover}
   .wz-mini{min-height:34px;padding:6px 10px;font-size:13px}
   .wz-num-lim{flex:1 0 100%;display:flex;align-items:center;gap:8px;margin:4px 0 0 44px;font-size:12.5px;color:var(--muted);font-weight:600}
   .wz-num-lim input{max-width:130px;min-height:36px;padding:6px 10px}
@@ -298,6 +304,13 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .wa-b-text{white-space:pre-wrap;word-wrap:break-word}
   .wa-b-meta{float:right;margin:6px 0 -4px 12px;font-size:11px;color:var(--wa-sub);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
   .wa-b-meta .tick{margin:0}
+  .wa-bubble.has-media{padding:3px 3px 6px;width:min(330px,80%)} .wa-bubble.has-media .wa-b-text,.wa-bubble.has-media .wa-b-tag{padding:0 6px} .wa-bubble.has-media .wa-b-tag{padding-top:4px} .wa-bubble.has-media .wa-b-meta{margin-right:6px}
+  .wa-media{border-radius:6px;overflow:hidden;margin-bottom:4px;background:rgba(0,0,0,.06)} .wa-media img,.wa-media video{display:block;width:100%;max-height:360px;object-fit:cover;cursor:zoom-in} .wa-media video{cursor:auto;background:#000}
+  .wa-media.audio{background:transparent} .wa-media audio{width:100%;min-width:240px}
+  .wa-media-load{display:block;padding:18px 12px;font-size:12.5px;color:var(--wa-sub);text-align:center}
+  .wa-doc{display:block;padding:12px;font-weight:600;color:var(--wa-ink);text-decoration:none}
+  .wa-b-btns{clear:both;margin:6px -3px -6px} .wa-b-btns span{display:block;border-top:1px solid rgba(0,0,0,.08);padding:9px;text-align:center;color:#53bdeb;font-weight:600;font-size:14px}
+  :root:not([data-theme=dark]) .wa-b-btns span{color:#027eb5}
   .wa-b-err{display:block;clear:both;font-size:11.5px;color:#f15c6d;margin-top:4px}
   .wa-note{margin:0;padding:4px 16px;font-size:12px;color:var(--wa-sub);text-align:center;background:transparent}
   .wa-note:empty{display:none}
@@ -522,16 +535,18 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         <div class="split">
           <div class="main stack">
             <div class="wz-summary" id="wzSummary"></div>
-            <div id="opProfile" class="row" style="gap:14px;padding:12px;border:1px solid var(--line);border-radius:10px" hidden>
-            <div id="opPhoto" style="width:64px;height:64px;border-radius:99px;background:var(--soft);overflow:hidden;flex:0 0 64px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">sem foto</div>
-            <div style="flex:1 1 220px">
-              <strong>Foto de perfil do número</strong>
-              <p class="small muted" style="margin:2px 0 8px">É a foto que o cliente vê no WhatsApp. Quadrada, JPG ou PNG (ajustada para 640×640).</p>
-              <label class="btn ghost" style="margin:0;display:inline-flex">Trocar foto<input id="opPhotoFile" type="file" accept="image/jpeg,image/png" style="display:none"></label>
-              <button class="btn ghost" type="button" id="opCardBtn">Prévia para o cliente</button>
-              <span id="opPhotoMsg" class="small" role="status" style="margin-left:8px"></span>
+            <div id="opProfile" class="wz-box" hidden>
+              <div class="row" style="justify-content:space-between;align-items:center">
+                <b>Foto de perfil dos números</b>
+                <div class="row" style="gap:6px">
+                  <label class="btn ghost wz-mini" style="margin:0">Mesma foto em todos<input id="opPhotoAll" type="file" accept="image/jpeg,image/png" style="display:none"></label>
+                  <button class="btn primary wz-mini" type="button" id="opCardAll">Prévia de todos (1 imagem)</button>
+                </div>
+              </div>
+              <p class="small muted" style="margin:4px 0 10px">É a foto que o cliente vê no WhatsApp. Troque em um número ou use a mesma foto em todos de uma vez.</p>
+              <div id="opProfiles" class="wz-profiles"></div>
+              <p id="opPhotoMsg" class="small" role="status" style="margin:8px 0 0"></p>
             </div>
-          </div>
             <div class="grid">
               <div class="wz-field"><label for="opTps">Velocidade (mensagens por segundo, por número)</label><input id="opTps" type="number" min="1" max="80" value="40"></div>
             </div>
@@ -1450,19 +1465,6 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     finally { sel.disabled = false; }
   }
 
-  // ---------- Foto de perfil do número ----------
-  function showPhoto(url) {
-    const box = $('opPhoto'); box.innerHTML = '';
-    if (url) box.append(el('img', { src: url, alt: 'Foto de perfil atual', style: 'width:100%;height:100%;object-fit:cover' }));
-    else box.textContent = 'sem foto';
-  }
-  async function loadProfile(id) {
-    $('opProfile').hidden = !id; setMsg('opPhotoMsg', '');
-    if (!id) return;
-    showPhoto(null);
-    try { const p = await post('r=instances&a=profile', { id: Number(id) }); showPhoto(p.photo); }
-    catch (err) { setMsg('opPhotoMsg', 'Não consegui ler o perfil: ' + err.message); }
-  }
   // ---------- Imagem "Foto de perfil" para mandar ao cliente ----------
   function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
   async function drawProfileCard(d) {
@@ -1492,32 +1494,36 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     ctx.restore();
     return c;
   }
-  async function profileCard(id) {
+  function cardModal() {
     let bg = $('cardModal');
     if (!bg) { bg = el('div', { id: 'cardModal', class: 'modal-bg', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Prévia da foto de perfil' }); document.body.append(bg); bg.onclick = (e) => { if (e.target === bg) bg.hidden = true; }; }
     bg.hidden = false; bg.innerHTML = '';
     const box = el('div', { class: 'modal' }); bg.append(box);
-    box.append(el('p', { class: 'small muted', text: 'Montando a prévia com a foto atual do número…' }));
-    let d; try { d = await post('r=instances&a=card', { id: Number(id) }); } catch (err) { box.innerHTML = ''; box.append(el('p', { class: 'err', text: err.message }), el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { bg.hidden = true; } })); return; }
-    const canvas = await drawProfileCard(d);
+    return { bg, box };
+  }
+  function showCardModal(canvas, title, sub, fname) {
+    const { bg, box } = cardModal();
     const url = canvas.toDataURL('image/png');
-    box.innerHTML = '';
-    box.append(el('h3', { style: 'margin:0 0 4px', text: 'Prévia para o cliente' }),
-      el('p', { class: 'small muted', style: 'margin:0 0 10px', text: d.photo ? 'Como o contato vê o perfil deste número no WhatsApp.' : 'Este número ainda está sem foto de perfil.' }),
-      el('img', { src: url, alt: 'Foto de perfil de ' + (d.phone || ''), style: 'width:100%;max-width:420px;display:block;margin:0 auto;border-radius:12px' }));
-    const msg = el('span', { class: 'small', role: 'status' });
+    box.append(el('h3', { style: 'margin:0 0 4px', text: title }), el('p', { class: 'small muted', style: 'margin:0 0 10px', text: sub }),
+      el('img', { src: url, alt: title, style: 'width:100%;display:block;margin:0 auto;border-radius:12px' }));
+    const msg = el('span', { class: 'small', role: 'status', id: 'cardMsg' });
     const row = el('div', { class: 'row', style: 'margin-top:12px;justify-content:center' });
-    const fname = 'perfil-' + String(d.phone || id).replace(/\D/g, '') + '.png';
     row.append(el('a', { class: 'btn primary', href: url, download: fname, text: 'Baixar imagem' }));
     if (navigator.clipboard && window.ClipboardItem) row.append(el('button', { class: 'btn ghost', type: 'button', text: 'Copiar imagem', onclick: async () => {
-      try { const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setMsg(msg.id = 'cardMsg', 'Copiada. É só colar no WhatsApp.', true); }
+      try { const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png')); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setMsg('cardMsg', 'Copiada. É só colar no WhatsApp.', true); }
       catch (e) { msg.textContent = 'Não consegui copiar; use Baixar imagem.'; }
     } }));
     row.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { bg.hidden = true; } }));
     box.append(row, msg);
   }
+  async function profileCard(id) {
+    const { bg, box } = cardModal();
+    box.append(el('p', { class: 'small muted', text: 'Montando a prévia com a foto atual do número…' }));
+    let d; try { d = await post('r=instances&a=card', { id: Number(id) }); } catch (err) { box.innerHTML = ''; box.append(el('p', { class: 'err', text: err.message }), el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { bg.hidden = true; } })); return; }
+    const canvas = await drawProfileCard(d);
+    showCardModal(canvas, 'Prévia para o cliente', d.photo ? 'Como o contato vê o perfil deste número no WhatsApp.' : 'Este número ainda está sem foto de perfil.', 'perfil-' + String(d.phone || id).replace(/\D/g, '') + '.png');
+  }
   document.addEventListener('keydown', (e) => { const m = $('cardModal'); if (e.key === 'Escape' && m && !m.hidden) m.hidden = true; });
-  $('opCardBtn').onclick = () => { if ($('opInst').value) profileCard($('opInst').value); };
 
   function squareJpeg(file) {
     return new Promise((resolve, reject) => {
@@ -1533,16 +1539,69 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       img.src = url;
     });
   }
-  $('opPhotoFile').onchange = async () => {
-    const f = $('opPhotoFile').files[0]; const id = $('opInst').value; if (!f || !id) return;
+  // ---------- Fotos de perfil de todos os números da operação (etapa 4) ----------
+  const profCache = new Map(); // id da instância -> link da foto atual
+  const lotIds = () => selParts().map((p) => p.instance_id);
+  async function photoOf(id, fresh) {
+    if (fresh || !profCache.has(id)) profCache.set(id, post('r=instances&a=profile', { id: Number(id) }).then((p) => p.photo || null).catch(() => null));
+    return profCache.get(id);
+  }
+  function renderProfiles() {
+    const box = $('opProfiles'); box.innerHTML = '';
+    const L = lots(); $('opProfile').hidden = !L.length;
+    $('opCardAll').hidden = L.length < 2;
+    for (const l of L) {
+      const i = instById(l.instance_id) || {};
+      const ph = el('div', { class: 'wz-ph', text: '…' });
+      photoOf(l.instance_id).then((url) => { ph.innerHTML = ''; if (url) ph.append(el('img', { src: url, alt: 'Foto de perfil' })); else ph.textContent = 'sem foto'; });
+      const file = el('input', { type: 'file', accept: 'image/jpeg,image/png', style: 'display:none' });
+      file.onchange = async () => {
+        const f = file.files[0]; if (!f) return;
+        try {
+          const data = await squareJpeg(f); ph.innerHTML = ''; ph.append(el('img', { src: data, alt: '' }));
+          setMsg('opPhotoMsg', `Enviando a foto do lote ${l.tag}…`, true);
+          const r = await post('r=instances&a=photo', { id: l.instance_id, data });
+          profCache.set(l.instance_id, Promise.resolve(r.photo || data));
+          setMsg('opPhotoMsg', `Foto do lote ${l.tag} trocada. Pode levar alguns minutos para aparecer para os clientes.`, true);
+        } catch (err) { setMsg('opPhotoMsg', `Lote ${l.tag}: ${err.message}`); renderProfiles(); }
+        finally { file.value = ''; }
+      };
+      box.append(el('div', { class: 'wz-prof' },
+        el('span', { class: 'wz-num-tag', text: l.tag }), ph,
+        el('div', { class: 'wz-lot-name' }, el('b', { text: i.display_phone || '' }), el('span', { text: i.bm || i.name || '' })),
+        el('label', { class: 'btn ghost wz-mini', style: 'margin:0' }, document.createTextNode('Trocar foto'), file),
+        el('button', { type: 'button', class: 'btn ghost wz-mini', text: 'Prévia', onclick: () => profileCard(l.instance_id) })));
+    }
+  }
+  $('opPhotoAll').onchange = async () => {
+    const f = $('opPhotoAll').files[0]; if (!f) return;
+    const ids = lotIds(); const errs = [];
     try {
       const data = await squareJpeg(f);
-      showPhoto(data); setMsg('opPhotoMsg', 'Enviando para a Meta…', true);
-      const r = await post('r=instances&a=photo', { id: Number(id), data });
-      if (r.photo) showPhoto(r.photo);
-      setMsg('opPhotoMsg', 'Foto trocada. Pode levar alguns minutos para aparecer para os clientes.', true);
-    } catch (err) { setMsg('opPhotoMsg', err.message); loadProfile(id); }
-    finally { $('opPhotoFile').value = ''; }
+      for (let k = 0; k < ids.length; k++) {
+        setMsg('opPhotoMsg', `Aplicando a foto… ${k + 1} de ${ids.length}`, true);
+        try { const r = await post('r=instances&a=photo', { id: ids[k], data }); profCache.set(ids[k], Promise.resolve(r.photo || data)); }
+        catch (err) { errs.push(`${(instById(ids[k]) || {}).display_phone}: ${err.message}`); }
+      }
+      renderProfiles();
+      setMsg('opPhotoMsg', errs.length ? `Foto aplicada em ${ids.length - errs.length} de ${ids.length}. Falhou: ${errs.join(' · ')}` : `Foto aplicada nos ${ids.length} números. Pode levar alguns minutos para aparecer para os clientes.`, !errs.length);
+    } catch (err) { setMsg('opPhotoMsg', err.message); }
+    finally { $('opPhotoAll').value = ''; }
+  };
+  // Uma imagem só com o perfil de todos os números, lado a lado (para mandar ao cliente).
+  $('opCardAll').onclick = async () => {
+    const L = lots(); if (!L.length) return;
+    setMsg('opPhotoMsg', 'Montando a prévia de todos os números…', true);
+    try {
+      const cards = await Promise.all(L.map(async (l) => drawProfileCard(await post('r=instances&a=card', { id: l.instance_id }))));
+      const n = cards.length, cols = n <= 3 ? n : n === 4 ? 2 : 3, rows = Math.ceil(n / cols);
+      const W = 540, H = 520, G = 24;
+      const c = document.createElement('canvas'); c.width = cols * W + (cols + 1) * G; c.height = rows * H + (rows + 1) * G;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#0b0e13'; ctx.fillRect(0, 0, c.width, c.height);
+      cards.forEach((cv, k) => ctx.drawImage(cv, G + (k % cols) * (W + G), G + Math.floor(k / cols) * (H + G), W, H));
+      setMsg('opPhotoMsg', '');
+      showCardModal(c, `Prévia dos ${n} números`, 'Como os contatos veem o perfil de cada número no WhatsApp.', 'perfis-' + ($('opName').value || 'operacao').normalize('NFD').replace(/[^\w-]+/g, '-').slice(0, 40) + '.png');
+    } catch (err) { setMsg('opPhotoMsg', err.message); }
   };
 
   // ---------- Etapa 2: números (cada número escolhido vira um lote: A, B, C…) ----------
@@ -1566,7 +1625,6 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const main = selParts()[0]; const id = main ? String(main.instance_id) : '';
     if ($('opInst').value !== id) {
       $('opInst').value = id; state.tpl = null; split.tplLists.clear();
-      if (id) loadProfile(id); else $('opProfile').hidden = true;
     }
     if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || '';
   }
@@ -1710,12 +1768,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const i = instById(l.instance_id) || {};
       lotsBox.append(el('div', { class: 'wz-lot' }, el('span', { class: 'wz-num-tag', text: l.tag }),
         el('div', { class: 'wz-lot-name' }, el('b', { text: i.bm || i.name || '' }), el('span', { text: i.display_phone || '' })),
-        el('button', { type: 'button', class: 'btn ghost wz-mini', text: 'Prévia do perfil', title: 'Imagem com número e foto de perfil para mandar ao cliente', onclick: () => profileCard(l.instance_id) }),
         el('strong', { class: 'wz-lot-n', text: num(l.n) })));
     }
     box.append(lotsBox);
     renderPreview(); $('preview2').innerHTML = $('preview').innerHTML;
-    $('opProfile').querySelector('strong').textContent = L.length > 1 ? 'Foto de perfil do número do lote A (os outros: botão “Prévia do perfil” em cada lote)' : 'Foto de perfil do número';
+    renderProfiles();
   }
 
   function insertAt(input, token) {
@@ -2100,7 +2157,33 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   }
 
   function showChat(on) { $('waBox').classList.toggle('open', on); }
-  async function openConv(c) { ib.conv = c; ib.lastCount = -1; $('ibText').value = ''; $('ibMsg').textContent = ''; showChat(true); renderConvs(); await loadThread(true); }
+  // Mídia nas conversas: a do disparo vem de um link público; a recebida do cliente é buscada na Meta pelo sistema.
+  const mediaCache = new Map();
+  async function inboundBlob(id) {
+    if (!mediaCache.has(id)) mediaCache.set(id, (async () => {
+      const r = await fetch('/api/disparos?r=inbox&a=media&id=' + id, { headers: { Authorization: 'Bearer ' + key } });
+      if (!r.ok) { let e = {}; try { e = await r.json(); } catch (x) {} throw new Error(e.erro || 'Mídia indisponível'); }
+      return URL.createObjectURL(await r.blob());
+    })());
+    return mediaCache.get(id);
+  }
+  function mediaEl(md) {
+    const wrap = el('div', { class: 'wa-media ' + md.kind });
+    const put = (src) => {
+      wrap.innerHTML = '';
+      if (md.kind === 'image' || md.kind === 'sticker') { const im = el('img', { src, alt: 'Imagem', loading: 'lazy' }); im.onclick = () => window.open(src, '_blank'); wrap.append(im); }
+      else if (md.kind === 'video') wrap.append(el('video', { src, controls: '', preload: 'metadata', playsinline: '' }));
+      else if (md.kind === 'audio') wrap.append(el('audio', { src, controls: '', preload: 'metadata' }));
+      else wrap.append(el('a', { href: src, target: '_blank', rel: 'noopener', download: '', class: 'wa-doc', text: '📄 Abrir documento' }));
+    };
+    if (md.url) put(md.url);
+    else if (md.inbound) {
+      wrap.append(el('span', { class: 'wa-media-load', text: 'Carregando mídia…' }));
+      inboundBlob(md.inbound).then(put).catch((e) => { wrap.innerHTML = ''; wrap.append(el('span', { class: 'wa-media-load', text: '⚠ ' + e.message })); });
+    }
+    return wrap;
+  }
+  async function openConv(c) { ib.lastSig = null; ib.conv = c; ib.lastCount = -1; $('ibText').value = ''; $('ibMsg').textContent = ''; showChat(true); renderConvs(); await loadThread(true); }
 
   async function loadThread(scroll) {
     clearTimeout(ib.threadTimer);
@@ -2120,6 +2203,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     head.append(pinBtn);
     const box = $('ibMsgs');
     const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+    // Só redesenha quando algo mudou (assim áudio e vídeo não param de tocar a cada atualização).
+    const sig = convKey(c) + '|' + (ib.mask ? 1 : 0) + '|' + d.items.map((m) => m.id + ':' + (m.status || '')).join(',');
+    const changed = sig !== ib.lastSig; ib.lastSig = sig;
+    if (changed) {
     box.innerHTML = '';
     let lastDay = '';
     for (const m of d.items) {
@@ -2127,14 +2214,18 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (day !== lastDay) { box.append(el('div', { class: 'wa-day' }, el('span', { text: dayLabel(m.at) }))); lastDay = day; }
       const b = el('div', { class: 'wa-bubble ' + m.dir + (m.status === 'failed' ? ' failed' : '') });
       if (m.kind === 'template' && m.op) b.append(el('span', { class: 'wa-b-tag', text: 'Disparo · ' + m.op }));
-      b.append(el('span', { class: 'wa-b-text', text: m.text || '' }));
+      if (m.media) { b.classList.add('has-media'); b.append(mediaEl(m.media)); }
+      const txt = m.media && m.dir === 'in' ? String(m.text || '').replace(/^\[(Imagem|Vídeo|Áudio|Documento|Figurinha)\]\s*/, '') : (m.text || '');
+      if (txt) b.append(el('span', { class: 'wa-b-text', text: txt }));
       const meta = el('span', { class: 'wa-b-meta', text: new Date(m.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
       if (m.dir === 'out') { const t = tickEl(m.status); if (t) meta.append(t); }
       b.append(meta);
       if (m.error) b.append(el('span', { class: 'wa-b-err', text: m.error }));
+      if (m.buttons && m.buttons.length) { const bb = el('div', { class: 'wa-b-btns' }); m.buttons.forEach((t) => bb.append(el('span', { text: t }))); b.append(bb); }
       box.append(b);
     }
-    if (scroll || atBottom || d.items.length !== ib.lastCount) box.scrollTop = box.scrollHeight;
+    }
+    if (changed && (scroll || atBottom || d.items.length !== ib.lastCount)) box.scrollTop = box.scrollHeight;
     ib.lastCount = d.items.length;
     $('ibForm').hidden = false;
     const open = d.window_open;

@@ -95,8 +95,10 @@ module.exports = async (req, res) => {
         const names = Object.fromEntries((value.contacts || []).map((c) => [c.wa_id, c.profile && c.profile.name]));
         for (const m of value.messages || []) {
           const phone = normalizePhone(m.from) || String(m.from); // mesmo formato das listas (com o nono dígito)
-          await sql`insert into wa_inbound (instance_id, phone, name, text, wamid, msg_type)
-            values (${inst.id}, ${phone}, ${names[m.from] || null}, ${describeMessage(m).slice(0, 4000)}, ${m.id}, ${String(m.type || 'text')})`;
+          const md = ['image', 'video', 'audio', 'voice', 'document', 'sticker'].includes(m.type) ? (m[m.type] || {}) : {};
+          await sql`insert into wa_inbound (instance_id, phone, name, text, wamid, msg_type, media_id, media_mime)
+            values (${inst.id}, ${phone}, ${names[m.from] || null}, ${describeMessage(m).slice(0, 4000)}, ${m.id}, ${String(m.type || 'text')},
+                    ${md.id || null}, ${md.mime_type || null})`;
           // Quem respondeu leu a mensagem: marca como lida mesmo que a pessoa tenha desligado a confirmação de leitura.
           try {
             await sql`update wa_recipients set status = 'read', updated_at = now()

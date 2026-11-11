@@ -471,12 +471,12 @@ async function templatePreviews(sql, opIds) {
   if (!opIds.length) return map;
   let ops = [];
   try {
-    ops = await sql`select o.id, o.name, o.body_vars, o.name_fallback, t.components
+    ops = await sql`select o.id, o.name, o.body_vars, o.name_fallback, o.header_value, t.components
     from wa_operations o left join wa_templates t on t.id = o.template_id where o.id = any(${opIds}::int[])`;
   } catch (err) { console.error('prévia do template:', err.message); }
   for (const o of ops) {
     let vars = {}; try { vars = JSON.parse(o.body_vars || '{}'); } catch {}
-    map.set(o.id, { name: o.name, info: meta.describeTemplate(o.components), op: { body_vars_obj: vars, name_fallback: o.name_fallback } });
+    map.set(o.id, { name: o.name, info: meta.describeTemplate(o.components), header: o.header_value, op: { body_vars_obj: vars, name_fallback: o.name_fallback } });
   }
   return map;
 }
@@ -488,10 +488,23 @@ function campaignText(p, contact) {
 }
 
 async function inbox(sql, req, body, a) {
+  // Mídia recebida do cliente (foto, áudio, vídeo, documento): busca na Meta com o token do número.
+  if (req.method === 'GET' && a === 'media') {
+    const row = (await sql`select i.media_id, i.media_mime, i.instance_id from wa_inbound i where i.id = ${int(req.query.id)}`)[0];
+    if (!row || !row.media_id) throw new HttpError(404, 'Mídia não encontrada.');
+    const inst = await getInstance(sql, row.instance_id);
+    const token = decrypt(inst.token_enc);
+    let info;
+    try { info = await meta.graph(`/${row.media_id}`, token); } catch (err) { throw new HttpError(410, 'A Meta não tem mais esta mídia (ela some depois de alguns dias).'); }
+    if (Number(info.file_size || 0) > 4 * 1024 * 1024) throw new HttpError(413, 'Arquivo grande demais para mostrar aqui.');
+    const r = await fetch(info.url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) throw new HttpError(502, 'Não consegui baixar a mídia da Meta.');
+    return { raw: Buffer.from(await r.arrayBuffer()), type: info.mime_type || row.media_mime || 'application/octet-stream' };
+  }
   if (req.method === 'GET' && a === 'thread') {
     const instanceId = int(req.query.instance);
     const phone = meta.normalizePhone(req.query.phone) || str(req.query.phone, 20);
-    const inbound = await sql`select id, name, text, msg_type, created_at from wa_inbound
+    const inbound = await sql`select id, name, text, msg_type, media_id, media_mime, created_at from wa_inbound
       where instance_id = ${instanceId} and phone = ${phone} order by created_at desc limit 300`;
     const outbound = await sql`select id, text, status, error, created_at from wa_outbound
       where instance_id = ${instanceId} and phone = ${phone} order by created_at desc limit 300`;
@@ -502,9 +515,18 @@ async function inbox(sql, req, body, a) {
     const previews = await templatePreviews(sql, [...new Set(campaigns.map((c) => c.operation_id))]);
     await sql`update wa_inbound set is_read = true where instance_id = ${instanceId} and phone = ${phone} and not is_read`;
     const items = [
-      ...inbound.map((m) => ({ dir: 'in', id: 'i' + m.id, text: m.text, type: m.msg_type, at: m.created_at })),
+      ...inbound.map((m) => ({ dir: 'in', id: 'i' + m.id, text: m.text, type: m.msg_type, at: m.created_at,
+        media: m.media_id ? { kind: m.msg_type === 'voice' ? 'audio' : m.msg_type, inbound: m.id, mime: m.media_mime } : null })),
       ...outbound.map((m) => ({ dir: 'out', id: 'o' + m.id, text: m.text, status: m.status, error: m.error, at: m.created_at })),
-      ...campaigns.map((c) => ({ dir: 'out', kind: 'template', id: 'c' + c.id, op: c.operation_name, text: campaignText(previews.get(c.operation_id), { name: c.contact_name, phone }), status: c.status, error: c.error, at: c.created_at }))
+      ...campaigns.map((c) => {
+        const p = previews.get(c.operation_id);
+        const kind = p && { IMAGE: 'image', VIDEO: 'video', DOCUMENT: 'document' }[p.info.headerType];
+        return { dir: 'out', kind: 'template', id: 'c' + c.id, op: c.operation_name,
+          text: p ? meta.previewText(p.info, p.op, { name: c.contact_name, phone }).trim() : campaignText(p, { name: c.contact_name, phone }),
+          media: kind && /^https:\/\/\S+$/.test(String(p.header || '')) ? { kind, url: p.header } : null,
+          buttons: p && p.info.buttons ? p.info.buttons.map((b) => b.text) : [],
+          status: c.status, error: c.error, at: c.created_at };
+      })
     ].sort((x, y) => new Date(x.at) - new Date(y.at));
     const lastIn = inbound[0] ? new Date(inbound[0].created_at).getTime() : 0;
     const optout = (await sql`select 1 from wa_optouts where phone = ${phone}`).length > 0;
@@ -629,6 +651,7 @@ module.exports = async (req, res) => {
     else if (r === 'inbox') out = await inbox(sql, req, body, a);
     else if (r === 'webhook-info') out = { callback: webhookUrl(req), verify_token: verifyToken() };
     else throw new HttpError(404, 'Recurso não encontrado.');
+    if (out && out.raw) { res.setHeader('Content-Type', out.type); res.setHeader('Cache-Control', 'private, max-age=3600'); res.status(200).end(out.raw); return; }
     res.status(200).json(out);
   } catch (err) {
     const status = err instanceof HttpError ? err.status : (err.status && err.status < 500 ? 400 : 500);
