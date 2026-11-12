@@ -236,7 +236,8 @@ async function gestao(sql, req, body, a) {
     const ts = tpls.filter((t) => t.bm_ref === b.id);
     const usable = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
     const details = [...ws.map((w) => w.health_detail), ...ns.map((n) => n.health_detail)].filter(Boolean).join('\n');
-    const limit = real.map((n) => tierN(n.limit_tier)).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0) || null;
+    // O limite é do portfólio: vale o que a Meta informar em qualquer número da BM (inclusive o de teste).
+    const limit = ns.map((n) => tierN(n.limit_tier)).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0) || null;
     // Uso nas últimas 24 h: o que saiu pelo Disply; com ?meta=1, o maior entre Disply e Meta.
     let usedN = 0; let first = null;
     for (const n of real) { const u = usedBy.get(n.phone_number_id); if (u) { usedN += u.n; if (!first || new Date(u.first_at) < new Date(first)) first = u.first_at; } }

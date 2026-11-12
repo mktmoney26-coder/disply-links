@@ -418,7 +418,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .gs-ok::before,.gs-no::before,.gs-mid::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
   .gs-av{display:flex;flex-direction:column;gap:4px;min-width:120px}
   .gs-av b{font-variant-numeric:tabular-nums}
-  .gs-meter{height:5px;background:var(--soft);border-radius:99px;overflow:hidden}
+  .gs-meter{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
   .gs-meter i{display:block;height:100%;border-radius:99px}
   .gs-more td{background:var(--soft);padding:12px 16px}
   .gs-more .row{gap:6px}
@@ -3453,11 +3453,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     tr.append(tdn(b.status === 'banida' ? no('Banida') : b.status === 'restrita' ? no('Restrita') : b.status === 'erro' ? no('Sem acesso') : yes('Ativa')));
     tr.append(tdn(ok ? yes(`${ok} aprovado${ok > 1 ? 's' : ''}`) : pend ? mid(`${pend} em análise`) : no('Nenhum aprovado')));
     const av = el('td');
-    if (!['apta', 'limite'].includes(b.status) || !lim) av.append(el('span', { class: 'muted', text: '—' }));
+    if (!lim) av.append(el('span', { class: 'muted', text: '—' }));
     else if (lim === Infinity) av.append(el('b', { text: 'Ilimitado' }));
     else {
       const free = Math.max(0, lim - b.used); const pct = Math.min(100, b.used / lim * 100);
-      av.append(el('div', { class: 'gs-av' }, el('span', {}, el('b', { text: num(free) }), el('span', { class: 'small muted', text: ' de ' + num(lim) })),
+      const usable = ['apta', 'limite'].includes(b.status);
+      av.append(el('div', { class: 'gs-av', style: usable ? '' : 'opacity:.55', title: usable ? '' : 'Limite da BM. Só dá para usar depois de resolver o que está em vermelho.' }, el('span', {}, el('b', { text: num(free) }), el('span', { class: 'small muted', text: ' de ' + num(lim) })),
         el('div', { class: 'gs-meter' }, el('i', { style: `width:${100 - pct}%;background:${free === 0 ? '#b45309' : pct >= 70 ? '#d97706' : '#047857'}` })),
         free === 0 && b.free_from ? el('span', { class: 'small muted', text: 'libera ' + hhmm(b.free_from) }) : null));
     }
