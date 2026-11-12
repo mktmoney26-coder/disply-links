@@ -3692,7 +3692,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
     tr.append(tdn(el('div', { class: 'gs-name' }, el('span', { class: 'gs-dot', style: 'background:' + GS[b.status][1], title: GS[b.status][0] }), el('span', { text: b.name })),
       el('div', { class: 'small muted', text: `${GS[b.status][0]}${b.profile ? ' · ' + b.profile : ''}` })));
-    tr.append(tdn(okNum.length ? yes(okNum[0].display_phone + (okNum.length > 1 ? ` +${okNum.length - 1}` : '')) : real.length ? no('Bloqueado') : no('Sem número')));
+    const pendNum = real.find((n) => n.status === 'PENDING');
+    tr.append(tdn(okNum.length ? yes(okNum[0].display_phone + (okNum.length > 1 ? ` +${okNum.length - 1}` : '')) : pendNum ? mid('Falta confirmar SMS') : real.length ? no(real.some((n) => n.status === 'BANNED') ? 'Banido' : 'Bloqueado') : no('Sem número')));
     tr.append(tdn(payBad ? no('Falta cartão') : real.length || b.wabas.length ? yes('OK') : mid('—')));
     tr.append(tdn(b.status === 'banida' ? no('Banida') : b.status === 'restrita' ? no('Restrita') : b.status === 'erro' ? no('Sem acesso') : yes('Ativa')));
     tr.append(tdn(ok ? yes(`${ok} aprovado${ok > 1 ? 's' : ''}`) : pend ? mid(`${pend} em análise`) : no('Nenhum aprovado')));

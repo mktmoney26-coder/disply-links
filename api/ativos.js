@@ -259,7 +259,9 @@ async function gestao(sql, req, body, a) {
     else if (rejected || allBanned) status = 'banida';
     else if (b.manual_status === 'restrita' || restrictedW) status = 'restrita';
     else if (blocked && !pay && /Limite de mensagens atingido/i.test(details)) status = 'limite';
-    else if (blocked && !pay && usable.length === 0 && real.length) status = 'restrita';
+    // Restrita só com sinal real de restrição: status do número ou bloqueio por motivo que não seja
+    // pagamento, número sem confirmar o SMS ou limite do dia.
+    else if (real.some((n) => ['RESTRICTED', 'FLAGGED'].includes(n.status)) || (blocked && !usable.length && /viola[cç][aã]o de pol[ií]tica/i.test(details))) status = 'restrita';
     else if (!real.length) status = 'sem_numero';
     else if (pay && !usable.length) status = 'pagamento';
     else if (!usable.length) status = 'sem_numero';
