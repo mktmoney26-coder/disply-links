@@ -219,7 +219,7 @@ async function gestao(sql, req, body, a) {
     if (b) await logActivity(sql, body.done === false ? `Análise da BM ${b.name} marcada como resolvida` : `Pedido de análise registrado para a BM ${b.name}`);
     return { ok: true };
   }
-  const bmsRows = await sql`select id, name, profile, bm_id, last_check, last_error, review_at, manual_status, token_enc from as_bms where active order by name`;
+  const bmsRows = await sql`select id, name, profile, bm_id, last_check, last_error, review_at, manual_status, limit_tier, token_enc from as_bms where active order by name`;
   const wabas = await sql`select * from as_wabas`;
   const nums = await sql`select n.*, i.id as instance_id, i.active as inst_active from as_numbers n left join wa_instances i on i.phone_number_id = n.phone_number_id`;
   const tpls = await sql`select bm_ref, waba_id, name, language, category, status, updated_at from as_templates order by name`;
@@ -237,7 +237,7 @@ async function gestao(sql, req, body, a) {
     const usable = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
     const details = [...ws.map((w) => w.health_detail), ...ns.map((n) => n.health_detail)].filter(Boolean).join('\n');
     // O limite é do portfólio: vale o que a Meta informar em qualquer número da BM (inclusive o de teste).
-    const limit = ns.map((n) => tierN(n.limit_tier)).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0) || null;
+    const limit = [b.limit_tier, ...ns.map((n) => n.limit_tier)].map(tierN).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0) || null;
     // Uso nas últimas 24 h: o que saiu pelo Disply; com ?meta=1, o maior entre Disply e Meta.
     let usedN = 0; let first = null;
     for (const n of real) { const u = usedBy.get(n.phone_number_id); if (u) { usedN += u.n; if (!first || new Date(u.first_at) < new Date(first)) first = u.first_at; } }
