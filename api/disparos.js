@@ -470,7 +470,7 @@ async function ops(sql, req, body, a) {
         where o.group_id = ${op.group_id} group by r.status`;
       const ge = await sql`select r.error, count(*)::int as n from wa_recipients r join wa_operations o on o.id = r.operation_id
         where o.group_id = ${op.group_id} and r.status = 'failed' group by r.error order by count(*) desc limit 8`;
-      const gl = await sql`select o.id, o.tag, o.status, o.quantity, o.lock_until, i.name as instance_name, i.display_phone, t.name as template_name,
+      const gl = await sql`select o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, i.name as instance_name, i.display_phone, t.name as template_name,
           count(r.id)::int as total,
           sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
           sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as delivered,
@@ -480,7 +480,7 @@ async function ops(sql, req, body, a) {
           sum(case when r.status = 'skipped' then 1 else 0 end)::int as skipped
         from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
         left join wa_recipients r on r.operation_id = o.id
-        where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, i.name, i.display_phone, t.name order by o.id`;
+        where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, i.name, i.display_phone, t.name order by o.id`;
       const now = new Date();
       const lots = gl.map((l) => ({ ...l, stalled: l.status === 'running' && (!l.lock_until || new Date(l.lock_until) < now) }));
       group = { id: op.group_id, name: String(op.name).replace(/\s·\sLote\s\S+$/, ''), status: groupStatus(lots.map((l) => l.status)),
@@ -571,6 +571,49 @@ async function ops(sql, req, body, a) {
     const r = await runOperation(sql, id);
     if (r.more) kick(req, id);
     return r;
+  }
+  if (a === 'replace-lot') {
+    // Troca a BM de um lote com problema: o que ainda não saiu (e as falhas da conta, se pedido) vai para um lote novo em outra BM.
+    const old = (await sql`select * from wa_operations where id = ${int(body.lot_id)}`)[0];
+    if (!old) throw new HttpError(404, 'Lote não encontrado.');
+    const op = readOpInput({ ...body, name: old.name, list_id: old.list_id, quantity: 1, tps: old.tps, name_fallback: old.name_fallback });
+    if (op.instance_id === old.instance_id) bad('Escolha uma BM diferente da atual.');
+    await validateOp(sql, op);
+    const groupId = old.group_id || old.id;
+    if (!old.group_id) await sql`update wa_operations set group_id = ${groupId}, tag = coalesce(tag, 'A') where id = ${old.id}`;
+    const busy = (await sql`select id from wa_operations where group_id = ${groupId} and instance_id = ${op.instance_id} and status in ('running','paused')`)[0];
+    if (busy) bad('Essa BM já está enviando um lote desta campanha.');
+    // Para o lote antigo e espera o envio em andamento terminar.
+    await sql`update wa_operations set status = case when status in ('running','paused') then 'canceled' else status end, finished_at = coalesce(finished_at, now()) where id = ${old.id}`;
+    await new Promise((r) => setTimeout(r, 2500));
+    // Falhas do contato (sem WhatsApp, bloqueou marketing...) não adiantam reenviar; as da conta/BM sim.
+    const CONTACT = /#(131026|131049|131050|131047|131021|130472)\b/;
+    const rows = await sql`select id, name, phone, status, error from wa_recipients where operation_id = ${old.id}
+      and (status = 'pending' or (status = 'failed' and ${body.include_failed !== false}::boolean))`;
+    const list = rows.filter((r) => r.status === 'pending' || !CONTACT.test(String(r.error || '')));
+    if (!list.length) bad('Este lote não tem contatos para reenviar.');
+    const used = new Set((await sql`select tag from wa_operations where group_id = ${groupId}`).map((x) => x.tag));
+    let tag = ''; for (const ch of TAGS + 'abcdefghijklmnopqrstuvwxyz') if (!used.has(ch)) { tag = ch; break; }
+    tag = tag || String(used.size + 1);
+    const base = String(old.name).replace(/\s·\sLote\s\S+$/, '');
+    const ids = list.map((r) => r.id);
+    let row;
+    try {
+      [row] = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps, group_id, tag, status)
+        values (${base + ' · Lote ' + tag}, ${op.instance_id}, ${op.template_id}, ${op.header_value || null}, ${JSON.stringify(op.body_vars_obj)}, ${op.button_param || null},
+                ${old.name_fallback}, ${old.list_id}, ${list.length}, ${old.tps}, ${groupId}, ${tag}, 'paused') returning id`;
+      await sql`insert into wa_recipients (operation_id, name, phone) select ${row.id}::int, name, phone from wa_recipients where id = any(${ids}::int[])`;
+      await sql`update wa_recipients set status = 'skipped', error = ${'Transferido para o lote ' + tag}, updated_at = now() where id = any(${ids}::int[])`;
+    } catch (err) {
+      // Deu errado no meio: desfaz o lote novo e devolve o lote antigo como estava.
+      if (row) { await sql`delete from wa_recipients where operation_id = ${row.id}`; await sql`delete from wa_operations where id = ${row.id}`; }
+      await sql`update wa_operations set status = ${old.status}, finished_at = ${old.finished_at} where id = ${old.id}`;
+      if (old.status === 'running') kick(req, old.id);
+      throw err;
+    }
+    await sql`update wa_operations set status = 'running' where id = ${row.id}`;
+    kick(req, row.id);
+    return { id: row.id, group_id: groupId, tag, moved: list.length };
   }
   if (a === 'status') {
     const id = int(body.id); const status = str(body.status, 20);

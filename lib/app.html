@@ -2421,8 +2421,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (d.group_report_url) acts.append(el('a', { class: 'btn primary', href: d.group_report_url, target: '_blank', rel: 'noopener', text: 'Relatório da campanha (todos os lotes)' }));
     if (d.report_url) acts.append(el('a', { class: d.group_report_url ? 'btn ghost' : 'btn primary', href: d.report_url, target: '_blank', rel: 'noopener', text: d.group_report_url ? 'Relatório deste lote' : 'Relatório (PDF)' }));
     if (c.failed) acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Exportar falhas', onclick: () => exportFailures(id, o.name) }));
+    if ((c.pending || 0) + (c.sending || 0) + (c.failed || 0)) acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Substituir BM', onclick: () => replacePanel({ ...o, id, tag: o.tag || 'A', queued: (c.pending || 0) + (c.sending || 0), failed: c.failed || 0 }, [{ instance_id: o.instance_id }], id) }));
     acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { box.hidden = true; state.detailId = null; clearTimeout(state.timer); } }));
     head.append(acts); box.append(head);
+    box.append(el('div', { id: 'replaceBox' }));
     const stats = el('div', { class: 'stats' });
     [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0]]
       .forEach(([l, v]) => stats.append(el('div', { class: 'stat' }, el('span', { class: 'small muted', text: l }), el('b', { text: num(v) }))));
@@ -2446,7 +2448,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     }
     if (o.status === 'running') {
       if (d.stalled && ((c.pending || 0) > 0)) post('r=ops&a=run', { id }).catch(() => {});
-      state.timer = setTimeout(() => { openDetail(id); loadOps(); }, 4000);
+      if (!state.replacing) state.timer = setTimeout(() => { openDetail(id); loadOps(); }, 4000);
     }
   }
   // Campanha com vários números: um relatório só, com o detalhe de cada BM dentro.
@@ -2484,9 +2486,13 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const lotBtn = el('button', { class: 'link', type: 'button', text: 'Falhas', onclick: () => exportFailures(l.id, g.name + ' Lote ' + l.tag) });
       tb.append(el('tr', {}, td(l.tag), td(`${(l.instance_name || '').split(' · ')[0]} · ${l.display_phone || ''}`), td(l.template_name || '—'), td(num(l.total)),
         td(num(l.queued)), td(num(l.sent)), td(num(l.delivered) + pct(l.delivered, l.sent)), td(num(l.read)), td(num(l.failed) + pct(l.failed, l.total)),
-        (() => { const x = el('td'); x.append(opBadge(l.status)); return x; })(), (() => { const x = el('td'); if (l.failed) x.append(lotBtn); return x; })()));
+        (() => { const x = el('td'); x.append(opBadge(l.status)); return x; })(), (() => {
+          const x = el('td', { style: 'white-space:nowrap' }); if (l.failed) x.append(lotBtn);
+          if (l.queued || l.failed) x.append(el('button', { class: 'link', type: 'button', style: 'margin-left:10px;font-weight:700', text: 'Substituir BM', onclick: () => replacePanel(l, g.lots, id) }));
+          return x; })()));
     }
     t.append(tb); wrap.append(t); box.append(wrap);
+    box.append(el('div', { id: 'replaceBox' }));
     box.append(el('p', { class: 'small muted', style: 'margin:8px 0 0', text: 'Entregues e lidas dependem do webhook configurado e do app publicado na Meta.' }));
     if (g.errors.length) {
       const ul = el('ul', { class: 'small', style: 'margin:8px 0 0;padding-left:18px' });
@@ -2495,9 +2501,97 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     }
     if (g.status === 'running') {
       for (const l of g.lots) if (l.stalled && l.queued > 0) post('r=ops&a=run', { id: l.id }).catch(() => {});
-      state.timer = setTimeout(() => { openDetail(id); loadOps(); }, 4000);
+      if (!state.replacing) state.timer = setTimeout(() => { openDetail(id); loadOps(); }, 4000);
     }
   }
+  // ================= SUBSTITUIR A BM DE UM LOTE =================
+  // Escolhe outra BM, monta o template, manda um teste e só então transfere o que falta do lote.
+  async function replacePanel(lot, lots, detailId) {
+    clearTimeout(state.timer); state.replacing = true;
+    const box = $('replaceBox'); if (!box) return; box.innerHTML = '';
+    const card = el('div', { class: 'card stack', style: 'margin-top:14px;border:2px solid var(--accent)' });
+    box.append(card); card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const close = () => { state.replacing = false; box.innerHTML = ''; openDetail(detailId); };
+    card.append(el('div', { class: 'row', style: 'justify-content:space-between' },
+      el('h3', { style: 'margin:0', text: `Substituir a BM do lote ${lot.tag}` }),
+      el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: close })));
+    card.append(el('p', { class: 'small muted', style: 'margin:0', text: `Vão para a nova BM: ${num(lot.queued || 0)} contato(s) que ainda não saíram${lot.failed ? ` e as falhas de conta/BM (de ${num(lot.failed)} falhas; falhas do contato, como número sem WhatsApp, não são reenviadas)` : ''}. O lote atual é encerrado.` }));
+    const inGroup = new Set(lots.map((l) => l.instance_id));
+    const cands = state.instances.filter((i) => i.active && !inGroup.has(i.id));
+    const sel = el('select', { 'aria-label': 'Nova BM' });
+    sel.append(el('option', { value: '', text: cands.length ? 'Escolha a nova BM…' : 'Nenhuma outra BM ativa' }));
+    for (const i of cands) sel.append(el('option', { value: String(i.id), text: `${i.bm || i.name}${i.display_phone ? ' · ' + i.display_phone : ''}${i.limit_tier ? ' · limite ' + String(i.limit_tier).replace('TIER_', '') : ''}` }));
+    const tplSel = el('select', { 'aria-label': 'Template' }); tplSel.append(el('option', { value: '', text: 'Escolha a BM primeiro' }));
+    const fields = el('div', { class: 'grid' });
+    const inclFail = el('input', { type: 'checkbox', id: 'rpFail' }); inclFail.checked = true;
+    const phone = el('input', { type: 'tel', placeholder: 'Seu WhatsApp para o teste (ex.: 31999999999)', 'aria-label': 'Telefone de teste' });
+    const testBtn = el('button', { class: 'btn ghost', type: 'button', text: 'Enviar teste' });
+    const goBtn = el('button', { class: 'btn primary', type: 'button', text: 'Substituir e continuar o disparo' }); goBtn.disabled = true;
+    const msg = el('span', { class: 'small', role: 'status' });
+    let tpls = []; let tested = false;
+    let oldVars = {}; try { oldVars = typeof lot.body_vars === 'string' ? JSON.parse(lot.body_vars || '{}') : (lot.body_vars || {}); } catch (e) {}
+    const inp = (label, key, val, ph) => { const id = 'rp_' + key.replace(/\W/g, '_'); const x = el('input', { type: 'text', id, 'data-k': key, placeholder: ph || '' }); x.value = val || ''; x.oninput = () => { tested = false; goBtn.disabled = true; }; fields.append(el('div', {}, el('label', { for: id, text: label }), x)); return x; };
+    function buildFields() {
+      fields.innerHTML = ''; tested = false; goBtn.disabled = true;
+      const t = tpls.find((x) => String(x.id) === tplSel.value); if (!t) return;
+      const info = t.info;
+      if (info.needsMedia) inp(info.headerType === 'VIDEO' ? 'Link do vídeo (https://)' : info.headerType === 'DOCUMENT' ? 'Link do PDF (https://)' : 'Link da imagem (https://)', '_media', /^https:/.test(lot.header_value || '') ? lot.header_value : '', 'https://…');
+      if (info.headerType === 'TEXT' && info.headerVars.length) inp('Variável do cabeçalho', '_header', /^https:/.test(lot.header_value || '') ? '' : lot.header_value);
+      for (const v of info.bodyVars) inp(`Variável {{${v}}}`, v, oldVars[v] || '', '{nome} usa o nome do contato');
+      if (info.dynamicButton) inp('Final do link do botão', '_btn', lot.button_param || '');
+      if (info.copyCode) inp('Código da oferta', '_cupom', oldVars._cupom || '');
+    }
+    sel.onchange = async () => {
+      tplSel.innerHTML = '<option value="">Carregando…</option>'; fields.innerHTML = '';
+      if (!sel.value) return;
+      try { tpls = (await templatesOf(sel.value)).filter(tplOk); } catch (e) { tplSel.innerHTML = '<option value="">Erro ao carregar</option>'; return; }
+      tplSel.innerHTML = ''; tplSel.append(el('option', { value: '', text: tpls.length ? 'Escolha o template…' : 'Nenhum template aprovado nesta BM' }));
+      for (const t of tpls) tplSel.append(el('option', { value: String(t.id), text: tplLabel(t) }));
+      const same = tpls.find((t) => t.name === lot.template_name); if (same) tplSel.value = String(same.id);
+      buildFields();
+    };
+    tplSel.onchange = buildFields;
+    inclFail.onchange = () => {};
+    const payload = () => {
+      const t = tpls.find((x) => String(x.id) === tplSel.value);
+      const val = (k) => { const x = fields.querySelector(`[data-k="${k}"]`); return x ? x.value.trim() : ''; };
+      const vars = {}; if (t) { for (const v of t.info.bodyVars) vars[v] = val(v); if (t.info.copyCode) vars._cupom = val('_cupom'); }
+      return { instance_id: Number(sel.value), template_id: t ? t.id : null, header_value: t && t.info.needsMedia ? val('_media') : val('_header'), body_vars: vars, button_param: val('_btn'), name_fallback: lot.name_fallback || 'cliente' };
+    };
+    testBtn.onclick = async () => {
+      if (!sel.value || !tplSel.value) { msg.className = 'small err'; msg.textContent = 'Escolha a BM e o template.'; return; }
+      if (!phone.value.trim()) { msg.className = 'small err'; msg.textContent = 'Digite o telefone para o teste.'; return; }
+      testBtn.disabled = true; msg.className = 'small'; msg.textContent = 'Enviando teste…';
+      try {
+        const r = await post('r=ops&a=test', { ...payload(), phone: phone.value.trim(), sample: { name: 'Teste' } });
+        msg.className = 'small okmsg'; msg.textContent = 'Teste aceito pela Meta. Aguardando a entrega no seu WhatsApp…';
+        tested = true; goBtn.disabled = false;
+        for (const wait of [4000, 8000, 15000, 30000]) {
+          await new Promise((res) => setTimeout(res, wait));
+          let rows = []; try { rows = (await api('r=ops&a=test-status&wamids=' + encodeURIComponent(r.wamid))).rows || []; } catch (e) { break; }
+          const st = rows[0] && rows[0].status;
+          if (st === 'delivered' || st === 'read') { msg.className = 'small okmsg'; msg.textContent = 'Teste entregue ✓ Pode substituir.'; break; }
+          if (st === 'failed') { msg.className = 'small err'; msg.textContent = 'O teste NÃO foi entregue: ' + (rows[0].error || 'sem motivo') + '. Escolha outra BM.'; goBtn.disabled = true; tested = false; break; }
+        }
+      } catch (err) { msg.className = 'small err'; msg.textContent = err.message; }
+      finally { testBtn.disabled = false; }
+    };
+    let armed = false;
+    goBtn.onclick = async () => {
+      if (!tested) { msg.className = 'small err'; msg.textContent = 'Envie o teste antes de substituir.'; return; }
+      if (!armed) { armed = true; goBtn.textContent = 'Confirmar: encerrar o lote ' + lot.tag + ' e continuar na nova BM'; setTimeout(() => { armed = false; goBtn.textContent = 'Substituir e continuar o disparo'; }, 6000); return; }
+      goBtn.disabled = true; msg.className = 'small'; msg.textContent = 'Transferindo os contatos…';
+      try {
+        const r = await post('r=ops&a=replace-lot', { ...payload(), lot_id: lot.id, include_failed: inclFail.checked });
+        msg.className = 'small okmsg'; msg.textContent = `Pronto: ${num(r.moved)} contato(s) seguem no lote ${r.tag}, na nova BM.`;
+        setTimeout(() => { state.replacing = false; box.innerHTML = ''; openDetail(r.group_id); loadOps(); }, 1500);
+      } catch (err) { msg.className = 'small err'; msg.textContent = err.message; goBtn.disabled = false; }
+    };
+    card.append(el('div', { class: 'grid' }, el('div', {}, el('label', { text: 'Nova BM' }), sel), el('div', {}, el('label', { text: 'Template' }), tplSel)), fields,
+      el('label', { class: 'small', style: 'display:flex;gap:8px;align-items:center' }, inclFail, document.createTextNode('Reenviar também as falhas causadas pela BM (pagamento, bloqueio, limite)')),
+      el('div', { class: 'row' }, phone, testBtn, goBtn), msg);
+  }
+
   async function exportFailures(id, name, group) {
     const { rows } = await api('r=ops&a=failures&id=' + id + (group ? '&group=1' : ''));
     const esc = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
