@@ -416,6 +416,7 @@ module.exports = async (req, res) => {
     else if (r === 'bms') out = await bms(sql, req, body, a);
     else if (r === 'numbers') out = await numberRows(sql);
     else if (r === 'gestao') out = await gestao(sql, req, body, a);
+    else if (r === 'nv') out = await require('../lib/numero-virtual').handle(sql, req, body, a, { logActivity });
     else if (r === 'templates') out = await sql`select t.*, b.name as bm, w.name as waba_name from as_templates t
         join as_bms b on b.id = t.bm_ref and b.active left join as_wabas w on w.waba_id = t.waba_id
         order by case when t.status in ('PAUSED','DISABLED','REJECTED') then 0 else 1 end, b.name, t.name`;
@@ -432,7 +433,7 @@ module.exports = async (req, res) => {
     else throw new HttpError(404, 'Recurso não encontrado.');
     res.status(200).json(out);
   } catch (err) {
-    const status = err instanceof HttpError ? err.status : 500;
+    const status = err instanceof HttpError || err.name === 'NvError' || (err.constructor && err.constructor.name === 'NvError') ? err.status : 500;
     if (status >= 500) console.error('ativos:', err);
     res.status(status).json({ erro: err.message || 'Erro inesperado.' });
   }

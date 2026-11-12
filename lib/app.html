@@ -453,6 +453,14 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .op-live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#0ea5e9;margin-right:6px;animation:oppulse 1.4s infinite}
   @keyframes oppulse{50%{opacity:.3}}
   @media (prefers-reduced-motion:reduce){.op-live{animation:none}}
+  /* Números virtuais */
+  .nv-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .nv-bal{display:flex;flex-direction:column}
+  .nv-bal b{font-size:26px;letter-spacing:-.02em}
+  .nv-steps{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+  .nv-steps span{padding:3px 8px;border-radius:99px;background:var(--soft);color:var(--muted);white-space:nowrap}
+  .nv-steps span.done{background:rgba(4,120,87,.12);color:#047857;font-weight:600}
+  .nv-steps span.now{background:rgba(0,123,255,.12);color:#1d4ed8;font-weight:700}
 </style>
 </head>
 <body>
@@ -493,6 +501,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           <a href="#gestao" data-view="gestao">Gestão de BMs <span class="count" id="gsBadge" hidden></span></a>
           <a href="#bms" data-view="bms">Cadastro de BMs</a>
           <a href="#numeros" data-view="numeros">Números <span class="count" id="restrBadge" hidden></span></a>
+          <a href="#nv" data-view="nv">Comprar números</a>
           <a href="#saude" data-view="saude">Status dos templates <span class="count" id="tplBadge" hidden></span></a>
           <a href="#tplnovo" data-view="tplnovo">Criar template</a>
           <a href="#alertas" data-view="alertas">Alertas <span class="count" id="alertBadge" hidden></span></a>
@@ -820,6 +829,46 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           <tbody id="gsGrid"><tr><td colspan="7" class="muted">Carregando…</td></tr></tbody>
         </table></div></div>
         <p class="small muted" id="gsInfo" style="margin:0" role="status"></p>
+      </div>
+
+      <div class="view" id="view-nv" hidden>
+        <div class="card" id="nvKeyCard" hidden>
+          <h3 style="margin:0 0 6px">Conectar o Número Virtual</h3>
+          <p class="small muted" style="margin:0 0 10px">No Número Virtual, vá em <b>Desenvolvedores → Nova chave</b> e cole aqui (começa com <code>nv_live_</code>). A chave fica guardada criptografada.</p>
+          <div class="row"><input id="nvKey" type="password" autocomplete="off" placeholder="nv_live_…" aria-label="Chave de API do Número Virtual" style="flex:1;min-width:240px;max-width:420px"><button class="btn primary" type="button" id="nvKeySave">Salvar chave</button></div>
+          <span id="nvKeyMsg" class="small" role="status"></span>
+        </div>
+
+        <div id="nvMain" class="stack" hidden>
+          <div class="nv-top">
+            <div class="nv-bal"><span class="small muted">Saldo no Número Virtual</span><b id="nvBalance">—</b></div>
+            <div class="row"><a class="btn ghost" href="https://app.numero-virtual.com" target="_blank" rel="noopener">Recarregar saldo ↗</a><button class="btn ghost" type="button" id="nvKeyChange">Trocar chave</button></div>
+          </div>
+
+          <div class="card stack" id="nvBuy">
+            <h3 style="margin:0">Comprar número para WhatsApp</h3>
+            <div>
+              <span class="tn-lbl">DDD</span>
+              <div class="seg" id="nvDddSeg" role="group" aria-label="Tipo de DDD">
+                <button type="button" data-d="rand" aria-pressed="true">Aleatório (mais barato)</button>
+                <button type="button" data-d="pick" aria-pressed="false">Escolher DDD</button>
+              </div>
+              <div id="nvDddBox" hidden style="margin-top:8px"><input id="nvDdd" type="text" inputmode="numeric" maxlength="2" placeholder="Ex.: 11" aria-label="DDD" style="width:110px"> <span class="small muted">Escolher DDD pode ter taxa extra no Número Virtual.</span></div>
+            </div>
+            <div class="grid">
+              <div><label for="nvBm">Colocar na BM</label><select id="nvBm"></select></div>
+              <div id="nvNameBox"><label for="nvName">Nome de exibição no WhatsApp</label><input id="nvName" type="text" maxlength="100" placeholder="Ex.: Ótica Isabela"></div>
+            </div>
+            <div><label for="nvOpt">Fornecedor</label><select id="nvOpt"><option value="">Carregando preços…</option></select></div>
+            <div class="row"><button class="btn primary" type="button" id="nvBuyBtn">Comprar</button><button class="btn ghost" type="button" id="nvBuyCancel" hidden>Voltar</button><span id="nvMsg" class="small" role="status"></span></div>
+            <p class="small muted" style="margin:0">O Disply coloca o número na conta do WhatsApp da BM, pede o código à Meta, lê o SMS no Número Virtual e ativa o número sozinho. Se o SMS não chegar, cancele e o valor volta ao saldo.</p>
+          </div>
+
+          <div class="card" style="padding:0"><div class="wrap"><table>
+            <thead><tr><th>Número</th><th>BM</th><th>Andamento</th><th>Valor</th><th></th></tr></thead>
+            <tbody id="nvRows"><tr><td colspan="5" class="muted">Carregando…</td></tr></tbody>
+          </table></div></div>
+        </div>
       </div>
 
       <div class="view" id="view-bms" hidden>
@@ -3039,7 +3088,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   // ---------- Navegação ----------
   const VIEWS = {
     inicio: ['Visão geral', ''], ops: ['Operações', 'Disparos'], inbox: ['Inbox', 'Disparos'], lists: ['Listas de contatos', 'Disparos'],
-    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], numeros: ['Números', 'Ativos Meta'],
+    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], nv: ['Comprar números', 'Ativos Meta · Número Virtual'], numeros: ['Números', 'Ativos Meta'],
     saude: ['Status dos templates', 'Ativos Meta'], tplnovo: ['Criar template em várias BMs', 'Ativos Meta'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
     config: ['Configurações', 'Sistema'], historico: ['Histórico', 'Sistema']
   };
@@ -3062,6 +3111,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (view === 'inicio') loadHome();
     if (view === 'bms') loadBms();
     if (view === 'gestao') loadGestao();
+    if (view === 'nv') { (gs.list.length ? Promise.resolve() : api('r=gestao').then((d) => { gs.list = d.bms; }).catch(() => {})).then(loadNv); } else clearTimeout(nv.timer);
     if (view === 'numeros') loadNumbers();
     if (view === 'saude') loadSaude();
     if (view === 'alertas') loadAlerts();
@@ -3384,6 +3434,117 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     for (const a of list) tb.append(el('tr', {}, td(fmt(a.created_at)), td(a.text)));
   }
 
+  // ---------- Números virtuais (Número Virtual) ----------
+  const nv = { data: null, svc: null, ddd: 'rand', confirm: false, timer: null, preBm: null };
+  const brl = (c) => c == null ? '—' : (Number(c) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const NV_STEPS = [['comprado', 'Comprado'], ['pedir_codigo', 'Na conta da BM'], ['aguardando_sms', 'Aguardando SMS'], ['ativando', 'Código confirmado'], ['ativo', 'Ativo']];
+  const fmtPhone = (p) => p && p.length >= 12 ? `+55 ${p.slice(2, 4)} ${p.slice(4, -4)}-${p.slice(-4)}` : (p || '—');
+  async function loadNv() {
+    clearTimeout(nv.timer);
+    let d; try { d = await api('r=nv' + (nv.svc ? '' : '&precos=1')); } catch (err) { alertBox(err.message); return; }
+    nv.data = d; if (d.service) nv.svc = d.service;
+    $('nvKeyCard').hidden = d.configured; $('nvMain').hidden = !d.configured;
+    if (!d.configured) return;
+    $('nvBalance').textContent = d.balance && d.balance.cents != null ? brl(d.balance.cents) : (d.balance_error ? 'Erro: ' + d.balance_error : '—');
+    nvForm(); nvList();
+    const live = (d.numbers || []).filter((n) => !['ativo', 'cancelado', 'expirado'].includes(n.step) && n.bm_ref);
+    if (live.length && current === 'nv') nv.timer = setTimeout(nvTick, 5000);
+  }
+  async function nvTick() {
+    const live = (nv.data.numbers || []).filter((n) => !['ativo', 'cancelado', 'expirado'].includes(n.step) && n.bm_ref);
+    if (!live.length || current !== 'nv') return;
+    try {
+      const r = await post('r=nv&a=step', { ids: live.map((n) => n.id) });
+      for (const n of r.numbers) { const i = nv.data.numbers.findIndex((x) => x.id === n.id); if (i >= 0) nv.data.numbers[i] = n; }
+      nvList();
+    } catch (e) {}
+    if (current === 'nv') nv.timer = setTimeout(nvTick, 5000);
+  }
+  function nvForm() {
+    const sel = $('nvBm'); const cur = nv.preBm || sel.value;
+    sel.innerHTML = '';
+    sel.append(el('option', { value: '', text: 'Só comprar agora (colocar na BM depois)' }));
+    const bms = (gs.list.length ? gs.list : []).filter((b) => !['banida', 'erro'].includes(b.status) && b.wabas.length);
+    bms.sort((a, b) => (a.status === 'sem_numero' ? 0 : 1) - (b.status === 'sem_numero' ? 0 : 1) || a.name.localeCompare(b.name));
+    for (const b of bms) sel.append(el('option', { value: String(b.id), text: b.name + (b.status === 'sem_numero' ? ' · sem número' : '') }));
+    if (cur && [...sel.options].some((o) => o.value === String(cur))) sel.value = String(cur);
+    if (nv.preBm) { const b = gs.list.find((x) => String(x.id) === String(nv.preBm)); if (b && !$('nvName').value) $('nvName').value = b.name; nv.preBm = null; }
+    $('nvNameBox').hidden = !sel.value;
+    const o = $('nvOpt'); const prev = o.value; o.innerHTML = '';
+    if (!nv.svc) { o.append(el('option', { value: '', text: nv.data.service_error || 'Preços indisponíveis agora' })); return; }
+    o.append(el('option', { value: '', text: `Mais barato disponível · a partir de ${brl(nv.svc.priceCents)}` }));
+    for (const x of nv.svc.options) { const op = el('option', { value: String(x.apiId), text: `${x.name} · ${brl(x.priceCents)}${x.available != null ? ' · ' + x.available + ' em estoque' : ''}` }); if (x.available === 0) op.disabled = true; o.append(op); }
+    o.value = prev;
+  }
+  function nvPrice() { if (!nv.svc) return null; const o = nv.svc.options.find((x) => String(x.apiId) === $('nvOpt').value); return o ? o.priceCents : nv.svc.priceCents; }
+  function nvResetBuy() { nv.confirm = false; $('nvBuyBtn').textContent = 'Comprar'; $('nvBuyCancel').hidden = true; }
+  document.querySelectorAll('#nvDddSeg button').forEach((b) => { b.onclick = () => { nv.ddd = b.dataset.d; document.querySelectorAll('#nvDddSeg button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); $('nvDddBox').hidden = nv.ddd !== 'pick'; nvResetBuy(); }; });
+  $('nvBm').onchange = () => { $('nvNameBox').hidden = !$('nvBm').value; const b = gs.list.find((x) => String(x.id) === $('nvBm').value); if (b && !$('nvName').value) $('nvName').value = b.name; nvResetBuy(); };
+  $('nvOpt').onchange = nvResetBuy; $('nvDdd').oninput = nvResetBuy;
+  $('nvBuyCancel').onclick = () => { nvResetBuy(); setMsg('nvMsg', ''); };
+  $('nvBuyBtn').onclick = async () => {
+    const ddd = nv.ddd === 'pick' ? $('nvDdd').value.trim() : '';
+    if (nv.ddd === 'pick' && !/^[1-9]{2}$/.test(ddd)) { setMsg('nvMsg', 'Digite um DDD com 2 números.'); return; }
+    if ($('nvBm').value && $('nvName').value.trim().length < 3) { setMsg('nvMsg', 'Escreva o nome de exibição.'); return; }
+    if (!nv.confirm) {
+      nv.confirm = true; $('nvBuyCancel').hidden = false;
+      $('nvBuyBtn').textContent = `Confirmar compra${nvPrice() != null ? ' · ' + brl(nvPrice()) : ''}${ddd ? ' · DDD ' + ddd : ''}`;
+      setMsg('nvMsg', 'O valor sai do saldo do Número Virtual na hora.', true); return;
+    }
+    $('nvBuyBtn').disabled = true; setMsg('nvMsg', 'Comprando…', true);
+    try {
+      const r = await post('r=nv&a=buy', { ddd, apiId: $('nvOpt').value || null, bm_ref: $('nvBm').value || null, display_name: $('nvName').value.trim() });
+      setMsg('nvMsg', `Número ${fmtPhone(r.number.phone)} comprado.${r.number.bm_ref ? ' Acompanhe a ativação na lista.' : ''}`, true);
+      $('nvName').value = ''; nvResetBuy(); await loadNv();
+    } catch (err) { setMsg('nvMsg', err.message); nvResetBuy(); }
+    finally { $('nvBuyBtn').disabled = false; }
+  };
+  function nvList() {
+    const tb = $('nvRows'); tb.innerHTML = '';
+    const list = nv.data.numbers || [];
+    if (!list.length) empty(tb, 5, 'Nenhum número comprado pelo Disply ainda.');
+    for (const n of list) {
+      const st = el('td');
+      if (n.step === 'cancelado') st.append(badge('Cancelado · valor devolvido', 'off'));
+      else if (n.step === 'expirado') st.append(badge('Expirou sem SMS', 'off'));
+      else if (!n.bm_ref) st.append(badge('Comprado · falta escolher a BM', 'warn'), el('div', { class: 'small muted', text: n.seconds_left != null ? `Vale por mais ${Math.ceil(n.seconds_left / 60)} min` : '' }));
+      else {
+        const idx = NV_STEPS.findIndex(([k]) => k === (n.step === 'meta_add' ? 'comprado' : n.step));
+        const box = el('div', { class: 'nv-steps' });
+        NV_STEPS.forEach(([k, l], i) => box.append(el('span', { class: i < idx || n.step === 'ativo' ? 'done' : i === idx ? 'now' : '', text: (i < idx || n.step === 'ativo' ? '✓ ' : '') + l })));
+        st.append(box);
+        if (n.step === 'aguardando_sms' && n.seconds_left != null) st.append(el('div', { class: 'small muted', style: 'margin-top:4px', text: `Esperando o SMS · o número vale por mais ${Math.ceil(n.seconds_left / 60)} min` }));
+        if (n.error) st.append(el('div', { class: 'small err', style: 'margin-top:4px', text: n.error }));
+        if (n.step === 'ativo' && n.pin) st.append(el('div', { class: 'small', style: 'margin-top:4px', text: 'PIN de duas etapas: ' + n.pin }));
+      }
+      const acts = el('td', { style: 'text-align:right;white-space:nowrap' });
+      const act = async (a, extra) => { try { await post('r=nv&a=' + a, { id: n.id, ...(extra || {}) }); await loadNv(); } catch (err) { alertBox(err.message); } };
+      if (!['ativo', 'cancelado', 'expirado'].includes(n.step) && !n.has_code) acts.append(el('button', { type: 'button', class: 'link', text: 'Cancelar e reembolsar', onclick: () => act('cancel') }));
+      if (n.step === 'aguardando_sms') acts.append(el('button', { type: 'button', class: 'link', style: 'margin-left:10px', text: 'Reenviar SMS', onclick: () => act('resend') }));
+      if (n.error && n.bm_ref && !['ativo', 'cancelado', 'expirado'].includes(n.step)) acts.append(el('button', { type: 'button', class: 'link', style: 'margin-left:10px', text: 'Tentar de novo', onclick: () => act('step') }));
+      if (!n.bm_ref && !['cancelado', 'expirado'].includes(n.step)) acts.append(el('button', { type: 'button', class: 'link', style: 'margin-left:10px', text: 'Colocar numa BM', onclick: () => nvAttach(n) }));
+      tb.append(el('tr', {}, tdn(el('strong', { style: 'white-space:nowrap', text: fmtPhone(n.phone) }), el('div', { class: 'small muted', text: fmt(n.created_at) + (n.display_name ? ' · ' + n.display_name : '') })),
+        td(n.bm || '—'), st, td(brl(n.price_cents)), acts));
+    }
+  }
+  function nvAttach(n) {
+    const bms = gs.list.filter((b) => !['banida', 'erro'].includes(b.status) && b.wabas.length);
+    const sel = el('select', { 'aria-label': 'BM' }); bms.forEach((b) => sel.append(el('option', { value: String(b.id), text: b.name })));
+    const name = el('input', { type: 'text', placeholder: 'Nome de exibição', 'aria-label': 'Nome de exibição', maxlength: '100' });
+    sel.onchange = () => { name.value = (bms.find((b) => String(b.id) === sel.value) || {}).name || ''; }; sel.onchange();
+    const go = el('button', { type: 'button', class: 'btn primary', text: 'Colocar e ativar' });
+    const row = el('tr', {}, el('td', { colspan: '5' }, el('div', { class: 'row' }, sel, name, go)));
+    go.onclick = async () => { go.disabled = true; try { await post('r=nv&a=attach', { id: n.id, bm_ref: sel.value, display_name: name.value }); await loadNv(); } catch (err) { alertBox(err.message); go.disabled = false; } };
+    const tr = [...$('nvRows').children].find((r) => r.textContent.includes(fmtPhone(n.phone)));
+    if (tr) tr.after(row);
+  }
+  $('nvKeySave').onclick = async () => {
+    setMsg('nvKeyMsg', 'Conferindo a chave…', true);
+    try { await post('r=nv&a=key', { key: $('nvKey').value }); $('nvKey').value = ''; setMsg('nvKeyMsg', ''); nv.svc = null; await loadNv(); }
+    catch (err) { setMsg('nvKeyMsg', err.message); }
+  };
+  $('nvKeyChange').onclick = () => { $('nvKeyCard').hidden = false; $('nvKey').focus(); };
+
   // ---------- Gestão de BMs ----------
   const GS = {
     apta: ['Apta para disparo', '#047857', 'rgba(4,120,87,.12)'],
@@ -3489,6 +3650,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const acts = el('div', { class: 'row' });
     const upd = el('button', { type: 'button', class: 'btn ghost', text: 'Atualizar' });
     upd.onclick = async () => { upd.disabled = true; upd.textContent = 'Atualizando…'; try { await post('r=check', { id: b.id }); await loadGestao(); } catch (err) { alertBox(err.message); } };
+    if (!okNum.length && !['banida', 'erro'].includes(b.status) && b.wabas.length) acts.append(el('button', { type: 'button', class: 'btn primary', text: 'Comprar número', onclick: () => { nv.preBm = b.id; location.hash = 'nv'; } }));
     acts.append(upd, el('a', { class: 'btn ghost', href: metaUrl(b, 'message_templates'), target: '_blank', rel: 'noopener', text: 'Templates na Meta' }),
       el('a', { class: 'btn ghost', href: metaUrl(b, 'overview'), target: '_blank', rel: 'noopener', text: 'Abrir na Meta' }));
     const mark = (st) => post('r=gestao&a=mark', { id: b.id, status: st }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message));
