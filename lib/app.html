@@ -904,7 +904,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
               <section class="tn-sec">
                 <div class="tn-sec-h"><b>Botões</b><span class="tn-opt">Opcional</span></div>
-                <p class="small muted">Até 10 botões. Respostas rápidas ficam agrupadas antes dos botões de ação. Com mais de 3, o WhatsApp mostra "Ver todas as opções".</p>
+                <p class="small muted">Até 10 botões. Os botões de ação (link, ligar, copiar código) ficam em cima e as respostas rápidas embaixo, como na Meta. Com mais de 3, o WhatsApp mostra "Ver todas as opções".</p>
                 <div id="tnBtns" class="stack"></div>
                 <div class="tn-addwrap">
                   <button type="button" class="btn ghost" id="tnAddBtn" aria-expanded="false" aria-haspopup="true">+ Adicionar botão ▾</button>
@@ -3453,12 +3453,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (type === 'COPY_CODE') b.text = 'Copiar código da oferta';
     if (type === 'VOICE_CALL') b.text = 'Ligar no WhatsApp';
     tn.btns.push(b);
-    tn.btns.sort((a, c) => (TN_BTN[a.type].group === 'qr' ? 0 : 1) - (TN_BTN[c.type].group === 'qr' ? 0 : 1));
+    tn.btns.sort((a, c) => (TN_BTN[a.type].group === 'cta' ? 0 : 1) - (TN_BTN[c.type].group === 'cta' ? 0 : 1));
     tnRenderBtns(); tnPreview();
   }
   function tnRenderBtns() {
     const box = $('tnBtns'); box.innerHTML = '';
-    for (const [grp, title] of [['qr', 'Respostas rápidas'], ['cta', 'Chamada para ação']]) {
+    for (const [grp, title] of [['cta', 'Chamada para ação'], ['qr', 'Respostas rápidas']]) {
       const list = tn.btns.filter((b) => TN_BTN[b.type].group === grp);
       if (!list.length) continue;
       const g = el('div', { class: 'tn-btngrp' }, el('span', { text: title }));
