@@ -44,6 +44,37 @@ function validSignature(raw, header, secret) {
 // Só confirma o endereço do webhook; não dá acesso a nada.
 const PUBLIC_VERIFY = 'disply-webhook';
 
+// Restrições que a Meta avisa pelo webhook e que nem sempre aparecem na consulta da conta.
+const RESTR_PT = {
+  RESTRICTED_BIZ_INITIATED_MESSAGING: 'não pode iniciar conversas (disparos)',
+  RESTRICTED_CUSTOMER_INITIATED_MESSAGING: 'não pode responder clientes',
+  RESTRICTED_ADD_PHONE_NUMBER_ACTION: 'não pode adicionar números'
+};
+async function accountUpdate(sql, wabaId, v, raw, sig) {
+  await require('../lib/assets-monitor').getAssetsDb();
+  const w = (await sql`select waba_id from as_wabas where waba_id = ${wabaId}`.catch(() => []))[0];
+  if (!w) return;
+  // Confere a assinatura com o app de algum número desta conta, quando houver.
+  const inst = (await sql`select i.app_secret_enc from wa_instances i join as_numbers n on n.phone_number_id = i.phone_number_id
+    where n.waba_id = ${wabaId} and i.app_secret_enc is not null limit 1`.catch(() => []))[0];
+  if (inst) { let secret = null; try { secret = decrypt(inst.app_secret_enc); } catch {} if (secret && !validSignature(raw, sig, secret)) return; }
+  const ev = String(v.event || '');
+  let text = null;
+  if (ev === 'ACCOUNT_RESTRICTION' && Array.isArray(v.restriction_info) && v.restriction_info.length) {
+    text = 'Conta restrita pela Meta: ' + v.restriction_info.map((r) => (RESTR_PT[r.restriction_type] || r.restriction_type) + (r.expiration ? ' até ' + new Date(Number(r.expiration) * 1000).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '')).join('; ') + '. → Peça análise na Página Inicial do Suporte.';
+  } else if (ev === 'ACCOUNT_VIOLATION') {
+    text = 'A Meta registrou violação de política' + (v.violation_info && v.violation_info.violation_type ? ` (${v.violation_info.violation_type})` : '') + '. → Veja no Gerenciador do WhatsApp e peça análise se discordar.';
+  } else if (ev === 'DISABLED_UPDATE' || (v.ban_info && /DISABLE|BAN/i.test(String(v.ban_info.waba_ban_state || '')))) {
+    text = 'Conta desativada pela Meta. → Peça análise na Página Inicial do Suporte.';
+  } else if (/REINSTATE|RESTRICTION_LIFTED|ACCOUNT_REINSTATEMENT/i.test(ev)) {
+    await sql`update as_wabas set restriction = null, restriction_at = now() where waba_id = ${wabaId}`;
+    return;
+  }
+  if (!text) return;
+  await sql`update as_wabas set restriction = ${text.slice(0, 600)}, restriction_at = now() where waba_id = ${wabaId}`;
+  await sql`insert into as_alerts (bm_ref, level, title, detail) select bm_ref, 'bad', ${'Conta ' + (wabaId) + ': ' + (ev === 'ACCOUNT_VIOLATION' ? 'violação registrada' : 'restrita pela Meta')}, ${text} from as_wabas where waba_id = ${wabaId}`.catch(() => {});
+}
+
 module.exports = async (req, res) => {
   // Verificação inicial feita pela Meta ao salvar o webhook
   if (req.method === 'GET') {
@@ -70,6 +101,11 @@ module.exports = async (req, res) => {
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
         const value = change.value || {};
+        // Avisos da conta (restrição, violação, banimento): entry.id é a conta do WhatsApp.
+        if (change.field === 'account_update' && entry.id) {
+          try { await accountUpdate(sql, String(entry.id), value, raw, req.headers['x-hub-signature-256']); } catch (e) { console.error('account_update:', e.message); }
+          continue;
+        }
         const pnid = value.metadata && value.metadata.phone_number_id;
         if (!pnid) continue;
         const inst = (await sql`select id, app_secret_enc from wa_instances where phone_number_id = ${String(pnid)}`)[0];

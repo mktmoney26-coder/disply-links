@@ -3493,6 +3493,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     }
     card.append(tw);
 
+    if (b.manual) card.append(el('div', { class: 'small muted', text: 'Marcada como restrita por você (a Meta não informa essa restrição pela API).' }));
     if (b.review_at) card.append(el('div', { class: 'small', style: 'font-weight:600;color:#b45309', text: `Análise pedida em ${hhmm(b.review_at)}. Aguardando a Meta.` }));
 
     // Ações
@@ -3507,6 +3508,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       acts.append(rv);
       if (b.review_at) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Tirar marcação', onclick: () => post('r=gestao&a=review', { id: b.id, done: false }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message)) }));
     } else acts.append(el('a', { class: 'btn ghost', href: metaUrl(b, 'overview'), target: '_blank', rel: 'noopener', text: 'Abrir na Meta' }));
+    const mark = (st) => post('r=gestao&a=mark', { id: b.id, status: st }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message));
+    if (b.manual) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Não está mais restrita', onclick: () => mark(null) }));
+    else if (!['restrita', 'banida'].includes(b.status)) acts.append(el('button', { type: 'button', class: 'btn ghost', title: 'Use quando a Meta mostrar "Conta restrita" no Gerenciador do WhatsApp', text: 'Marcar como restrita', onclick: () => mark('restrita') }));
     card.append(acts);
     if (b.last_check) card.append(el('span', { class: 'small muted', style: 'margin-top:-6px', text: 'Consultado na Meta em ' + fmt(b.last_check) }));
     return card;
