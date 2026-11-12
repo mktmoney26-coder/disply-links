@@ -183,7 +183,16 @@ async function getInstance(sql, id) {
 async function syncTemplates(sql, id) {
   const inst = await getInstance(sql, id);
   const token = decrypt(inst.token_enc);
-  const list = await meta.listTemplates(inst.waba_id, token);
+  let list;
+  try { list = await meta.listTemplates(inst.waba_id, token); }
+  catch (e) {
+    // Token da instância antigo: tenta o token atual da BM.
+    const bm = (await sql`select b.token_enc from as_numbers n join as_bms b on b.id = n.bm_ref where n.phone_number_id = ${inst.phone_number_id}`.catch(() => []))[0];
+    if (!bm) throw e;
+    list = await meta.listTemplates(inst.waba_id, decrypt(bm.token_enc));
+  }
+  const names = list.map((t) => t.name + '|' + t.language);
+  await sql`update wa_templates set status = 'DELETED', synced_at = now() where instance_id = ${id} and not ((name || '|' || language) = any(${names}::text[]))`;
   for (const t of list) {
     await sql`insert into wa_templates (instance_id, name, language, category, status, components)
       values (${id}, ${t.name}, ${t.language}, ${t.category || null}, ${t.status || null}, ${JSON.stringify(t.components || [])})
@@ -200,6 +209,13 @@ async function syncTemplates(sql, id) {
 // ---------------- Templates ----------------
 async function templates(sql, req) {
   const inst = int(req.query.instance);
+  if (inst) {
+    // Templates sempre atualizados com a Meta (o cadastro pode ter sido feito direto lá).
+    const last = (await sql`select max(synced_at) as t, count(*)::int as n from wa_templates where instance_id = ${inst}`)[0];
+    if (!last.n || !last.t || Date.now() - new Date(last.t).getTime() > 3 * 60 * 1000 || req.query.fresh) {
+      try { await syncTemplates(sql, inst); } catch (e) { console.error('sync templates', inst, e.message); }
+    }
+  }
   const rows = inst
     ? await sql`select * from wa_templates where instance_id = ${inst} order by status = 'APPROVED' desc, name`
     : await sql`select * from wa_templates order by instance_id, name`;
