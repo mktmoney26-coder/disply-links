@@ -461,6 +461,13 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .nv-steps span{padding:3px 8px;border-radius:99px;background:var(--soft);color:var(--muted);white-space:nowrap}
   .nv-steps span.done{background:rgba(4,120,87,.12);color:#047857;font-weight:600}
   .nv-steps span.now{background:rgba(0,123,255,.12);color:#1d4ed8;font-weight:700}
+  /* "Ver motivo": texto longo recolhido */
+  details.why{margin-top:4px;max-width:300px}
+  details.why summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--accent);list-style:none;display:inline-flex;align-items:center;gap:4px}
+  details.why summary::-webkit-details-marker{display:none}
+  details.why summary::after{content:"▾";font-size:10px}
+  details.why[open] summary::after{content:"▴"}
+  details.why .why-body{margin-top:6px;font-size:12.5px;line-height:1.45;color:var(--ink);background:var(--soft);border-radius:8px;padding:8px 10px;white-space:pre-line}
 </style>
 </head>
 <body>
@@ -3066,6 +3073,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const td = (text, cls) => el('td', { text: String(text ?? ''), class: cls || '' });
   const tdn = (...kids) => el('td', {}, ...kids);
   const badge = (text, kind) => el('span', { class: 'badge b-' + kind, text });
+  // Texto longo fica escondido: clica em "Ver motivo" para ler.
+  function why(text, label) {
+    const d = el('details', { class: 'why' });
+    d.append(el('summary', { text: label || 'Ver motivo' }), el('div', { class: 'why-body', text: String(text || '') }));
+    return d;
+  }
   const empty = (tb, cols, text) => { const c = td(text, 'muted'); c.colSpan = cols; tb.append(el('tr', {}, c)); };
   function setMsg(id, text, ok) { const m = $(id); m.textContent = text || ''; m.classList.toggle('err', !ok && !!text); m.classList.toggle('okmsg', !!ok); }
   function alertBox(t) { const m = el('div', { class: 'card err', style: 'position:fixed;right:16px;bottom:16px;z-index:60;max-width:380px', text: t }); document.body.append(m); setTimeout(() => m.remove(), 6000); }
@@ -3243,7 +3256,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const body = el('div', { class: 'body' },
         el('strong', { text: al.title }),
         el('div', { class: 'small muted', text: (al.bm ? al.bm + ' · ' : '') + fmt(al.created_at) + (al.seen ? ' · visto' : '') }),
-        al.detail ? el('pre', { text: al.detail }) : null);
+        al.detail ? (String(al.detail).length > 120 ? why(al.detail, 'Ver detalhes') : el('pre', { text: al.detail })) : null);
       const act = al.seen ? null : el('button', { class: 'link', type: 'button', text: 'Marcar como visto', onclick: async () => { await post('r=alerts&a=seen', { id: al.id }); go(current); } });
       box.append(el('div', { class: 'alert-item' }, el('span', { class: 'dot ' + (LEVEL[al.level] || 'info') }), body, act));
     }
@@ -3273,8 +3286,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const name = tdn(el('strong', { text: b.name }), el('div', { class: 'small muted', text: 'ID ' + b.bm_id }));
       let sit;
       if (!b.active) sit = badge('Pausada', 'off');
-      else if (b.last_error && String(b.last_error).startsWith('Parcial')) { sit = el('div', {}, badge('Acesso parcial', 'warn'), el('div', { class: 'small muted', style: 'max-width:240px;margin-top:4px', text: b.last_error.replace(/^Parcial: /, '') })); }
-      else if (b.last_error) { sit = el('div', {}, badge('Erro na consulta', 'bad'), el('div', { class: 'small muted', style: 'max-width:240px;margin-top:4px', text: b.last_error })); }
+      else if (b.last_error && String(b.last_error).startsWith('Parcial')) { sit = el('div', {}, badge('Acesso parcial', 'warn'), why(b.last_error.replace(/^Parcial: /, ''))); }
+      else if (b.last_error) { sit = el('div', {}, badge('Erro na consulta', 'bad'), why(b.last_error)); }
       else if (!b.last_check) sit = badge('Aguardando', 'info');
       else sit = badge('OK', 'ok');
       // Ativa ou banida na Meta (pelos números e contas do WhatsApp da última consulta).
@@ -3388,7 +3401,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const h = HEALTH[n.health];
       const s = STATUS[n.status] || [n.status || '—', 'off'];
       const envio = tdn(h ? badge(h[0], h[1]) : el('span', { class: 'muted', text: '—' }));
-      if (n.health_detail && n.health !== 'AVAILABLE') envio.append(el('div', { class: 'small muted', style: 'max-width:280px;margin-top:4px;white-space:pre-wrap', text: n.health_detail }));
+      if (n.health_detail && n.health !== 'AVAILABLE') envio.append(why(n.health_detail));
       const parado = n.dias_parado == null ? el('span', { class: 'badge b-warn', text: '30+ dias' }) : n.dias_parado >= 7 ? badge(n.dias_parado + ' dias', 'warn') : el('span', { text: n.dias_parado === 0 ? 'Hoje' : n.dias_parado + (n.dias_parado === 1 ? ' dia' : ' dias') });
       const disp = n.instance_id ? badge('Em uso', 'info')
         : el('button', { class: 'link', type: 'button', text: 'Conectar', onclick: async (e) => { e.target.disabled = true; e.target.textContent = 'Conectando…'; try { const r = await fetch('/api/disparos?r=instances&a=from-asset', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ phone_number_id: n.phone_number_id }) }); const d = await r.json(); if (!r.ok) throw new Error(d.erro || 'Erro'); if (window.DisplyDisparos) window.DisplyDisparos.reload(); loadNumbers(); } catch (err) { e.target.disabled = false; e.target.textContent = 'Conectar'; alertBox(err.message); } } });
