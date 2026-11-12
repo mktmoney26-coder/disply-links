@@ -42,9 +42,9 @@ async function instances(sql, req, body, a) {
     // Limite diário e BM de cada número (vem do monitoramento de Ativos).
     try { await require('../lib/assets-monitor').getAssetsDb(); } catch (e) {}
     try {
-      const tiers = await sql`select n.phone_number_id, n.limit_tier, n.bm_ref, n.health, b.name as bm, b.ready from as_numbers n join as_bms b on b.id = n.bm_ref`;
+      const tiers = await sql`select n.phone_number_id, n.limit_tier, n.bm_ref, n.health, n.status as num_status, b.name as bm, b.ready from as_numbers n join as_bms b on b.id = n.bm_ref`;
       const byPn = new Map(tiers.map((t) => [t.phone_number_id, t]));
-      for (const r of rows) { const t = byPn.get(r.phone_number_id); if (t) { r.limit_tier = t.limit_tier; r.bm_ref = t.bm_ref; r.bm = t.bm; r.health = t.health; r.bm_ready = Boolean(t.ready); } }
+      for (const r of rows) { const t = byPn.get(r.phone_number_id); if (t) { r.limit_tier = t.limit_tier; r.bm_ref = t.bm_ref; r.bm = t.bm; r.health = t.health; r.bm_ready = Boolean(t.ready) && t.num_status !== 'BANNED'; } }
     } catch (e) { /* sem Ativos: segue sem limite */ }
     // Números monitorados em Ativos que ainda não viraram instância (conectam com um clique).
     let available = [];
@@ -52,7 +52,8 @@ async function instances(sql, req, body, a) {
       available = await sql`select n.phone_number_id, n.display_phone, n.verified_name, n.waba_id, n.status, n.health, b.name as bm, b.ready as bm_ready
         from as_numbers n join as_bms b on b.id = n.bm_ref and b.active
         left join wa_instances i on i.phone_number_id = n.phone_number_id
-        where i.id is null order by b.name, n.display_phone`;
+        where i.id is null and n.display_phone not like '+1 555%' and coalesce(n.status, '') not in ('BANNED')
+        order by b.name, n.display_phone`;
     } catch (e) { available = []; }
     return { instances: rows, available };
   }

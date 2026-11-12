@@ -1750,7 +1750,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const k = Number(li.dataset.step); if (k >= wz.step) { for (let i = wz.step; i < k; i++) { const e = stepError(i); if (e) { $('opMsg').textContent = e; return; } } }
     go(k);
   }; });
-  $('btnNewOp').onclick = () => { $('opDetail').hidden = true; $('opForm').hidden = false; resetOpForm(); $('opName').focus(); };
+  $('btnNewOp').onclick = async () => { $('opDetail').hidden = true; $('opForm').hidden = false; resetOpForm(); $('opName').focus();
+    // BMs prontas mudam a qualquer momento: recarrega os números e redesenha a escolha.
+    try { await loadInstances(); renderNums(); } catch (e) {} };
   $('btnOpCancel').onclick = () => { $('opForm').hidden = true; };
 
   // Escolheu um número das BMs que ainda não é instância: conecta na hora com o token da BM.
