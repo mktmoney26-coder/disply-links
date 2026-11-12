@@ -1740,7 +1740,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         }
         return '';
       }
-      return cfgError(curCfg());
+      const e = cfgError(curCfg()); if (e) return e;
+      return splitPartial();
     }
     return '';
   }
@@ -2096,19 +2097,49 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     sel.innerHTML = '<option value="">Carregando…</option>'; $('opTplCommon').textContent = '';
     let lists; try { lists = await Promise.all(ids.map(templatesOf)); } catch (err) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; $('opMsg').textContent = err.message; return; }
     const ok = (t) => t.status === 'APPROVED' && !t.info.carousel;
-    let common = lists[0].filter(ok);
-    for (const l of lists.slice(1)) common = common.filter((t) => l.some((x) => ok(x) && x.name === t.name && x.language === t.language));
+    // Templates aprovados em pelo menos um número; os que estão em mais BMs aparecem primeiro.
+    const cover = new Map();
+    lists.forEach((l, k) => { for (const t of l.filter(ok)) { const key = t.name + '|' + t.language; const c = cover.get(key) || { t, ids: [] }; if (!c.ids.includes(ids[k])) c.ids.push(ids[k]); cover.set(key, c); } });
+    const ranked = [...cover.values()].sort((a, b) => b.ids.length - a.ids.length || a.t.name.localeCompare(b.t.name));
+    state.coverage = new Map(ranked.map((c) => [c.t.id, c.ids]));
+    const common = ranked.map((c) => c.t);
     state.templates = common; sel.innerHTML = '';
-    sel.append(el('option', { value: '', text: common.length ? 'Escolha…' : 'Nenhum template aprovado em comum' }));
-    for (const t of common) sel.append(el('option', { value: t.id, text: `${t.name} · ${t.category === 'MARKETING' ? 'Marketing' : t.category === 'UTILITY' ? 'Utilidade' : t.category} · ${t.language}` }));
+    sel.append(el('option', { value: '', text: common.length ? 'Escolha…' : 'Nenhum template aprovado' }));
+    for (const c of ranked) sel.append(el('option', { value: c.t.id, text: `${tplLabel(c.t)}${ids.length > 1 ? (c.ids.length === ids.length ? ' · em todas' : ` · em ${c.ids.length} de ${ids.length} BMs`) : ''}` }));
     $('opTplCommon').textContent = ids.length > 1
-      ? (common.length ? `Só aparecem os templates aprovados nos ${ids.length} números escolhidos.` : 'Nenhum template está aprovado em todos os números escolhidos. Suba o mesmo template em Ativos Meta › Criar template e sincronize em Instâncias.')
+      ? (common.length ? 'Os templates aprovados em mais BMs aparecem primeiro. Se faltar em alguma, você escolhe o template dela no próximo passo.' : 'Nenhum dos números escolhidos tem template aprovado. Crie em Ativos Meta › Templates e sincronize em Instâncias.')
       : (common.length ? '' : 'Este número não tem template aprovado. Sincronize em Instâncias ou crie em Ativos Meta › Criar template.');
     const again = common.find((t) => t.name + '|' + t.language === cur);
     if (again) { sel.value = String(again.id); if (!state.tpl || state.tpl.id !== again.id) { state.tpl = again; applyTemplate(); } }
     else if (state.tpl) { state.tpl = null; applyTemplate(); }
   }
-  $('opTpl').onchange = () => { state.tpl = state.templates.find((t) => String(t.id) === $('opTpl').value) || null; applyTemplate(); };
+  $('opTpl').onchange = () => {
+    state.tpl = state.templates.find((t) => String(t.id) === $('opTpl').value) || null; applyTemplate();
+    if (!state.perMode && state.tpl && state.coverage) {
+      const has = state.coverage.get(state.tpl.id) || []; const parts = selParts();
+      const miss = parts.filter((p) => !has.includes(String(p.instance_id))).map((p) => { const i = instById(p.instance_id) || {}; return i.bm || i.name || ''; });
+      if (parts.length > 1) $('opTplCommon').textContent = miss.length ? `Aprovado em ${has.length} de ${parts.length} BMs. Preencha aqui; depois você escolhe o template de: ${miss.join(', ')}.` : `Aprovado nas ${parts.length} BMs escolhidas.`;
+    }
+  };
+  // Mesmo template em quase todas: copia o preenchimento para as BMs que têm o template e abre a que falta.
+  function splitPartial() {
+    const t = state.tpl; const parts = selParts(); if (!t || parts.length < 2 || !state.coverage) return '';
+    const has = state.coverage.get(t.id) || [];
+    const miss = parts.filter((p) => !has.includes(String(p.instance_id)));
+    if (!miss.length) return '';
+    const base = curCfg(); state.per = {};
+    for (const p of parts) {
+      if (!has.includes(String(p.instance_id))) continue;
+      const own = (split.tplLists.get(String(p.instance_id)) || []).find((x) => tplOk(x) && x.name === t.name && x.language === t.language);
+      if (own) state.per[p.instance_id] = { ...base, tpl: own, vars: { ...base.vars } };
+    }
+    state.perMode = true; state.curInst = null;
+    $('opTplSame').setAttribute('aria-pressed', 'false'); $('opTplPer').setAttribute('aria-pressed', 'true');
+    $('opTplTabs').hidden = false;
+    loadInstTpl(miss[0].instance_id);
+    const names = miss.map((p) => { const i = instById(p.instance_id) || {}; return i.bm || i.name || ''; });
+    return `Pronto: ${has.length} BM(s) já estão preenchidas com ${t.name}. Agora escolha o template de ${names.join(', ')} (aba destacada) e clique em Avançar.`;
+  }
 
   // ---------- Etapa 4: resumo ----------
   function renderSummary() {
