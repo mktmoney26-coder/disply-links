@@ -470,6 +470,18 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   details.why .why-body{margin-top:6px;font-size:12.5px;line-height:1.45;color:var(--ink);background:var(--soft);border-radius:8px;padding:8px 10px;white-space:pre-line}
   .gs-nlist{display:flex;flex-direction:column;gap:6px}
   .gs-nline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+  /* Modelos de template */
+  .tm-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px}
+  .tm-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:10px}
+  .tm-item{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;background:var(--card)}
+  .tm-item b{font-size:14px}
+  .tm-item p{margin:0;font-size:12.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tm-item .row{gap:6px;margin-top:2px}
+  .tm-item .btn{min-height:32px;padding:4px 12px;font-size:13px}
+  /* Comprar número dentro da BM */
+  .gs-buy{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px}
+  .gs-buy input[type=text]{width:auto;min-width:160px;padding:7px 10px}
+  .gs-buy select{width:auto;padding:7px 10px}
 </style>
 </head>
 <body>
@@ -940,6 +952,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       <!-- ================= ATIVOS: TEMPLATES ================= -->
       <div class="view" id="view-tplnovo" hidden>
         <div class="row"><a class="btn ghost" href="#saude">← Templates</a><span class="small muted">Monte o template e envie para aprovação em várias contas de uma vez.</span></div>
+        <div class="card tm-bar">
+          <div class="row" style="flex:1;min-width:240px"><label for="tmPick" style="margin:0;white-space:nowrap">Modelo salvo</label><select id="tmPick" style="flex:1;max-width:360px"><option value="">Começar do zero</option></select></div>
+          <div class="row"><input id="tmName" type="text" maxlength="80" placeholder="Nome do modelo" aria-label="Nome do modelo" style="width:200px"><button class="btn ghost" type="button" id="tmSave">Salvar como modelo</button><span id="tmMsg" class="small" role="status"></span></div>
+        </div>
         <div class="split">
           <div class="main stack">
             <div class="card stack">
@@ -1059,6 +1075,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       <div class="view" id="view-saude" hidden>
         <div class="row" style="justify-content:space-between">
           <div class="row"><a class="btn primary" href="#tplnovo">+ Criar template</a><span class="small muted">Situação dos templates de todas as BMs.</span></div>
+        </div>
+        <div class="card" id="tmListCard" hidden>
+          <div class="row" style="justify-content:space-between"><h3 style="margin:0">Modelos salvos</h3><span class="small muted">Escolha um modelo, marque as BMs e envie para análise.</span></div>
+          <div class="tm-list" id="tmList"></div>
+        </div>
+        <div class="row" style="justify-content:flex-end">
           <div class="seg" id="sFilter" role="group" aria-label="Filtro">
             <button type="button" data-f="bad" aria-pressed="true">Com problema</button>
             <button type="button" data-f="" aria-pressed="false">Todos</button>
@@ -3130,7 +3152,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (view === 'alertas') loadAlerts();
     if (view === 'config') loadConfig();
     if (view === 'historico') loadActivity();
-    if (view === 'tplnovo') loadTargets();
+    if (view === 'tplnovo') { loadTargets(); loadModels(); }
+    if (view === 'saude') loadModels();
   }
   window.addEventListener('hashchange', () => { if (key) go(location.hash.slice(1)); });
 
@@ -3560,6 +3583,52 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   };
   $('nvKeyChange').onclick = () => { $('nvKeyCard').hidden = false; $('nvKey').focus(); };
 
+  // Compra de número direto na linha da BM.
+  function gsBuy(b) {
+    const w = el('div', { class: 'gs-buy' });
+    w.append(el('b', { class: 'small', text: 'Comprar número:' }));
+    const ddd = el('select', { 'aria-label': 'DDD' }); ddd.append(el('option', { value: '', text: 'DDD aleatório (mais barato)' }), el('option', { value: 'pick', text: 'Escolher DDD' }));
+    const dd = el('input', { type: 'text', inputmode: 'numeric', maxlength: '2', placeholder: 'DDD', 'aria-label': 'DDD', style: 'width:70px;min-width:0', hidden: '' });
+    ddd.onchange = () => { dd.hidden = ddd.value !== 'pick'; reset(); };
+    const name = el('input', { type: 'text', maxlength: '100', placeholder: 'Nome de exibição', 'aria-label': 'Nome de exibição' }); name.value = b.name;
+    const go = el('button', { type: 'button', class: 'btn primary', text: 'Comprar' });
+    const msg = el('span', { class: 'small', role: 'status' });
+    let armed = false; const reset = () => { armed = false; go.textContent = 'Comprar'; };
+    dd.oninput = reset; name.oninput = reset;
+    go.onclick = async () => {
+      const d = ddd.value === 'pick' ? dd.value.trim() : '';
+      if (ddd.value === 'pick' && !/^[1-9]{2}$/.test(d)) { msg.className = 'small err'; msg.textContent = 'Digite o DDD.'; return; }
+      if (name.value.trim().length < 3) { msg.className = 'small err'; msg.textContent = 'Escreva o nome de exibição.'; return; }
+      if (!armed) {
+        armed = true; msg.className = 'small'; msg.textContent = 'O valor sai do saldo do Número Virtual.';
+        let price = ''; try { if (!nv.svc) { const r = await api('r=nv&precos=1'); nv.svc = r.service || null; if (!r.configured) { msg.className = 'small err'; msg.textContent = 'Salve a chave do Número Virtual em Comprar números.'; reset(); return; } } price = nv.svc ? ' · a partir de ' + brl(nv.svc.priceCents) : ''; } catch (e) {}
+        go.textContent = 'Confirmar compra' + price + (d ? ' · DDD ' + d : ''); return;
+      }
+      go.disabled = true; msg.className = 'small'; msg.textContent = 'Comprando…';
+      try {
+        const r = await post('r=nv&a=buy', { ddd: d, bm_ref: b.id, display_name: name.value.trim() });
+        msg.className = 'small okmsg'; msg.textContent = `Número ${fmtPhone(r.number.phone)} comprado. Ativando…`; reset();
+        gsWatch(r.number.id, msg);
+      } catch (err) { msg.className = 'small err'; msg.textContent = err.message; reset(); }
+      finally { go.disabled = false; }
+    };
+    w.append(ddd, dd, name, go, msg);
+    return w;
+  }
+  // Acompanha a ativação do número comprado na linha da BM.
+  async function gsWatch(id, msg) {
+    const LBL = { comprado: 'Comprado', pedir_codigo: 'Colocando na conta…', aguardando_sms: 'Aguardando o SMS…', ativando: 'Código confirmado, ativando…', ativo: 'Ativo ✓', cancelado: 'Cancelado', expirado: 'Expirou sem SMS' };
+    for (let i = 0; i < 240; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      if (!msg.isConnected) return;
+      let n; try { n = (await post('r=nv&a=step', { id })).numbers[0]; } catch (e) { continue; }
+      if (!n) return;
+      msg.className = 'small ' + (n.error ? 'err' : 'okmsg');
+      msg.textContent = `${fmtPhone(n.phone)}: ${LBL[n.step] || n.step}${n.error ? ' · ' + n.error : ''}${n.step === 'ativo' && n.pin ? ' · PIN ' + n.pin : ''}`;
+      if (['ativo', 'cancelado', 'expirado'].includes(n.step)) { if (n.step === 'ativo') setTimeout(() => loadGestao(), 1500); return; }
+    }
+  }
+
   // ---------- Gestão de BMs ----------
   const GS = {
     apta: ['Apta para disparo', '#047857', 'rgba(4,120,87,.12)'],
@@ -3683,7 +3752,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const acts = el('div', { class: 'row' });
     const upd = el('button', { type: 'button', class: 'btn ghost', text: 'Atualizar' });
     upd.onclick = async () => { upd.disabled = true; upd.textContent = 'Atualizando…'; try { await post('r=check', { id: b.id }); await loadGestao(); } catch (err) { alertBox(err.message); } };
-    if (!okNum.length && !['banida', 'erro'].includes(b.status) && b.wabas.length) acts.append(el('button', { type: 'button', class: 'btn primary', text: 'Comprar número', onclick: () => { nv.preBm = b.id; location.hash = 'nv'; } }));
+    if (!['banida', 'erro'].includes(b.status) && b.wabas.length) box.append(gsBuy(b));
     acts.append(upd, el('a', { class: 'btn ghost', href: metaUrl(b, 'message_templates'), target: '_blank', rel: 'noopener', text: 'Templates na Meta' }),
       el('a', { class: 'btn ghost', href: metaUrl(b, 'overview'), target: '_blank', rel: 'noopener', text: 'Abrir na Meta' }));
     const mark = (st) => post('r=gestao&a=mark', { id: b.id, status: st }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message));
@@ -3703,8 +3772,88 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   $('gsProfile').onchange = renderGestao;
   $('gsMeta').onclick = () => loadGestao(true);
 
+  // ---------- Modelos de template ----------
+  const tm = { list: [] };
+  function tnState() {
+    return { name: $('tnName').value, cat: tn.cat, lang: $('tnLang').value, varType: $('tnVarType').value, head: tn.head,
+      headText: $('tnHeadText').value, body: $('tnBody').value, footer: $('tnFooter').value, btns: tn.btns.map((b) => ({ ...b })), examples: { ...tnExamples } };
+  }
+  function tnApply(d, media) {
+    d = d || {};
+    tn.cat = d.cat || 'MARKETING';
+    document.querySelectorAll('#tnCats .tn-cat').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.cat === tn.cat)));
+    $('tnName').value = d.name || ''; $('tnNameCount').textContent = `${$('tnName').value.length}/512`;
+    $('tnLang').value = d.lang || 'pt_BR'; $('tnVarType').value = d.varType || 'number';
+    $('tnHeadFile').value = ''; tn.modelMedia = media || null;
+    const hb = [...document.querySelectorAll('#tnHeadSeg button')].find((x) => x.dataset.h === (d.head || '')); if (hb) hb.click();
+    $('tnHeadText').value = d.headText || ''; $('tnHeadCount').textContent = `${$('tnHeadText').value.length}/60`;
+    $('tnBody').value = d.body || ''; $('tnFooter').value = d.footer || ''; $('tnFooterCount').textContent = `${$('tnFooter').value.length}/60`;
+    for (const k of Object.keys(tnExamples)) delete tnExamples[k];
+    Object.assign(tnExamples, d.examples || {});
+    tn.btns = (d.btns || []).map((b) => ({ ...b }));
+    tnRenderVars(); tnRenderBtns(); tnPreview();
+  }
+  async function loadModels() {
+    try { tm.list = await api('r=tpl-bulk&a=models'); } catch (e) { tm.list = []; }
+    const sel = $('tmPick'); const cur = tn.model ? String(tn.model.id) : sel.value;
+    sel.innerHTML = '<option value="">Começar do zero</option>';
+    tm.list.forEach((m) => sel.append(el('option', { value: String(m.id), text: m.name })));
+    sel.value = tm.list.some((m) => String(m.id) === cur) ? cur : '';
+    $('tmSave').textContent = sel.value ? 'Atualizar modelo' : 'Salvar como modelo';
+    // Lista na tela Templates
+    const box = $('tmList'); box.innerHTML = '';
+    $('tmListCard').hidden = !tm.list.length;
+    for (const m of tm.list) {
+      const d = m.data || {};
+      const kind = { IMAGE: '🖼 Imagem', VIDEO: '🎬 Vídeo', DOCUMENT: '📄 Documento', TEXT: 'Título' }[d.head] || 'Só texto';
+      const use = el('a', { class: 'btn primary', href: '#tplnovo', text: 'Usar' });
+      use.onclick = () => { tmUse(m.id); };
+      const del = el('button', { type: 'button', class: 'btn ghost', text: 'Excluir' });
+      let armed = false;
+      del.onclick = async () => { if (!armed) { armed = true; del.textContent = 'Confirmar?'; setTimeout(() => { armed = false; del.textContent = 'Excluir'; }, 4000); return; } await post('r=tpl-bulk&a=model-delete', { id: m.id }).catch((e) => alertBox(e.message)); loadModels(); };
+      box.append(el('div', { class: 'tm-item' }, el('b', { text: m.name }), el('span', { class: 'small muted', text: `${d.cat === 'UTILITY' ? 'Utilidade' : 'Marketing'} · ${kind} · ${(d.btns || []).length} botão(ões)` }),
+        el('p', { text: d.body || '' }), el('div', { class: 'row' }, use, del)));
+    }
+  }
+  function tmUse(id) {
+    const m = tm.list.find((x) => x.id === Number(id)); if (!m) return;
+    tn.model = m; tnApply(m.data, m.media ? { ...m.media, thumb: (m.data || {}).thumb || null } : null); $('tmName').value = m.name; $('tmPick').value = String(m.id);
+    $('tmSave').textContent = 'Atualizar modelo'; setMsg('tmMsg', 'Modelo carregado. Marque as contas e envie.', true);
+  }
+  $('tmPick').onchange = () => {
+    const id = $('tmPick').value;
+    if (!id) { tn.model = null; tnApply({}, null); $('tmName').value = ''; $('tmSave').textContent = 'Salvar como modelo'; setMsg('tmMsg', ''); return; }
+    tmUse(id);
+  };
+  async function thumbOf(file) {
+    if (!/^image\//.test(file.type)) return null;
+    const img = await createImageBitmap(file); const w = Math.min(480, img.width); const h = Math.round(img.height * w / img.width);
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.75);
+  }
+  $('tmSave').onclick = async () => {
+    const name = $('tmName').value.trim(); if (!name) { setMsg('tmMsg', 'Dê um nome ao modelo.'); $('tmName').focus(); return; }
+    const btn = $('tmSave'); btn.disabled = true;
+    try {
+      let media = tn.modelMedia;
+      const f = $('tnHeadFile').files[0];
+      if (tnIsMedia() && f) {
+        const uploadId = 'model-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        const CH = 2.5 * 1024 * 1024; const parts = Math.ceil(f.size / CH);
+        for (let i = 0; i < parts; i++) { setMsg('tmMsg', `Guardando a mídia… ${Math.round(i / parts * 100)}%`, true); await post('r=tpl-bulk&a=chunk', { upload_id: uploadId, idx: i, data: await fileB64(f.slice(i * CH, (i + 1) * CH)) }); }
+        media = { upload_id: uploadId, parts, mime: f.type, filename: f.name, size: f.size };
+      }
+      if (!tnIsMedia()) media = null;
+      const data = tnState();
+      if (media && tn.head === 'IMAGE') data.thumb = f ? await thumbOf(f).catch(() => null) : (tn.modelMedia && tn.modelMedia.thumb) || null;
+      const r = await post('r=tpl-bulk&a=model-save', { id: tn.model && $('tmPick').value ? tn.model.id : null, name, data, media });
+      await loadModels(); tmUse(r.id); setMsg('tmMsg', 'Modelo salvo.', true);
+    } catch (err) { setMsg('tmMsg', err.message); }
+    finally { btn.disabled = false; }
+  };
+
   // ---------- Criar template em várias BMs (estilo Gerenciador do WhatsApp) ----------
-  const tn = { targets: [], sel: new Set(), btns: [], result: new Map(), busy: false, cat: 'MARKETING', head: '', mediaUrl: '' };
+  const tn = { targets: [], sel: new Set(), btns: [], result: new Map(), busy: false, cat: 'MARKETING', head: '', mediaUrl: '', model: null, modelMedia: null };
   const tnExamples = {};
   const TN_MEDIA = { IMAGE: 'image/jpeg,image/png', VIDEO: 'video/mp4', DOCUMENT: 'application/pdf' };
   const TN_MEDIA_MB = { IMAGE: 5, VIDEO: 16, DOCUMENT: 16 };
@@ -3790,7 +3939,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('tnDropTitle').textContent = f ? `${f.name} · ${(f.size / 1048576).toFixed(1)} MB (trocar)` : `Escolher ${{ IMAGE: 'imagem', VIDEO: 'vídeo', DOCUMENT: 'documento' }[tn.head] || 'arquivo'} de exemplo`;
     tnPreview();
   }
-  $('tnHeadFile').onchange = tnSetMedia;
+  $('tnHeadFile').onchange = () => { if ($('tnHeadFile').files[0]) tn.modelMedia = null; tnSetMedia(); };
   const drop = $('tnDrop');
   drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
   drop.ondragleave = () => drop.classList.remove('over');
@@ -3940,10 +4089,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const b = $('tnPreview'); b.innerHTML = '';
     if (tnIsMedia()) {
       const f = $('tnHeadFile').files[0];
-      if (tn.head === 'DOCUMENT') b.append(el('div', { class: 'doc' }, el('span', { text: '📄' }), el('span', { text: f ? f.name : 'documento.pdf' })));
+      if (tn.head === 'DOCUMENT') b.append(el('div', { class: 'doc' }, el('span', { text: '📄' }), el('span', { text: f ? f.name : tn.modelMedia ? tn.modelMedia.filename : 'documento.pdf' })));
       else {
         const m = el('div', { class: 'media' });
-        if (f && tn.mediaUrl && tn.head === 'IMAGE') m.append(el('img', { src: tn.mediaUrl, alt: 'Imagem do cabeçalho' }));
+        if (!f && tn.modelMedia && tn.modelMedia.thumb && tn.head === 'IMAGE') m.append(el('img', { src: tn.modelMedia.thumb, alt: 'Imagem do modelo' }));
+        else if (!f && tn.modelMedia && tn.head !== 'IMAGE') m.textContent = '🎬 ' + (tn.modelMedia.filename || 'Vídeo do modelo');
+        else if (f && tn.mediaUrl && tn.head === 'IMAGE') m.append(el('img', { src: tn.mediaUrl, alt: 'Imagem do cabeçalho' }));
         else if (f && tn.mediaUrl && tn.head === 'VIDEO') { const v = el('video', { src: tn.mediaUrl, controls: '', 'aria-label': 'Vídeo do cabeçalho' }); v.muted = true; m.append(v); }
         else m.textContent = tn.head === 'IMAGE' ? '🖼 Imagem' : '🎬 Vídeo';
         b.append(m);
@@ -4012,7 +4163,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (named && hv.length && vars.includes(hv[0])) return 'Use nomes diferentes para a variável do cabeçalho e do corpo.';
     }
     if (tnIsMedia()) {
-      const f = $('tnHeadFile').files[0]; if (!f) return `Escolha o arquivo de exemplo do cabeçalho (${{ IMAGE: 'imagem', VIDEO: 'vídeo', DOCUMENT: 'PDF' }[tn.head]}).`;
+      const f = $('tnHeadFile').files[0] || (tn.modelMedia && TN_MEDIA[tn.head].split(',').includes(tn.modelMedia.mime) ? { type: tn.modelMedia.mime, size: tn.modelMedia.size } : null);
+      if (!f) return `Escolha o arquivo de exemplo do cabeçalho (${{ IMAGE: 'imagem', VIDEO: 'vídeo', DOCUMENT: 'PDF' }[tn.head]}).`;
       if (!TN_MEDIA[tn.head].split(',').includes(f.type)) return 'Formato de arquivo não aceito para este cabeçalho.';
       if (f.size > TN_MEDIA_MB[tn.head] * 1048576) return `Arquivo grande demais (máximo ${TN_MEDIA_MB[tn.head]} MB).`;
     }
@@ -4044,21 +4196,26 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const handles = {};
     try {
       const f = $('tnHeadFile').files[0];
-      if (tnIsMedia() && f) {
-        const uploadId = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-        const CH = 2.5 * 1024 * 1024; const parts = Math.ceil(f.size / CH);
-        for (let i = 0; i < parts; i++) {
-          setMsg('tnMsg', `Enviando o arquivo… ${Math.round((i / parts) * 100)}%`, true);
-          await post('r=tpl-bulk&a=chunk', { upload_id: uploadId, idx: i, data: await fileB64(f.slice(i * CH, (i + 1) * CH)) });
+      const mm = !f && tn.modelMedia;
+      if (tnIsMedia() && (f || mm)) {
+        let uploadId, parts, mime;
+        if (mm) { uploadId = mm.upload_id; parts = mm.parts; mime = mm.mime; }
+        else {
+          uploadId = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); mime = f.type;
+          const CH = 2.5 * 1024 * 1024; parts = Math.ceil(f.size / CH);
+          for (let i = 0; i < parts; i++) {
+            setMsg('tnMsg', `Enviando o arquivo… ${Math.round((i / parts) * 100)}%`, true);
+            await post('r=tpl-bulk&a=chunk', { upload_id: uploadId, idx: i, data: await fileB64(f.slice(i * CH, (i + 1) * CH)) });
+          }
         }
         const apps = [...new Set(targets.map((t) => t.app_id).filter(Boolean))];
         for (const app of apps) {
           setMsg('tnMsg', 'Preparando a mídia na Meta…', true);
           const t = targets.find((x) => x.app_id === app);
-          try { handles[app] = (await post('r=tpl-bulk&a=handle', { upload_id: uploadId, parts, mime: f.type, bm_ref: t.bm_ref })).handle; }
+          try { handles[app] = (await post('r=tpl-bulk&a=handle', { upload_id: uploadId, parts, mime, bm_ref: t.bm_ref })).handle; }
           catch (err) { targets.filter((x) => x.app_id === app).forEach((x) => tn.result.set(x.waba_id, { state: 'err', text: err.message })); }
         }
-        post('r=tpl-bulk&a=cleanup', { upload_id: uploadId }).catch(() => {});
+        if (!mm) post('r=tpl-bulk&a=cleanup', { upload_id: uploadId }).catch(() => {});
       }
       const queue = targets.filter((t) => tn.result.get(t.waba_id).state === 'wait');
       let done = 0, ok = 0;

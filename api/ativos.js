@@ -339,6 +339,40 @@ function tplError(err) {
 async function templatesBulk(sql, req, body, a) {
   await sql`create table if not exists as_uploads (upload_id text not null, idx integer not null, data text not null,
     created_at timestamptz not null default now(), primary key (upload_id, idx))`;
+  // Modelos salvos: o formulário inteiro (e a mídia de exemplo) para reenviar depois a outras BMs.
+  await sql`create table if not exists tpl_models (id serial primary key, name text not null, data text not null, media text,
+    created_at timestamptz not null default now(), updated_at timestamptz not null default now())`;
+  if (a === 'models') {
+    const rows = await sql`select id, name, data, media, updated_at from tpl_models order by updated_at desc`;
+    return rows.map((r) => ({ id: r.id, name: r.name, data: JSON.parse(r.data), media: r.media ? JSON.parse(r.media) : null, updated_at: r.updated_at }));
+  }
+  if (a === 'model-save') {
+    const name = clean(body.name, 80); if (!name) throw new HttpError(400, 'Dê um nome ao modelo.');
+    const data = JSON.stringify(body.data || {}); if (data.length > 200000) throw new HttpError(400, 'Modelo grande demais.');
+    let media = null;
+    if (body.media) {
+      const m = body.media;
+      if (!/^model-[a-z0-9]{6,30}$/.test(String(m.upload_id || ''))) throw new HttpError(400, 'Mídia do modelo inválida.');
+      media = JSON.stringify({ upload_id: m.upload_id, parts: Number(m.parts) || 1, mime: clean(m.mime, 60), filename: clean(m.filename, 120), size: Number(m.size) || 0 });
+    }
+    const id = Number(body.id) || null;
+    if (id) {
+      const old = (await sql`select media from tpl_models where id = ${id}`)[0];
+      if (!old) throw new HttpError(404, 'Modelo não encontrado.');
+      const oldUp = old.media ? JSON.parse(old.media).upload_id : null;
+      if (oldUp && (!media || JSON.parse(media).upload_id !== oldUp)) await sql`delete from as_uploads where upload_id = ${oldUp}`;
+      await sql`update tpl_models set name = ${name}, data = ${data}, media = ${media}, updated_at = now() where id = ${id}`;
+      return { id };
+    }
+    const [r] = await sql`insert into tpl_models (name, data, media) values (${name}, ${data}, ${media}) returning id`;
+    await logActivity(sql, `Modelo de template "${name}" salvo`);
+    return { id: r.id };
+  }
+  if (a === 'model-delete') {
+    const r = (await sql`delete from tpl_models where id = ${Number(body.id)} returning media, name`)[0];
+    if (r && r.media) await sql`delete from as_uploads where upload_id = ${JSON.parse(r.media).upload_id}`;
+    return { ok: true };
+  }
   if (req.method === 'GET') {
     const rows = await sql`select w.waba_id, w.name as waba_name, b.id as bm_ref, b.name as bm, b.profile, b.token_enc, b.last_error,
         (select count(*)::int from as_numbers n where n.waba_id = w.waba_id) as numeros
@@ -376,7 +410,8 @@ async function templatesBulk(sql, req, body, a) {
     return { handle: up.h, app_id: app };
   }
   if (a === 'cleanup') {
-    await sql`delete from as_uploads where upload_id = ${clean(body.upload_id, 40)} or created_at < now() - interval '1 day'`;
+    const up = clean(body.upload_id, 40);
+    if (!up.startsWith('model-')) await sql`delete from as_uploads where upload_id = ${up} or (created_at < now() - interval '1 day' and upload_id not like 'model-%')`;
     return { ok: true };
   }
   if (a === 'create') {
