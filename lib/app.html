@@ -82,7 +82,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
   .muted{color:var(--muted)} .small{font-size:13px}
   label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
-  input[type=text],input[type=url],input[type=password],input[type=number],input[type=tel],input[type=date],select,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)}
+  input[type=text],input[type=search],input[type=url],input[type=password],input[type=number],input[type=tel],input[type=date],select,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)}
   textarea{min-height:64px;resize:vertical}
   input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .btn{font:inherit;font-weight:600;padding:10px 16px;border-radius:7px;border:1px solid transparent;cursor:pointer;min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
@@ -400,6 +400,58 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .tn-bubble .time{text-align:right;font-size:11px;color:var(--muted);padding:0 8px 2px}
   #tnPreviewBtns{max-width:330px;display:flex;flex-direction:column;gap:3px;margin-top:3px}
   #tnPreviewBtns div{background:var(--bubble);border-radius:8px;padding:9px;text-align:center;color:#1F8FD8;font-weight:600;font-size:14px;box-shadow:0 1px 1px rgba(0,0,0,.12)}
+  /* Gestão de BMs */
+  .gs-filters{display:flex;flex-wrap:wrap;gap:8px}
+  .gs-filters button{font:inherit;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 14px;cursor:pointer;min-height:38px}
+  .gs-filters button b{font-variant-numeric:tabular-nums}
+  .gs-filters button[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;font-weight:600}
+  .gs-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+  .gs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;align-items:start}
+  .gs-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--gs-c,var(--line))}
+  .gs-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .gs-head h3{margin:0;font-size:15px;line-height:1.3}
+  .gs-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:99px;padding:4px 10px;white-space:nowrap;background:var(--gs-bg);color:var(--gs-c)}
+  .gs-use{display:flex;flex-direction:column;gap:6px}
+  .gs-use .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .gs-use .top b{font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .gs-meter{height:8px;background:var(--soft);border-radius:99px;overflow:hidden}
+  .gs-meter i{display:block;height:100%;border-radius:99px}
+  .gs-nums{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+  .gs-nums li{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;background:var(--soft);border-radius:8px;padding:7px 10px}
+  .gs-tpl{display:flex;flex-wrap:wrap;gap:6px}
+  .gs-tpl button{font:inherit;font-size:12px;font-weight:600;border:0;border-radius:99px;padding:4px 10px;cursor:pointer}
+  .gs-tlist{border:1px solid var(--line);border-radius:8px;max-height:240px;overflow:auto}
+  .gs-tlist table{font-size:12.5px;min-width:0} .gs-tlist td{padding:6px 8px}
+  .gs-detail{font-size:12.5px;background:var(--soft);border-radius:8px;padding:8px 10px;white-space:pre-line;color:var(--ink)}
+  .gs-acts{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+  .gs-acts .btn{min-height:36px;padding:6px 12px;font-size:13px}
+  /* Operações em cartões */
+  .op-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .op-bar input{max-width:320px;flex:1;min-width:200px}
+  .op-tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .op-tabs button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:6px 14px;min-height:36px;cursor:pointer}
+  .op-tabs button[aria-pressed=true]{background:var(--ink);color:var(--card);border-color:var(--ink);font-weight:600}
+  .op-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .op-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s;text-align:left;font:inherit;color:inherit}
+  .op-card:hover{border-color:var(--accent);box-shadow:0 4px 18px rgba(13,27,42,.08)}
+  .op-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .op-card[aria-current=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .op-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .op-name{font-size:15px;font-weight:700;line-height:1.3;margin:0;word-break:break-word}
+  .op-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .op-main{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+  .op-main b{font-size:28px;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+  .op-main .pct{font-size:13px;font-weight:700;color:#047857;background:rgba(4,120,87,.1);border-radius:99px;padding:3px 9px}
+  .op-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .op-kpis div{background:var(--soft);border-radius:8px;padding:8px}
+  .op-kpis span{display:block;font-size:11.5px;color:var(--muted);font-weight:600}
+  .op-kpis strong{font-size:15px;font-variant-numeric:tabular-nums}
+  .op-meter{height:6px;background:var(--soft);border-radius:99px;overflow:hidden;display:flex}
+  .op-meter i{display:block;height:100%}
+  .op-foot{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;flex-wrap:wrap}
+  .op-live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#0ea5e9;margin-right:6px;animation:oppulse 1.4s infinite}
+  @keyframes oppulse{50%{opacity:.3}}
+  @media (prefers-reduced-motion:reduce){.op-live{animation:none}}
 </style>
 </head>
 <body>
@@ -437,7 +489,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       <div class="grp" data-grp="ativos">
         <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-ativos"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="lbl">Ativos Meta</span><span class="count" id="grpAtivCount" hidden></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="grp-items" id="grp-ativos">
-          <a href="#bms" data-view="bms">BMs</a>
+          <a href="#gestao" data-view="gestao">Gestão de BMs <span class="count" id="gsBadge" hidden></span></a>
+          <a href="#bms" data-view="bms">Cadastro de BMs</a>
           <a href="#numeros" data-view="numeros">Números <span class="count" id="restrBadge" hidden></span></a>
           <a href="#saude" data-view="saude">Status dos templates <span class="count" id="tplBadge" hidden></span></a>
           <a href="#tplnovo" data-view="tplnovo">Criar template</a>
@@ -644,11 +697,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     <!-- Detalhe -->
     <div class="card" id="opDetail" hidden></div>
 
-    <!-- Lista -->
-    <div class="card"><div class="wrap"><table>
-      <thead><tr><th>Operação</th><th>Instância / template</th><th>Progresso</th><th>Entregues</th><th>Lidas</th><th>Falhas</th><th>Status</th></tr></thead>
-      <tbody id="opsRows"><tr><td colspan="7" class="muted">Carregando…</td></tr></tbody>
-    </table></div></div>
+    <!-- Lista (cartões) -->
+    <div class="op-bar">
+      <div class="op-tabs" id="opsTabs" role="group" aria-label="Filtrar operações"></div>
+      <input id="opsSearch" type="search" placeholder="Buscar operação, template ou número" aria-label="Buscar operação">
+    </div>
+    <div class="op-grid" id="opsRows"><p class="muted">Carregando…</p></div>
   </section></div>
 
   <!-- ================= INBOX ================= -->
@@ -757,6 +811,16 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   </section></div>
 
       <!-- ================= ATIVOS: BMs ================= -->
+      <div class="view" id="view-gestao" hidden>
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <p class="small muted" style="margin:0;max-width:640px">Situação de cada BM para disparo. O limite é do portfólio (BM) e conta as últimas 24 horas, não zera à meia-noite. Para incluir o que saiu por outras plataformas (ex.: Revenue), clique em "Conferir uso na Meta".</p>
+          <button class="btn ghost" type="button" id="gsMeta">Conferir uso na Meta</button>
+        </div>
+        <div class="gs-filters" id="gsFilters" role="group" aria-label="Filtrar BMs"></div>
+        <div class="row"><input id="gsSearch" type="search" placeholder="Buscar BM, número ou template" aria-label="Buscar BM" style="min-width:240px;flex:1;max-width:360px"><select id="gsProfile" aria-label="Perfil" style="width:auto"><option value="">Todos os perfis</option></select><span class="small muted" id="gsInfo" role="status"></span></div>
+        <div class="gs-grid" id="gsGrid"><p class="muted">Carregando…</p></div>
+      </div>
+
       <div class="view" id="view-bms" hidden>
         <div class="row" style="justify-content:space-between">
           <p class="small muted" style="margin:0;max-width:640px">Cada BM é consultada na Meta com o token do usuário do sistema. Contas, números e templates são descobertos sozinhos. O token fica guardado criptografado.</p>
@@ -2211,18 +2275,55 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   // ================= LISTA E DETALHE DE OPERAÇÕES =================
   const opBadge = (s) => ({ running: badge('Enviando', 'info'), paused: badge('Pausada', 'warn'), done: badge('Concluída', 'ok'), canceled: badge('Cancelada', 'off'), error: badge('Erro', 'bad') })[s] || badge(s, 'off');
   function bar(parts) { const b = el('div', { class: 'bar' }); for (const [w, c] of parts) b.append(el('span', { style: `width:${w}%;background:${c}` })); return b; }
+  const opsView = { list: [], tab: 'all' };
+  const OPS_TABS = [['all', 'Todas'], ['live', 'Em andamento'], ['done', 'Concluídas'], ['other', 'Canceladas / erro']];
   async function loadOps() {
     const { operations } = await api('r=ops');
-    const tb = $('opsRows'); tb.innerHTML = '';
-    if (!operations.length) { const tr = el('tr'); const c = td('Nenhuma operação ainda.', 'muted'); c.colSpan = 7; tr.append(c); tb.append(tr); }
-    for (const o of operations) {
-      const n = el('td'); n.append(el('button', { class: 'link', type: 'button', text: o.name, onclick: () => openDetail(o.id) }), el('div', { class: 'small muted', text: fmt(o.created_at) }));
-      const p = el('td'); const pct = o.total ? Math.round((o.sent + o.failed) / o.total * 100) : 0;
-      p.append(bar([[o.total ? o.sent / o.total * 100 : 0, 'var(--accent)'], [o.total ? o.failed / o.total * 100 : 0, 'var(--bad)']]), el('div', { class: 'small muted', text: `${num(o.sent + o.failed)} de ${num(o.total)} (${pct}%)` }));
-      const s = el('td'); s.append(opBadge(o.status));
-      tb.append(el('tr', {}, n, td((o.instance_name || '—') + ' · ' + (o.template_name || '—')), p, td(num(o.delivered)), td(num(o.read)), td(num(o.failed)), s));
-    }
+    opsView.list = operations; renderOps();
+    clearTimeout(opsView.timer);
+    if (operations.some((o) => o.status === 'running') && !state.detailId) opsView.timer = setTimeout(() => { if (!$('tab-ops').closest('.view') || !$('tab-ops').closest('.view').hidden) loadOps().catch(() => {}); }, 8000);
   }
+  function renderOps() {
+    const inTab = (o, t) => t === 'all' || (t === 'live' ? ['running', 'paused', 'queued'].includes(o.status) : t === 'done' ? o.status === 'done' : ['canceled', 'error'].includes(o.status));
+    const tabs = $('opsTabs'); tabs.innerHTML = '';
+    for (const [k, l] of OPS_TABS) {
+      const n = opsView.list.filter((o) => inTab(o, k)).length;
+      if (k !== 'all' && !n) continue;
+      tabs.append(el('button', { type: 'button', 'aria-pressed': String(opsView.tab === k), text: `${l} · ${n}`, onclick: () => { opsView.tab = k; renderOps(); } }));
+    }
+    const q = $('opsSearch').value.trim().toLowerCase();
+    const list = opsView.list.filter((o) => inTab(o, opsView.tab) && (!q || [o.name, o.template_name, o.instance_name, o.display_phone, o.list_name].join(' ').toLowerCase().includes(q)));
+    const g = $('opsRows'); g.innerHTML = '';
+    if (!list.length) g.append(el('p', { class: 'muted', text: opsView.list.length ? 'Nenhuma operação neste filtro.' : 'Nenhuma operação ainda. Clique em + Nova operação.' }));
+    for (const o of list) g.append(opCard(o));
+  }
+  function opCard(o) {
+    const total = o.total || o.quantity || 0;
+    const card = el('button', { type: 'button', class: 'op-card', 'aria-current': String(state.detailId === o.id), 'aria-label': 'Abrir ' + o.name });
+    card.onclick = () => { openDetail(o.id); document.querySelectorAll('.op-card').forEach((c) => c.setAttribute('aria-current', String(c === card))); $('opDetail').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    const st = opBadge(o.status);
+    const when = el('span', { class: 'small muted' });
+    if (o.status === 'running') when.append(el('span', { class: 'op-live', 'aria-hidden': 'true' }), document.createTextNode('enviando agora'));
+    else when.textContent = fmt(o.created_at);
+    card.append(el('div', { class: 'op-top' }, st, when));
+    const where = o.is_group ? `${o.lots} BMs · ${o.template_name || ''}` : `${(o.instance_name || '').split(' · ')[0] || '—'} · ${o.template_name || '—'}`;
+    card.append(el('div', {}, el('p', { class: 'op-name', text: o.name }), el('div', { class: 'op-sub', text: where })));
+    const dPct = o.sent ? Math.round(o.delivered / o.sent * 1000) / 10 : 0;
+    card.append(el('div', { class: 'op-main' },
+      el('div', {}, el('span', { class: 'small muted', style: 'display:block;font-weight:600;margin-bottom:4px', text: 'Entregues' }), el('b', { text: num(o.delivered) })),
+      o.sent ? el('span', { class: 'pct', text: dPct.toLocaleString('pt-BR') + '% das enviadas' }) : el('span')));
+    card.append(el('div', { class: 'op-kpis' },
+      el('div', {}, el('span', { text: 'Enviadas' }), el('strong', { text: num(o.sent) })),
+      el('div', {}, el('span', { text: 'Lidas' }), el('strong', { text: num(o.read) })),
+      el('div', {}, el('span', { text: 'Falhas' }), el('strong', { style: o.failed ? 'color:var(--bad)' : '', text: num(o.failed) }))));
+    const m = el('div', { class: 'op-meter', role: 'img', 'aria-label': `${num(o.sent + o.failed)} de ${num(total)} processados` });
+    if (total) m.append(el('i', { style: `width:${o.delivered / total * 100}%;background:#047857` }), el('i', { style: `width:${(o.sent - o.delivered) / total * 100}%;background:var(--accent)` }), el('i', { style: `width:${o.failed / total * 100}%;background:var(--bad)` }));
+    card.append(m);
+    const pr = total ? Math.round((o.sent + o.failed) / total * 100) : 0;
+    card.append(el('div', { class: 'op-foot' }, el('span', { text: `${num(total)} contatos${o.list_name ? ' · ' + o.list_name : ''}` }), el('span', { text: o.status === 'done' && o.finished_at ? 'Concluída ' + fmt(o.finished_at) : `${pr}% processado` })));
+    return card;
+  }
+  $('opsSearch').oninput = renderOps;
   $('opsRefresh').onclick = () => { loadOps(); if (state.detailId) openDetail(state.detailId); };
 
   async function openDetail(id) {
@@ -2937,12 +3038,12 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   // ---------- Navegação ----------
   const VIEWS = {
     inicio: ['Visão geral', ''], ops: ['Operações', 'Disparos'], inbox: ['Inbox', 'Disparos'], lists: ['Listas de contatos', 'Disparos'],
-    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['BMs', 'Ativos Meta'], numeros: ['Números', 'Ativos Meta'],
+    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], numeros: ['Números', 'Ativos Meta'],
     saude: ['Status dos templates', 'Ativos Meta'], tplnovo: ['Criar template em várias BMs', 'Ativos Meta'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
     config: ['Configurações', 'Sistema'], historico: ['Histórico', 'Sistema']
   };
   const DISPAROS = ['ops', 'inbox', 'lists', 'tpl', 'inst'];
-  const ATIVOS = ['inicio', 'bms', 'numeros', 'saude', 'alertas'];
+  const ATIVOS = ['inicio', 'bms', 'gestao', 'numeros', 'saude', 'alertas'];
   let current = '';
 
   function go(view) {
@@ -2959,6 +3060,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (window.DisplyDisparos) window.DisplyDisparos.show(DISPAROS.includes(view) ? view : 'none');
     if (view === 'inicio') loadHome();
     if (view === 'bms') loadBms();
+    if (view === 'gestao') loadGestao();
     if (view === 'numeros') loadNumbers();
     if (view === 'saude') loadSaude();
     if (view === 'alertas') loadAlerts();
@@ -3280,6 +3382,138 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!list.length) empty(tb, 2, 'Nada registrado ainda.');
     for (const a of list) tb.append(el('tr', {}, td(fmt(a.created_at)), td(a.text)));
   }
+
+  // ---------- Gestão de BMs ----------
+  const GS = {
+    apta: ['Apta para disparo', '#047857', 'rgba(4,120,87,.12)'],
+    limite: ['Limite do dia usado', '#b45309', 'rgba(180,83,9,.13)'],
+    pagamento: ['Pagamento pendente', '#b45309', 'rgba(180,83,9,.13)'],
+    sem_numero: ['Sem número ativo', '#5b6b80', 'rgba(91,107,128,.14)'],
+    restrita: ['Restrita', '#b91c1c', 'rgba(185,28,28,.12)'],
+    banida: ['Banida', '#7f1d1d', 'rgba(127,29,29,.14)'],
+    erro: ['Erro de acesso', '#b91c1c', 'rgba(185,28,28,.12)']
+  };
+  const GS_ORDER = ['apta', 'limite', 'pagamento', 'sem_numero', 'restrita', 'banida', 'erro'];
+  const gs = { list: [], filter: '', meta: false, open: new Set() };
+  const TPL_PT = { APPROVED: ['aprovado', 'aprovados', 'ok'], PENDING: ['em análise', 'em análise', 'warn'], IN_APPEAL: ['em recurso', 'em recurso', 'warn'], REJECTED: ['reprovado', 'reprovados', 'bad'], PAUSED: ['pausado', 'pausados', 'warn'], DISABLED: ['desativado', 'desativados', 'bad'] };
+  const hhmm = (d) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const metaUrl = (b, page) => `https://business.facebook.com/latest/whatsapp_manager/${page}/?business_id=${b.bm_id}` + (b.wabas[0] ? '&asset_id=' + b.wabas[0].waba_id : '');
+  async function loadGestao(withMeta) {
+    if (withMeta) gs.meta = true;
+    $('gsInfo').textContent = gs.meta ? 'Conferindo o uso na Meta…' : '';
+    try { const d = await api('r=gestao' + (gs.meta ? '&meta=1' : '')); gs.list = d.bms; }
+    catch (err) { $('gsGrid').innerHTML = ''; $('gsGrid').append(el('p', { class: 'err', text: err.message })); return; }
+    $('gsInfo').textContent = gs.meta ? 'Uso conferido na Meta (inclui outras plataformas).' : 'Uso contado pelos disparos do Disply.';
+    const prof = $('gsProfile'); const cur = prof.value;
+    prof.innerHTML = '<option value="">Todos os perfis</option>';
+    [...new Set(gs.list.map((b) => b.profile).filter(Boolean))].sort().forEach((p) => prof.append(el('option', { value: p, text: p })));
+    prof.value = cur;
+    count('gsBadge', gs.list.filter((b) => b.status === 'apta').length);
+    renderGestao();
+  }
+  function renderGestao() {
+    const f = $('gsFilters'); f.innerHTML = '';
+    const pool = gs.list.filter((b) => !$('gsProfile').value || b.profile === $('gsProfile').value);
+    const mk = (key, label, color, n) => {
+      const b = el('button', { type: 'button', 'aria-pressed': String(gs.filter === key) });
+      if (color) b.append(el('span', { class: 'gs-dot', style: 'background:' + color }));
+      b.append(el('span', { text: label }), el('b', { text: String(n) }));
+      b.onclick = () => { gs.filter = gs.filter === key ? '' : key; renderGestao(); };
+      f.append(b);
+    };
+    mk('', 'Todas', null, pool.length);
+    for (const k of GS_ORDER) { const n = pool.filter((b) => b.status === k).length; if (n || k === 'apta') mk(k, GS[k][0], GS[k][1], n); }
+    const q = $('gsSearch').value.trim().toLowerCase();
+    const list = pool.filter((b) => (!gs.filter || b.status === gs.filter) && (!q || [b.name, b.bm_id, ...b.numbers.map((n) => n.display_phone), ...b.templates.list.map((t) => t.name)].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => GS_ORDER.indexOf(a.status) - GS_ORDER.indexOf(b.status) || a.name.localeCompare(b.name));
+    const g = $('gsGrid'); g.innerHTML = '';
+    if (!list.length) g.append(el('p', { class: 'muted', text: gs.list.length ? 'Nenhuma BM neste filtro.' : 'Nenhuma BM cadastrada. Cadastre em Cadastro de BMs.' }));
+    for (const b of list) g.append(gsCard(b));
+  }
+  function gsCard(b) {
+    const [label, color, bg] = GS[b.status];
+    const card = el('article', { class: 'gs-card', style: `--gs-c:${color};--gs-bg:${bg}`, 'aria-label': b.name });
+    card.append(el('div', { class: 'gs-head' },
+      el('div', {}, el('h3', { text: b.name }), el('div', { class: 'small muted', text: [b.profile, 'BM ' + b.bm_id].filter(Boolean).join(' · ') })),
+      el('span', { class: 'gs-pill', text: label })));
+
+    // Uso do limite nas últimas 24 h
+    const lim = b.limit === 'ilimitado' ? Infinity : Number(b.limit) || 0;
+    const use = el('div', { class: 'gs-use' });
+    if (['apta', 'limite'].includes(b.status) || (lim && b.used)) {
+      const free = lim === Infinity ? null : Math.max(0, lim - b.used);
+      use.append(el('div', { class: 'top' },
+        el('span', {}, el('b', { text: lim === Infinity ? num(b.used) : num(free) }), el('span', { class: 'small muted', text: lim === Infinity ? ' enviadas em 24 h · limite ilimitado' : ' disponíveis agora' }))));
+      if (lim !== Infinity) use.append(el('span', { class: 'small muted', text: `${num(b.used)} de ${num(lim)} usados nas últimas 24 h` }));
+      if (lim && lim !== Infinity) {
+        const pct = Math.min(100, b.used / lim * 100);
+        use.append(el('div', { class: 'gs-meter', role: 'img', 'aria-label': `${Math.round(pct)}% do limite usado` }, el('i', { style: `width:${Math.max(pct, b.used ? 2 : 0)}%;background:${pct >= 100 ? '#b45309' : pct >= 70 ? '#d97706' : 'var(--accent)'}` })));
+      }
+      if (b.used && b.free_from) use.append(el('span', { class: 'small muted', text: `${b.status === 'limite' ? 'Começa a liberar' : 'As vagas usadas voltam'} a partir de ${hhmm(b.free_from)}${b.used_source === 'meta' ? ' · dados da Meta' : ''}` }));
+      card.append(use);
+    }
+
+    // Números
+    const real = b.numbers.filter((n) => !n.test);
+    const ul = el('ul', { class: 'gs-nums' });
+    if (!real.length) ul.append(el('li', {}, el('span', { class: 'muted', text: b.numbers.length ? 'Só número de teste da Meta' : 'Nenhum número na conta' })));
+    const Q = { GREEN: ['#047857', 'Qualidade alta'], YELLOW: ['#d97706', 'Qualidade média'], RED: ['#b91c1c', 'Qualidade baixa'] };
+    for (const n of real) {
+      const q = Q[n.quality] || ['#94a3b8', 'Qualidade sem nota'];
+      const st = n.status === 'BANNED' ? badge('Banido', 'bad') : n.health === 'BLOCKED' ? badge('Bloqueado', 'bad') : n.status !== 'CONNECTED' ? badge(n.status === 'PENDING' ? 'Pendente' : n.status || '—', 'warn') : n.instance_id && n.inst_active ? badge('No Disply', 'ok') : badge('Fora do Disply', 'off');
+      ul.append(el('li', {}, el('span', { style: 'display:flex;align-items:center;gap:8px' }, el('span', { class: 'gs-dot', style: 'background:' + q[0], title: q[1], 'aria-label': q[1] }), el('span', { text: n.display_phone })), st));
+    }
+    card.append(ul);
+    if (b.detail && ['restrita', 'banida', 'pagamento', 'erro'].includes(b.status)) card.append(el('div', { class: 'gs-detail', text: String(b.detail).split('\n').slice(0, 3).join('\n') }));
+    if (b.status === 'erro' && b.last_error) card.append(el('div', { class: 'gs-detail', text: b.last_error }));
+
+    // Templates
+    const tc = b.templates.counts; const keys = Object.keys(tc).sort((x, y) => (x === 'APPROVED' ? -1 : y === 'APPROVED' ? 1 : 0));
+    const tw = el('div', { class: 'stack', style: 'gap:8px' });
+    const chips = el('div', { class: 'gs-tpl' });
+    chips.append(el('span', { class: 'small', style: 'font-weight:700;align-self:center', text: 'Templates:' }));
+    if (!keys.length) chips.append(el('span', { class: 'small muted', text: 'nenhum' }));
+    const open = gs.open.has(b.id);
+    for (const k of keys) {
+      const t = TPL_PT[k] || [k.toLowerCase(), k.toLowerCase(), 'off'];
+      const c = el('button', { type: 'button', class: 'badge b-' + t[2], 'aria-expanded': String(open), text: `${tc[k]} ${tc[k] === 1 ? t[0] : t[1]}` });
+      c.onclick = () => { gs.open.has(b.id) ? gs.open.delete(b.id) : gs.open.add(b.id); renderGestao(); };
+      chips.append(c);
+    }
+    tw.append(chips);
+    if (open && b.templates.list.length) {
+      const tb = el('tbody');
+      const ord = ['REJECTED', 'PAUSED', 'DISABLED', 'PENDING', 'IN_APPEAL', 'APPROVED'];
+      for (const t of [...b.templates.list].sort((x, y) => ord.indexOf(x.status) - ord.indexOf(y.status) || x.name.localeCompare(y.name))) {
+        const t2 = TPL_PT[t.status] || [t.status, t.status, 'off'];
+        tb.append(el('tr', {}, el('td', {}, el('div', { style: 'font-weight:600', text: t.name }), el('div', { class: 'small muted', text: `${t.category === 'MARKETING' ? 'Marketing' : t.category === 'UTILITY' ? 'Utilidade' : t.category || ''} · ${t.language}` })),
+          el('td', { style: 'text-align:right' }, badge(t2[0][0].toUpperCase() + t2[0].slice(1), t2[2]))));
+      }
+      tw.append(el('div', { class: 'gs-tlist' }, el('table', {}, tb)));
+    }
+    card.append(tw);
+
+    if (b.review_at) card.append(el('div', { class: 'small', style: 'font-weight:600;color:#b45309', text: `Análise pedida em ${hhmm(b.review_at)}. Aguardando a Meta.` }));
+
+    // Ações
+    const acts = el('div', { class: 'gs-acts' });
+    const upd = el('button', { type: 'button', class: 'btn ghost', text: 'Atualizar' });
+    upd.onclick = async () => { upd.disabled = true; upd.textContent = 'Atualizando…'; try { await post('r=check', { id: b.id }); await loadGestao(); } catch (err) { alertBox(err.message); upd.disabled = false; upd.textContent = 'Atualizar'; } };
+    acts.append(upd);
+    acts.append(el('a', { class: 'btn ghost', href: metaUrl(b, 'message_templates'), target: '_blank', rel: 'noopener', text: 'Templates na Meta' }));
+    if (['restrita', 'banida'].includes(b.status)) {
+      const rv = el('a', { class: 'btn primary', href: `https://business.facebook.com/business-support-home/?business_id=${b.bm_id}`, target: '_blank', rel: 'noopener', text: b.review_at ? 'Abrir análise' : 'Pedir análise' });
+      rv.onclick = () => { if (!b.review_at) post('r=gestao&a=review', { id: b.id }, 'PATCH').then(() => loadGestao()).catch(() => {}); };
+      acts.append(rv);
+      if (b.review_at) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Tirar marcação', onclick: () => post('r=gestao&a=review', { id: b.id, done: false }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message)) }));
+    } else acts.append(el('a', { class: 'btn ghost', href: metaUrl(b, 'overview'), target: '_blank', rel: 'noopener', text: 'Abrir na Meta' }));
+    card.append(acts);
+    if (b.last_check) card.append(el('span', { class: 'small muted', style: 'margin-top:-6px', text: 'Consultado na Meta em ' + fmt(b.last_check) }));
+    return card;
+  }
+  $('gsSearch').oninput = renderGestao;
+  $('gsProfile').onchange = renderGestao;
+  $('gsMeta').onclick = () => loadGestao(true);
 
   // ---------- Criar template em várias BMs (estilo Gerenciador do WhatsApp) ----------
   const tn = { targets: [], sel: new Set(), btns: [], result: new Map(), busy: false, cat: 'MARKETING', head: '', mediaUrl: '' };

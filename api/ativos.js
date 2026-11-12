@@ -186,6 +186,88 @@ async function bms(sql, req, body, a) {
   throw new HttpError(405, 'Método não permitido.');
 }
 
+// ---------- Gestão de BMs: aptas, limite do dia, restritas, templates ----------
+const tierN = (t) => {
+  const m = /TIER_(\d+)(K)?/i.exec(String(t || ''));
+  if (m) return Number(m[1]) * (m[2] ? 1000 : 1);
+  return /UNLIMITED/i.test(String(t || '')) ? Infinity : null;
+};
+const isTestPhone = (p) => /^\+?1\s?555/.test(String(p || '').trim());
+const PAY_RE = /pagamento|payment|cart[aã]o|cobran/i;
+
+// Mensagens enviadas nas últimas 24 h por conta, segundo a Meta (pega também o que saiu por outras plataformas).
+async function metaSent24h(wabaId, token) {
+  const end = Math.floor(Date.now() / 1000); const start = end - 24 * 3600;
+  const d = await graph(`/${wabaId}?fields=analytics.start(${start}).end(${end}).granularity(HALF_HOUR)`, token);
+  const pts = ((d.analytics && d.analytics.data_points) || []).filter((p) => Number(p.sent) > 0).sort((a, b) => a.start - b.start);
+  return { sent: pts.reduce((t, p) => t + Number(p.sent || 0), 0), first: pts.length ? new Date(pts[0].start * 1000).toISOString() : null };
+}
+
+async function gestao(sql, req, body, a) {
+  await sql`alter table as_bms add column if not exists review_at timestamptz`;
+  if (req.method === 'PATCH' && a === 'review') {
+    const id = Number(body.id); if (!id) throw new HttpError(400, 'BM inválida.');
+    await sql`update as_bms set review_at = ${body.done === false ? null : new Date()} where id = ${id}`;
+    const b = (await sql`select name from as_bms where id = ${id}`)[0];
+    if (b) await logActivity(sql, body.done === false ? `Análise da BM ${b.name} marcada como resolvida` : `Pedido de análise registrado para a BM ${b.name}`);
+    return { ok: true };
+  }
+  const bmsRows = await sql`select id, name, profile, bm_id, last_check, last_error, review_at, token_enc from as_bms where active order by name`;
+  const wabas = await sql`select * from as_wabas`;
+  const nums = await sql`select n.*, i.id as instance_id, i.active as inst_active from as_numbers n left join wa_instances i on i.phone_number_id = n.phone_number_id`;
+  const tpls = await sql`select bm_ref, waba_id, name, language, category, status, updated_at from as_templates order by name`;
+  const used = await sql`select i.phone_number_id, count(distinct r.phone)::int as n, min(r.sent_at) as first_at
+    from wa_recipients r join wa_operations o on o.id = r.operation_id join wa_instances i on i.id = o.instance_id
+    where r.sent_at > now() - interval '24 hours' and r.status in ('sent','delivered','read') group by i.phone_number_id`;
+  const usedBy = new Map(used.map((u) => [u.phone_number_id, u]));
+  const wantMeta = String(req.query.meta || '') === '1';
+
+  const out = await Promise.all(bmsRows.map(async (b) => {
+    const ws = wabas.filter((w) => w.bm_ref === b.id);
+    const ns = nums.filter((n) => n.bm_ref === b.id);
+    const real = ns.filter((n) => !isTestPhone(n.display_phone));
+    const ts = tpls.filter((t) => t.bm_ref === b.id);
+    const usable = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
+    const details = [...ws.map((w) => w.health_detail), ...ns.map((n) => n.health_detail)].filter(Boolean).join('\n');
+    const limit = real.map((n) => tierN(n.limit_tier)).filter((x) => x != null).reduce((m, x) => Math.max(m, x), 0) || null;
+    // Uso nas últimas 24 h: o que saiu pelo Disply; com ?meta=1, o maior entre Disply e Meta.
+    let usedN = 0; let first = null;
+    for (const n of real) { const u = usedBy.get(n.phone_number_id); if (u) { usedN += u.n; if (!first || new Date(u.first_at) < new Date(first)) first = u.first_at; } }
+    let source = 'disply';
+    if (wantMeta && usable.length) {
+      try {
+        const token = decrypt(b.token_enc); let ms = 0; let mf = null;
+        for (const w of ws) { const r = await metaSent24h(w.waba_id, token); ms += r.sent; if (r.first && (!mf || r.first < mf)) mf = r.first; }
+        if (ms > usedN) { usedN = ms; first = mf; source = 'meta'; }
+      } catch {}
+    }
+    const rejected = ws.length > 0 && ws.every((w) => w.review_status === 'REJECTED');
+    const allBanned = real.length > 0 && real.every((n) => n.status === 'BANNED');
+    const blocked = ws.some((w) => w.health === 'BLOCKED') || real.some((n) => n.health === 'BLOCKED') || real.some((n) => ['RESTRICTED', 'FLAGGED'].includes(n.status));
+    const pay = blocked && PAY_RE.test(details);
+    let status;
+    if (b.last_error && !String(b.last_error).startsWith('Parcial')) status = 'erro';
+    else if (rejected || allBanned) status = 'banida';
+    else if (blocked && !pay) status = 'restrita';
+    else if (pay) status = 'pagamento';
+    else if (!usable.length) status = 'sem_numero';
+    else if (limit && limit !== Infinity && usedN >= limit) status = 'limite';
+    else status = 'apta';
+    const tc = {}; for (const t of ts) tc[t.status] = (tc[t.status] || 0) + 1;
+    return {
+      id: b.id, name: b.name, profile: b.profile, bm_id: b.bm_id, last_check: b.last_check, last_error: b.last_error, review_at: b.review_at,
+      status, limit: limit === Infinity ? 'ilimitado' : limit, used: usedN, used_source: source,
+      free_from: first ? new Date(new Date(first).getTime() + 86400000).toISOString() : null,
+      detail: details || null,
+      wabas: ws.map((w) => ({ waba_id: w.waba_id, name: w.name, review_status: w.review_status, health: w.health })),
+      numbers: ns.map((n) => ({ phone_number_id: n.phone_number_id, display_phone: n.display_phone, status: n.status, quality: n.quality, health: n.health,
+        limit_tier: n.limit_tier, test: isTestPhone(n.display_phone), instance_id: n.instance_id, inst_active: n.inst_active, waba_id: n.waba_id })),
+      templates: { counts: tc, list: ts.map((t) => ({ waba_id: t.waba_id, name: t.name, language: t.language, category: t.category, status: t.status, updated_at: t.updated_at })) }
+    };
+  }));
+  return { bms: out, now: new Date().toISOString() };
+}
+
 async function alerts(sql, req, body, a) {
   if (req.method === 'GET') {
     const all = String(req.query.todos || '') === '1';
@@ -320,6 +402,7 @@ module.exports = async (req, res) => {
     if (r === 'overview') out = await overview(sql);
     else if (r === 'bms') out = await bms(sql, req, body, a);
     else if (r === 'numbers') out = await numberRows(sql);
+    else if (r === 'gestao') out = await gestao(sql, req, body, a);
     else if (r === 'templates') out = await sql`select t.*, b.name as bm, w.name as waba_name from as_templates t
         join as_bms b on b.id = t.bm_ref and b.active left join as_wabas w on w.waba_id = t.waba_id
         order by case when t.status in ('PAUSED','DISABLED','REJECTED') then 0 else 1 end, b.name, t.name`;

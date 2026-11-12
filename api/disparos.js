@@ -489,15 +489,16 @@ async function ops(sql, req, body, a) {
     return { operation: op, group, lotes, group_report_url: op.group_id ? `/relatorio/${op.group_id}?t=${reportKey(op.group_id)}&grupo=1` : null, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
   }
   if (req.method === 'GET') {
-    const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.finished_at, o.group_id, o.tag, i.name as instance_name, t.name as template_name,
+    const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.started_at, o.finished_at, o.group_id, o.tag, i.name as instance_name, i.display_phone, t.name as template_name, l.name as list_name,
         sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
         sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as delivered,
         sum(case when r.status = 'read' then 1 else 0 end)::int as read,
         sum(case when r.status = 'failed' then 1 else 0 end)::int as failed,
         count(r.id)::int as total
       from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
+      left join wa_lists l on l.id = o.list_id
       left join wa_recipients r on r.operation_id = o.id
-      group by o.id, o.name, o.status, o.quantity, o.created_at, o.finished_at, o.group_id, o.tag, i.name, t.name
+      group by o.id, o.name, o.status, o.quantity, o.created_at, o.started_at, o.finished_at, o.group_id, o.tag, i.name, i.display_phone, t.name, l.name
       order by o.created_at desc limit 300`;
     // Campanhas com vários números aparecem como uma operação só (os lotes ficam dentro dela).
     const out = []; const groups = new Map();
@@ -506,15 +507,16 @@ async function ops(sql, req, body, a) {
       let g = groups.get(r.group_id);
       if (!g) {
         g = { id: r.group_id, group_id: r.group_id, is_group: true, name: String(r.name).replace(/\s·\sLote\s\S+$/, ''), created_at: r.created_at, finished_at: r.finished_at,
-          quantity: 0, sent: 0, delivered: 0, read: 0, failed: 0, total: 0, lots: 0, statuses: [], templates: new Set() };
+          quantity: 0, sent: 0, delivered: 0, read: 0, failed: 0, total: 0, lots: 0, statuses: [], templates: new Set(), list_name: r.list_name, phones: [] };
         groups.set(r.group_id, g); out.push(g);
       }
-      g.lots++; g.statuses.push(r.status); if (r.template_name) g.templates.add(r.template_name);
+      g.lots++; g.statuses.push(r.status); if (r.template_name) g.templates.add(r.template_name); if (r.display_phone) g.phones.push(r.display_phone);
+      if (r.finished_at && (!g.finished_at || new Date(r.finished_at) > new Date(g.finished_at))) g.finished_at = r.finished_at;
       for (const k of ['quantity', 'sent', 'delivered', 'read', 'failed', 'total']) g[k] += Number(r[k]) || 0;
       if (new Date(r.created_at) < new Date(g.created_at)) g.created_at = r.created_at;
     }
     for (const g of groups.values()) {
-      g.status = groupStatus(g.statuses); g.instance_name = `${g.lots} BMs`; g.template_name = [...g.templates].join(', '); delete g.statuses; delete g.templates;
+      g.status = groupStatus(g.statuses); g.instance_name = `${g.lots} BMs`; g.display_phone = g.phones.join(', '); delete g.phones; g.template_name = [...g.templates].join(', '); delete g.statuses; delete g.templates;
     }
     return { operations: out.slice(0, 100) };
   }
