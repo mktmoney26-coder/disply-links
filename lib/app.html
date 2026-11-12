@@ -3693,7 +3693,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     tr.append(tdn(el('div', { class: 'gs-name' }, el('span', { class: 'gs-dot', style: 'background:' + GS[b.status][1], title: GS[b.status][0] }), el('span', { text: b.name })),
       el('div', { class: 'small muted', text: `${GS[b.status][0]}${b.profile ? ' · ' + b.profile : ''}` })));
     const pendNum = real.find((n) => n.status === 'PENDING');
-    tr.append(tdn(okNum.length ? yes(okNum[0].display_phone + (okNum.length > 1 ? ` +${okNum.length - 1}` : '')) : pendNum ? mid('Falta confirmar SMS') : real.length ? no(real.some((n) => n.status === 'BANNED') ? 'Banido' : 'Bloqueado') : no('Sem número')));
+    tr.append(tdn(okNum.length ? yes(okNum[0].display_phone + (okNum.length > 1 ? ` +${okNum.length - 1}` : '')) : pendNum ? (pendNum.code_status === 'VERIFIED' ? mid(pendNum.auto_error ? 'Erro ao ativar' : 'Ativando…') : mid('Falta confirmar SMS')) : real.length ? no(real.some((n) => n.status === 'BANNED') ? 'Banido' : 'Bloqueado') : no('Sem número')));
     tr.append(tdn(payBad ? no('Falta cartão') : real.length || b.wabas.length ? yes('OK') : mid('—')));
     tr.append(tdn(b.status === 'banida' ? no('Banida') : b.status === 'restrita' ? no('Restrita') : b.status === 'erro' ? no('Sem acesso') : yes('Ativa')));
     tr.append(tdn(ok ? yes(`${ok} aprovado${ok > 1 ? 's' : ''}`) : pend ? mid(`${pend} em análise`) : no('Nenhum aprovado')));
@@ -3735,7 +3735,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           okN ? yes('Envio ok') : no(n.status === 'BANNED' ? 'Banido' : n.status !== 'CONNECTED' ? (n.status === 'PENDING' ? 'Pendente' : n.status) : 'Bloqueado'),
           el('span', { class: 'small muted', text: `${num(n.sent30 || 0)} enviadas em 30 dias` + (days != null ? ` · último envio há ${days} dia${days === 1 ? '' : 's'}` : '') }));
         const wrap = el('div', {}, line);
-        if (n.health_detail && !okN) wrap.append(why(n.health_detail));
+        if (n.status === 'PENDING') wrap.append(el('div', { class: 'small muted', style: 'margin-top:4px', text: n.code_status === 'VERIFIED' ? (n.auto_error ? 'SMS confirmado, mas a Meta recusou a ativação:' : 'SMS confirmado. O Disply ativa o número na próxima atualização.') : 'Falta confirmar o código SMS no Gerenciador do WhatsApp (Números de telefone → Concluir registro).' }));
+        if (n.auto_error) wrap.append(why(n.auto_error));
+        else if (n.health_detail && !okN && n.status !== 'PENDING') wrap.append(why(n.health_detail));
+        if (n.pin) wrap.append(el('div', { class: 'small', style: 'margin-top:4px', text: 'PIN de duas etapas: ' + n.pin }));
         nl.append(wrap);
       }
       box.append(nl);
