@@ -3582,7 +3582,6 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!named && vars.some((v, i) => Number(v) !== i + 1)) return 'As variáveis do corpo precisam estar em ordem: {{1}}, {{2}}, {{3}}…';
     if (/^\s*\{\{[^}]+\}\}|\{\{[^}]+\}\}[\s.!?]*$/.test(body)) return 'A Meta não aceita variável no começo ou no fim do corpo. Coloque uma palavra antes/depois.';
     if (/\{\{[^}]+\}\}\s*\{\{[^}]+\}\}/.test(body)) return 'Não deixe duas variáveis juntas; coloque texto entre elas.';
-    if (vars.length && body.replace(/\{\{[^}]+\}\}/g, '').trim().split(/\s+/).length < vars.length * 3) return 'Texto curto demais para tantas variáveis. A Meta reprova; escreva mais ou use menos variáveis.';
     for (const v of vars) if (!String(tnExamples[v] || '').trim()) return `Preencha a amostra da variável {{${v}}}.`;
     if (tn.head === 'TEXT') {
       if (!$('tnHeadText').value.trim()) return 'Escreva o texto do cabeçalho ou escolha Nenhum.';
