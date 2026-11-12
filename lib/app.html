@@ -520,6 +520,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-ativos"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="lbl">Ativos Meta</span><span class="count" id="grpAtivCount" hidden></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="grp-items" id="grp-ativos">
           <a href="#gestao" data-view="gestao">Gestão de BMs <span class="count" id="restrBadge" hidden></span><span id="gsBadge" hidden></span></a>
+          <a href="#prontas" data-view="prontas">BMs prontas <span class="count" id="prBadge" hidden></span></a>
           <a href="#nv" data-view="nv">Comprar números</a>
           <a href="#saude" data-view="saude">Templates <span class="count" id="tplBadge" hidden></span></a>
           <a href="#alertas" data-view="alertas">Alertas <span class="count" id="alertBadge" hidden></span></a>
@@ -847,6 +848,18 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           <tbody id="gsGrid"><tr><td colspan="7" class="muted">Carregando…</td></tr></tbody>
         </table></div></div>
         <p class="small muted" id="gsInfo" style="margin:0" role="status"></p>
+      </div>
+
+      <div class="view" id="view-prontas" hidden>
+        <div class="row" style="justify-content:space-between">
+          <p class="small muted" style="margin:0;max-width:620px">Só as BMs desta lista aparecem em Nova operação. Para incluir, vá em Gestão de BMs e clique em "→ Prontas" na BM que estiver com tudo ok e com o template que você precisa.</p>
+          <div class="row"><a class="btn ghost" href="#gestao">Gestão de BMs</a><button class="btn primary" type="button" id="prNewOp">+ Nova operação</button></div>
+        </div>
+        <div class="card" style="padding:0"><div class="gs-wrap"><table class="gs-table">
+          <thead><tr><th>BM</th><th>Número</th><th>Templates aprovados</th><th>Disponível hoje</th><th>Situação</th><th></th></tr></thead>
+          <tbody id="prRows"><tr><td colspan="6" class="muted">Carregando…</td></tr></tbody>
+        </table></div></div>
+        <p class="small muted" id="prInfo" style="margin:0"></p>
       </div>
 
       <div class="view" id="view-nv" hidden>
@@ -1947,9 +1960,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const box = $('opNums'); box.innerHTML = '';
     const order = [...split.sel.keys()];
     const selBms = new Map(); for (const k of order) { const i = instById(k); if (i && i.bm_ref) selBms.set(k, i.bm_ref); }
-    const cards = [...state.instances.filter((i) => i.active).map((i) => ({ key: String(i.id), i })),
-      ...((Array.isArray(state.available) ? state.available : []).filter((n) => n.health !== 'BLOCKED').map((n) => ({ key: 'asset:' + n.phone_number_id, n })))];
-    if (!cards.length) box.append(el('p', { class: 'muted', text: 'Nenhum número conectado. Cadastre a BM em Ativos Meta › BMs.' }));
+    const cards = [...state.instances.filter((i) => i.active && i.bm_ready).map((i) => ({ key: String(i.id), i })),
+      ...((Array.isArray(state.available) ? state.available : []).filter((n) => n.health !== 'BLOCKED' && n.bm_ready).map((n) => ({ key: 'asset:' + n.phone_number_id, n })))];
+    if (!cards.length) box.append(el('p', { class: 'muted', text: 'Nenhuma BM pronta. Em Ativos Meta › Gestão de BMs, clique em "→ Prontas" nas BMs que você quer usar.' }));
+    else box.append(el('p', { class: 'small muted', style: 'grid-column:1/-1;margin:0', text: 'Aparecem só as BMs de Ativos Meta › BMs prontas.' }));
     for (const c of cards) {
       const on = split.sel.has(c.key); const idx = order.indexOf(c.key);
       const i = c.i || {}; const n = c.n || {};
@@ -2009,7 +2023,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   $('wzAuto').onclick = () => {
     // Sugestão: maiores limites primeiro, uma BM por vez (números da mesma BM dividem o limite).
     split.sel.clear(); const used = new Set(); let cap = 0;
-    const cand = state.instances.filter((i) => i.active).sort((a, b) => (tierLimit(b.limit_tier) || 1000) - (tierLimit(a.limit_tier) || 1000));
+    const cand = state.instances.filter((i) => i.active && i.bm_ready).sort((a, b) => (tierLimit(b.limit_tier) || 1000) - (tierLimit(a.limit_tier) || 1000));
     for (const i of cand) {
       if (cap >= (state.leads || 0)) break;
       if (i.bm_ref && used.has(i.bm_ref)) continue;
@@ -2517,9 +2531,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: close })));
     card.append(el('p', { class: 'small muted', style: 'margin:0', text: `Vão para a nova BM: ${num(lot.queued || 0)} contato(s) que ainda não saíram${lot.failed ? ` e as falhas de conta/BM (de ${num(lot.failed)} falhas; falhas do contato, como número sem WhatsApp, não são reenviadas)` : ''}. O lote atual é encerrado.` }));
     const inGroup = new Set(lots.map((l) => l.instance_id));
-    const cands = state.instances.filter((i) => i.active && !inGroup.has(i.id));
+    const cands = state.instances.filter((i) => i.active && i.bm_ready && !inGroup.has(i.id));
     const sel = el('select', { 'aria-label': 'Nova BM' });
-    sel.append(el('option', { value: '', text: cands.length ? 'Escolha a nova BM…' : 'Nenhuma outra BM ativa' }));
+    sel.append(el('option', { value: '', text: cands.length ? 'Escolha a nova BM…' : 'Nenhuma outra BM em BMs prontas' }));
     for (const i of cands) sel.append(el('option', { value: String(i.id), text: `${i.bm || i.name}${i.display_phone ? ' · ' + i.display_phone : ''}${i.limit_tier ? ' · limite ' + String(i.limit_tier).replace('TIER_', '') : ''}` }));
     const tplSel = el('select', { 'aria-label': 'Template' }); tplSel.append(el('option', { value: '', text: 'Escolha a BM primeiro' }));
     const fields = el('div', { class: 'grid' });
@@ -3216,7 +3230,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   // ---------- Navegação ----------
   const VIEWS = {
     inicio: ['Visão geral', ''], ops: ['Operações', 'Disparos'], inbox: ['Inbox', 'Disparos'], lists: ['Listas de contatos', 'Disparos'],
-    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], nv: ['Comprar números', 'Ativos Meta · Número Virtual'], numeros: ['Números', 'Ativos Meta'],
+    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], prontas: ['BMs prontas', 'Ativos Meta'], nv: ['Comprar números', 'Ativos Meta · Número Virtual'], numeros: ['Números', 'Ativos Meta'],
     saude: ['Templates', 'Ativos Meta'], tplnovo: ['Criar template', 'Ativos Meta · Templates'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
     config: ['Configurações', 'Sistema'], historico: ['Histórico', 'Sistema']
   };
@@ -3240,6 +3254,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (view === 'inicio') loadHome();
     if (view === 'bms') loadBms();
     if (view === 'gestao') loadGestao();
+    if (view === 'prontas') loadProntas();
     if (view === 'nv') { (gs.list.length ? Promise.resolve() : api('r=gestao').then((d) => { gs.list = d.bms; }).catch(() => {})).then(loadNv); } else clearTimeout(nv.timer);
     if (view === 'numeros') loadNumbers();
     if (view === 'saude') loadSaude();
@@ -3723,6 +3738,42 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     }
   }
 
+  // ---------- BMs prontas (as únicas liberadas para Nova operação) ----------
+  async function setReady(b, v) {
+    try { await post('r=gestao&a=ready', { id: b.id, ready: v }, 'PATCH'); b.ready = v; } catch (err) { alertBox(err.message); return; }
+    count('prBadge', gs.list.filter((x) => x.ready).length);
+    if (current === 'prontas') renderProntas(); else renderGestao();
+  }
+  async function loadProntas() {
+    try { const d = await api('r=gestao'); gs.list = d.bms; } catch (err) { $('prRows').innerHTML = ''; empty($('prRows'), 6, err.message); return; }
+    renderProntas();
+  }
+  function renderProntas() {
+    const tb = $('prRows'); tb.innerHTML = '';
+    const list = gs.list.filter((b) => b.ready).sort((a, c) => a.name.localeCompare(c.name));
+    count('prBadge', list.length);
+    if (!list.length) empty(tb, 6, 'Nenhuma BM pronta. Em Gestão de BMs, clique em "→ Prontas" nas BMs que você quer usar nas operações.');
+    let total = 0;
+    for (const b of list) {
+      const real = b.numbers.filter((n) => !n.test);
+      const okNum = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
+      const lim = b.limit === 'ilimitado' ? Infinity : Number(b.limit) || 0;
+      const free = lim === Infinity ? Infinity : Math.max(0, lim - b.used);
+      if (['apta', 'limite'].includes(b.status) && free !== Infinity) total += free;
+      const tpls = b.templates.list.filter((t) => t.status === 'APPROVED').map((t) => t.name);
+      const tl = el('div', { class: 'gs-tl', style: 'margin:0' }); tpls.slice(0, 6).forEach((n) => tl.append(el('span', { text: n }))); if (tpls.length > 6) tl.append(el('span', { text: '+' + (tpls.length - 6) }));
+      const st = b.status === 'apta' ? yes('Pronta para disparo') : b.status === 'limite' ? mid('Limite do dia usado') : no('Com problema: ' + GS[b.status][0]);
+      const av = el('td');
+      if (lim) { const pct = lim === Infinity ? 0 : Math.min(100, b.used / lim * 100); av.append(el('div', { class: 'gs-av' }, el('span', {}, el('b', { text: lim === Infinity ? 'Ilimitado' : num(free) }), el('span', { class: 'small muted', text: lim === Infinity ? '' : ' de ' + num(lim) })), lim === Infinity ? null : el('div', { class: 'gs-meter' }, el('i', { style: `width:${100 - pct}%;background:${free === 0 ? '#b45309' : '#047857'}` })))); }
+      else av.append(el('span', { class: 'muted', text: '—' }));
+      const out = el('button', { type: 'button', class: 'link', text: 'Tirar das prontas', onclick: () => setReady(b, false) });
+      tb.append(el('tr', {}, tdn(el('div', { class: 'gs-name' }, el('span', { class: 'gs-dot', style: 'background:' + GS[b.status][1] }), el('span', { text: b.name })), el('div', { class: 'small muted', text: b.profile || '' })),
+        tdn(okNum.length ? yes(okNum.map((n) => n.display_phone).join(', ')) : no('Sem número ativo')), tdn(tpls.length ? tl : no('Nenhum')), av, tdn(st), el('td', { style: 'text-align:right' }, out)));
+    }
+    $('prInfo').textContent = list.length ? `${list.length} BM(s) pronta(s) · ${num(total)} envios disponíveis hoje somando as BMs aptas.` : '';
+  }
+  $('prNewOp').onclick = () => { location.hash = 'ops'; setTimeout(() => { const b = document.getElementById('btnNewOp'); if (b) b.click(); }, 400); };
+
   // ---------- Gestão de BMs ----------
   const GS = {
     apta: ['Apta para disparo', '#047857', 'rgba(4,120,87,.12)'],
@@ -3749,6 +3800,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     prof.innerHTML = '<option value="">Todos os perfis</option>';
     [...new Set(gs.list.map((b) => b.profile).filter(Boolean))].sort().forEach((p) => prof.append(el('option', { value: p, text: p })));
     prof.value = cur;
+    count('prBadge', gs.list.filter((b) => b.ready).length);
     renderGestao();
   }
   function renderGestao() {
@@ -3762,9 +3814,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       f.append(b);
     };
     mk('', 'Todas', null, pool.length);
+    mk('_ready', 'Em BMs prontas', '#0ea5e9', pool.filter((b) => b.ready).length);
     for (const k of GS_ORDER) { const n = pool.filter((b) => b.status === k).length; if (n || k === 'apta') mk(k, GS[k][0], GS[k][1], n); }
     const q = $('gsSearch').value.trim().toLowerCase();
-    const list = pool.filter((b) => (!gs.filter || b.status === gs.filter) && (!q || [b.name, b.bm_id, ...b.numbers.map((n) => n.display_phone)].join(' ').toLowerCase().includes(q)))
+    const list = pool.filter((b) => (!gs.filter || (gs.filter === '_ready' ? b.ready : b.status === gs.filter)) && (!q || [b.name, b.bm_id, ...b.numbers.map((n) => n.display_phone)].join(' ').toLowerCase().includes(q)))
       .sort((a, b) => GS_ORDER.indexOf(a.status) - GS_ORDER.indexOf(b.status) || a.name.localeCompare(b.name));
     const tb = $('gsGrid'); tb.innerHTML = '';
     if (!list.length) empty(tb, 7, gs.list.length ? 'Nenhuma BM neste filtro.' : 'Nenhuma BM cadastrada. Cadastre em Cadastro de BMs.');
@@ -3802,7 +3855,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         free === 0 && b.free_from ? el('span', { class: 'small muted', text: 'libera ' + hhmm(b.free_from) }) : null));
     }
     tr.append(av);
-    const act = el('td', { style: 'text-align:right' });
+    const act = el('td', { style: 'text-align:right;white-space:nowrap' });
+    if (b.ready) act.append(el('span', { class: 'gs-ok', style: 'margin-right:10px', title: 'Está em BMs prontas', text: 'Pronta' }));
+    else if (['apta', 'limite'].includes(b.status)) act.append(el('button', { type: 'button', class: 'btn primary', style: 'min-height:32px;padding:4px 12px;font-size:13px;margin-right:8px', text: '→ Prontas', onclick: (e) => { e.stopPropagation(); setReady(b, true); } }));
     if (['restrita', 'banida'].includes(b.status)) {
       const rv = el('a', { class: 'gs-act', href: `https://business.facebook.com/business-support-home/?business_id=${b.bm_id}`, target: '_blank', rel: 'noopener', text: b.review_at ? 'Análise pedida ↗' : 'Pedir análise ↗' });
       rv.onclick = () => { if (!b.review_at) post('r=gestao&a=review', { id: b.id }, 'PATCH').then(() => loadGestao()).catch(() => {}); };
@@ -3853,6 +3908,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!['banida', 'erro'].includes(b.status) && b.wabas.length) box.append(gsBuy(b));
     acts.append(upd, el('a', { class: 'btn ghost', href: metaUrl(b, 'message_templates'), target: '_blank', rel: 'noopener', text: 'Templates na Meta' }),
       el('a', { class: 'btn ghost', href: metaUrl(b, 'overview'), target: '_blank', rel: 'noopener', text: 'Abrir na Meta' }));
+    if (b.ready) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Tirar das BMs prontas', onclick: () => setReady(b, false) }));
+    else if (['apta', 'limite'].includes(b.status)) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Mandar para BMs prontas', onclick: () => setReady(b, true) }));
     const mark = (st) => post('r=gestao&a=mark', { id: b.id, status: st }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message));
     if (b.manual) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Não está mais restrita', onclick: () => mark(null) }));
     else if (!['restrita', 'banida'].includes(b.status)) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Marcar como restrita', onclick: () => mark('restrita') }));

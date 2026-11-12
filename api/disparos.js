@@ -40,15 +40,16 @@ async function instances(sql, req, body, a) {
       group by i.id, i.name, i.waba_id, i.phone_number_id, i.display_phone, i.verified_name, i.quality, i.active, i.created_at, i.app_secret_enc
       order by i.created_at desc`;
     // Limite diário e BM de cada número (vem do monitoramento de Ativos).
+    try { await require('../lib/assets-monitor').getAssetsDb(); } catch (e) {}
     try {
-      const tiers = await sql`select n.phone_number_id, n.limit_tier, n.bm_ref, n.health, b.name as bm from as_numbers n join as_bms b on b.id = n.bm_ref`;
+      const tiers = await sql`select n.phone_number_id, n.limit_tier, n.bm_ref, n.health, b.name as bm, b.ready from as_numbers n join as_bms b on b.id = n.bm_ref`;
       const byPn = new Map(tiers.map((t) => [t.phone_number_id, t]));
-      for (const r of rows) { const t = byPn.get(r.phone_number_id); if (t) { r.limit_tier = t.limit_tier; r.bm_ref = t.bm_ref; r.bm = t.bm; r.health = t.health; } }
+      for (const r of rows) { const t = byPn.get(r.phone_number_id); if (t) { r.limit_tier = t.limit_tier; r.bm_ref = t.bm_ref; r.bm = t.bm; r.health = t.health; r.bm_ready = Boolean(t.ready); } }
     } catch (e) { /* sem Ativos: segue sem limite */ }
     // Números monitorados em Ativos que ainda não viraram instância (conectam com um clique).
     let available = [];
     try {
-      available = await sql`select n.phone_number_id, n.display_phone, n.verified_name, n.waba_id, n.status, n.health, b.name as bm
+      available = await sql`select n.phone_number_id, n.display_phone, n.verified_name, n.waba_id, n.status, n.health, b.name as bm, b.ready as bm_ready
         from as_numbers n join as_bms b on b.id = n.bm_ref and b.active
         left join wa_instances i on i.phone_number_id = n.phone_number_id
         where i.id is null order by b.name, n.display_phone`;
@@ -311,6 +312,18 @@ async function validateOp(sql, op) {
   return { tpl, info, inst };
 }
 
+// Só BMs em "BMs prontas" (Ativos Meta) podem iniciar operação.
+async function checkReady(sql, ids) {
+  let rows;
+  try {
+    await require('../lib/assets-monitor').getAssetsDb();
+    rows = await sql`select i.id, i.name, b.name as bm, b.ready from wa_instances i
+      left join as_numbers n on n.phone_number_id = i.phone_number_id left join as_bms b on b.id = n.bm_ref where i.id = any(${ids}::int[])`;
+  } catch (e) { return; } // sem o módulo de Ativos: não bloqueia
+  const off = rows.filter((r) => !r.ready);
+  if (off.length) bad(`Só BMs prontas podem disparar. Mande para BMs prontas (Ativos Meta › Gestão de BMs): ${off.map((r) => r.bm || r.name).join(', ')}.`);
+}
+
 // Uma lista grande dividida entre vários números: cada número recebe um lote (A, B, C…) até o seu limite.
 const TAGS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 async function createSplit(sql, req, body) {
@@ -328,6 +341,7 @@ async function createSplit(sql, req, body) {
     seen.add(instance_id); parts.push({ instance_id, limit, own });
   }
   if (parts.length < 2) bad('Escolha pelo menos dois números para dividir a lista.');
+  await checkReady(sql, parts.map((p) => p.instance_id));
   if (parts[0].instance_id !== base.instance_id) bad('O primeiro lote precisa ser o número principal.');
   const main = await validateOp(sql, base);
   const problems = [];
@@ -579,6 +593,7 @@ async function ops(sql, req, body, a) {
     const op = readOpInput({ ...body, name: old.name, list_id: old.list_id, quantity: 1, tps: old.tps, name_fallback: old.name_fallback });
     if (op.instance_id === old.instance_id) bad('Escolha uma BM diferente da atual.');
     await validateOp(sql, op);
+    await checkReady(sql, [op.instance_id]);
     const groupId = old.group_id || old.id;
     if (!old.group_id) await sql`update wa_operations set group_id = ${groupId}, tag = coalesce(tag, 'A') where id = ${old.id}`;
     const busy = (await sql`select id from wa_operations where group_id = ${groupId} and instance_id = ${op.instance_id} and status in ('running','paused')`)[0];
@@ -644,6 +659,7 @@ async function ops(sql, req, body, a) {
     if (!op.name) bad('Dê um nome para a operação.');
     const incl = body.include_optouts === true;
     await validateOp(sql, op);
+    await checkReady(sql, [op.instance_id]);
     const avail = (await sql`select count(*)::int as n from wa_contacts c left join wa_optouts o on o.phone = c.phone
       where c.list_id = ${op.list_id} and (o.phone is null or ${incl}::boolean)`)[0].n;
     if (!avail) bad('A lista não tem contatos disponíveis.');

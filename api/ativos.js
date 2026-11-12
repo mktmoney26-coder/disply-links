@@ -216,6 +216,15 @@ async function metaSent24h(wabaId, token) {
 }
 
 async function gestao(sql, req, body, a) {
+  if (req.method === 'PATCH' && a === 'ready') {
+    // BMs prontas: só elas aparecem em Nova operação.
+    const id = Number(body.id); if (!id) throw new HttpError(400, 'BM inválida.');
+    const v = body.ready !== false;
+    await sql`update as_bms set ready = ${v} where id = ${id}`;
+    const b = (await sql`select name from as_bms where id = ${id}`)[0];
+    if (b) await logActivity(sql, v ? `BM ${b.name} enviada para BMs prontas` : `BM ${b.name} retirada de BMs prontas`);
+    return { ok: true };
+  }
   if (req.method === 'PATCH' && a === 'mark') {
     const id = Number(body.id); if (!id) throw new HttpError(400, 'BM inválida.');
     const v = body.status === 'restrita' ? 'restrita' : null;
@@ -231,7 +240,7 @@ async function gestao(sql, req, body, a) {
     if (b) await logActivity(sql, body.done === false ? `Análise da BM ${b.name} marcada como resolvida` : `Pedido de análise registrado para a BM ${b.name}`);
     return { ok: true };
   }
-  const bmsRows = await sql`select id, name, profile, bm_id, last_check, last_error, review_at, manual_status, limit_tier, token_enc from as_bms where active order by name`;
+  const bmsRows = await sql`select id, name, profile, bm_id, last_check, last_error, review_at, manual_status, limit_tier, ready, token_enc from as_bms where active order by name`;
   const wabas = await sql`select * from as_wabas`;
   const nums = await sql`select n.*, i.id as instance_id, i.active as inst_active from as_numbers n left join wa_instances i on i.phone_number_id = n.phone_number_id`;
   const tpls = await sql`select bm_ref, waba_id, name, language, category, status, updated_at from as_templates order by name`;
@@ -286,7 +295,7 @@ async function gestao(sql, req, body, a) {
       free_from: first ? new Date(new Date(first).getTime() + 86400000).toISOString() : null,
       detail: [restrictedW && restrictedW.restriction, details].filter(Boolean).join('\n') || null,
       payment_ok: !(pay && !usable.length),
-      manual: b.manual_status || null,
+      manual: b.manual_status || null, ready: Boolean(b.ready),
       wabas: ws.map((w) => ({ waba_id: w.waba_id, name: w.name, review_status: w.review_status, health: w.health })),
       numbers: ns.map((n) => ({ phone_number_id: n.phone_number_id, display_phone: n.display_phone, status: n.status, quality: n.quality, health: n.health,
         limit_tier: n.limit_tier, test: isTestPhone(n.display_phone), instance_id: n.instance_id, inst_active: n.inst_active, waba_id: n.waba_id,
