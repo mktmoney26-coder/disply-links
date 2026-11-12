@@ -468,6 +468,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   details.why summary::after{content:"▾";font-size:10px}
   details.why[open] summary::after{content:"▴"}
   details.why .why-body{margin-top:6px;font-size:12.5px;line-height:1.45;color:var(--ink);background:var(--soft);border-radius:8px;padding:8px 10px;white-space:pre-line}
+  .gs-nlist{display:flex;flex-direction:column;gap:6px}
+  .gs-nline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
 </style>
 </head>
 <body>
@@ -505,12 +507,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       <div class="grp" data-grp="ativos">
         <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-ativos"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="lbl">Ativos Meta</span><span class="count" id="grpAtivCount" hidden></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="grp-items" id="grp-ativos">
-          <a href="#gestao" data-view="gestao">Gestão de BMs <span class="count" id="gsBadge" hidden></span></a>
-          <a href="#bms" data-view="bms">Cadastro de BMs</a>
-          <a href="#numeros" data-view="numeros">Números <span class="count" id="restrBadge" hidden></span></a>
+          <a href="#gestao" data-view="gestao">Gestão de BMs <span class="count" id="restrBadge" hidden></span><span id="gsBadge" hidden></span></a>
           <a href="#nv" data-view="nv">Comprar números</a>
-          <a href="#saude" data-view="saude">Status dos templates <span class="count" id="tplBadge" hidden></span></a>
-          <a href="#tplnovo" data-view="tplnovo">Criar template</a>
+          <a href="#saude" data-view="saude">Templates <span class="count" id="tplBadge" hidden></span></a>
           <a href="#alertas" data-view="alertas">Alertas <span class="count" id="alertBadge" hidden></span></a>
         </div>
       </div>
@@ -830,7 +829,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       <!-- ================= ATIVOS: BMs ================= -->
       <div class="view" id="view-gestao" hidden>
         <div class="gs-filters" id="gsFilters" role="group" aria-label="Filtrar BMs"></div>
-        <div class="row"><input id="gsSearch" type="search" placeholder="Buscar BM" aria-label="Buscar BM" style="flex:1;min-width:200px;max-width:320px"><select id="gsProfile" aria-label="Perfil" style="width:auto"><option value="">Todos os perfis</option></select><button class="btn ghost" type="button" id="gsMeta" title="Soma também o que saiu por outras plataformas, como a Revenue">Conferir uso na Meta</button></div>
+        <div class="row"><input id="gsSearch" type="search" placeholder="Buscar BM" aria-label="Buscar BM" style="flex:1;min-width:200px;max-width:320px"><select id="gsProfile" aria-label="Perfil" style="width:auto"><option value="">Todos os perfis</option></select><button class="btn ghost" type="button" id="gsMeta" title="Soma também o que saiu por outras plataformas, como a Revenue">Conferir uso na Meta</button><button class="btn primary" type="button" id="gsNewBm" style="margin-left:auto">+ Cadastrar BM</button></div>
         <div class="card" style="padding:0"><div class="gs-wrap"><table class="gs-table">
           <thead><tr><th>BM</th><th>Número</th><th>Pagamento</th><th>Conta</th><th>Templates</th><th>Disponível hoje</th><th></th></tr></thead>
           <tbody id="gsGrid"><tr><td colspan="7" class="muted">Carregando…</td></tr></tbody>
@@ -940,7 +939,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
       <!-- ================= ATIVOS: TEMPLATES ================= -->
       <div class="view" id="view-tplnovo" hidden>
-        <p class="small muted" style="margin:0">Monte o template como no Gerenciador do WhatsApp e envie para aprovação em todas as contas que marcar. Depois de aprovado, sincronize os templates em Disparos › Instâncias para usar nas operações.</p>
+        <div class="row"><a class="btn ghost" href="#saude">← Templates</a><span class="small muted">Monte o template e envie para aprovação em várias contas de uma vez.</span></div>
         <div class="split">
           <div class="main stack">
             <div class="card stack">
@@ -1059,7 +1058,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
       <div class="view" id="view-saude" hidden>
         <div class="row" style="justify-content:space-between">
-          <p class="small muted" style="margin:0">Situação dos templates de todas as BMs. Você recebe um alerta quando um template é pausado, desativado ou reprovado.</p>
+          <div class="row"><a class="btn primary" href="#tplnovo">+ Criar template</a><span class="small muted">Situação dos templates de todas as BMs.</span></div>
           <div class="seg" id="sFilter" role="group" aria-label="Filtro">
             <button type="button" data-f="bad" aria-pressed="true">Com problema</button>
             <button type="button" data-f="" aria-pressed="false">Todos</button>
@@ -3102,7 +3101,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const VIEWS = {
     inicio: ['Visão geral', ''], ops: ['Operações', 'Disparos'], inbox: ['Inbox', 'Disparos'], lists: ['Listas de contatos', 'Disparos'],
     tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], nv: ['Comprar números', 'Ativos Meta · Número Virtual'], numeros: ['Números', 'Ativos Meta'],
-    saude: ['Status dos templates', 'Ativos Meta'], tplnovo: ['Criar template em várias BMs', 'Ativos Meta'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
+    saude: ['Templates', 'Ativos Meta'], tplnovo: ['Criar template', 'Ativos Meta · Templates'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
     config: ['Configurações', 'Sistema'], historico: ['Histórico', 'Sistema']
   };
   const DISPAROS = ['ops', 'inbox', 'lists', 'tpl', 'inst'];
@@ -3113,7 +3112,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!VIEWS[view]) view = 'inicio';
     current = view;
     document.querySelectorAll('.view').forEach((v) => { v.hidden = v.id !== 'view-' + view; });
-    document.querySelectorAll('#nav a').forEach((a) => { if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    const navView = { bms: 'gestao', numeros: 'gestao', tplnovo: 'saude' }[view] || view;
+    document.querySelectorAll('#nav a').forEach((a) => { if (a.dataset.view === navView) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     markGroups();
     $('pageTitle').textContent = VIEWS[view][0]; $('crumb').textContent = VIEWS[view][1];
     document.title = VIEWS[view][0] + ' · Disply';
@@ -3230,10 +3230,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!o) return;
     const a = $('kpisAtivos'); a.innerHTML = '';
     a.append(
-      kpi('BMs', o.bms, 'bms', o.bms_erro ? 'warn' : ''),
-      kpi('Números', o.numeros, 'numeros'),
-      kpi('Com restrição', o.restritos, 'numeros', o.restritos ? 'alert' : ''),
-      kpi('Parados há 7+ dias', o.parados, 'numeros', o.parados ? 'warn' : ''),
+      kpi('BMs', o.bms, 'gestao', o.bms_erro ? 'warn' : ''),
+      kpi('Números', o.numeros, 'gestao'),
+      kpi('Com restrição', o.restritos, 'gestao', o.restritos ? 'alert' : ''),
+      kpi('Parados há 7+ dias', o.parados, 'gestao', o.parados ? 'warn' : ''),
       kpi('Templates com problema', o.templates_ruins, 'saude', o.templates_ruins ? 'alert' : ''),
       kpi('Alertas não vistos', o.alertas, 'alertas', o.alertas ? 'alert' : '')
     );
@@ -3334,7 +3334,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (!armed) { armed = true; btn.textContent = 'Confirmar remoção?'; t = setTimeout(() => { armed = false; btn.textContent = 'Remover'; }, 4000); return; }
       clearTimeout(t);
       try { await post('r=bms&a=delete', { id: b.id }, 'PATCH'); setMsg('bmListMsg', 'BM removida do monitoramento (nada foi alterado na Meta).', true); } catch (err) { setMsg('bmListMsg', err.message); }
-      loadBms(); refreshBadges();
+      loadBms().catch(() => {}); refreshBadges(); if (current === 'gestao') loadGestao();
     };
     return btn;
   }
@@ -3354,6 +3354,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('bmForm').hidden = false; $('bName').focus();
   }
   $('btnNewBm').onclick = () => openBmForm(null);
+  $('view-gestao').prepend($('bmDiag')); $('view-gestao').prepend($('bmForm'));
+  $('gsNewBm').onclick = () => { openBmForm(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   $('btnBmCancel').onclick = () => { $('bmForm').hidden = true; };
   $('bmFormEl').onsubmit = async (e) => {
     e.preventDefault();
@@ -3363,7 +3365,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     try {
       if (bmEditing) await post('r=bms', { ...body, id: bmEditing }, 'PATCH');
       else await post('r=bms&a=create', { ...body, bm_id: $('bId').value });
-      $('bToken').value = ''; $('bmForm').hidden = true; loadBms(); refreshBadges();
+      $('bToken').value = ''; $('bmForm').hidden = true; loadBms().catch(() => {}); refreshBadges(); if (current === 'gestao') loadGestao();
     } catch (err) { setMsg('bmMsg', err.message); }
     finally { btn.disabled = false; }
   };
@@ -3584,7 +3586,6 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     prof.innerHTML = '<option value="">Todos os perfis</option>';
     [...new Set(gs.list.map((b) => b.profile).filter(Boolean))].sort().forEach((p) => prof.append(el('option', { value: p, text: p })));
     prof.value = cur;
-    count('gsBadge', gs.list.filter((b) => b.status === 'apta').length);
     renderGestao();
   }
   function renderGestao() {
@@ -3649,7 +3650,26 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!open) return;
 
     // Detalhes (ao clicar na linha)
-    const box = el('div', { class: 'stack', style: 'gap:8px' });
+    const box = el('div', { class: 'stack', style: 'gap:10px' });
+    const realNums = b.numbers.filter((n) => !n.test);
+    if (realNums.length) {
+      const nl = el('div', { class: 'gs-nlist' });
+      const QD = { GREEN: ['#047857', 'Qualidade alta'], YELLOW: ['#d97706', 'Qualidade média'], RED: ['#b91c1c', 'Qualidade baixa'] };
+      for (const n of realNums) {
+        const q = QD[n.quality] || ['#94a3b8', 'Qualidade sem nota'];
+        const okN = n.status === 'CONNECTED' && n.health !== 'BLOCKED';
+        const days = n.last_sent ? Math.floor((Date.now() - new Date(n.last_sent).getTime()) / 86400000) : null;
+        const line = el('div', { class: 'gs-nline' },
+          el('span', { class: 'gs-dot', style: 'background:' + q[0], title: q[1], 'aria-label': q[1] }),
+          el('b', { text: n.display_phone }),
+          okN ? yes('Envio ok') : no(n.status === 'BANNED' ? 'Banido' : n.status !== 'CONNECTED' ? (n.status === 'PENDING' ? 'Pendente' : n.status) : 'Bloqueado'),
+          el('span', { class: 'small muted', text: `${num(n.sent30 || 0)} enviadas em 30 dias` + (days != null ? ` · último envio há ${days} dia${days === 1 ? '' : 's'}` : '') }));
+        const wrap = el('div', {}, line);
+        if (n.health_detail && !okN) wrap.append(why(n.health_detail));
+        nl.append(wrap);
+      }
+      box.append(nl);
+    }
     if (b.templates.list.length) {
       const tl = el('div', { class: 'gs-tl' });
       const ord = ['REJECTED', 'PAUSED', 'DISABLED', 'PENDING', 'IN_APPEAL', 'APPROVED'];
@@ -3670,6 +3690,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (b.manual) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Não está mais restrita', onclick: () => mark(null) }));
     else if (!['restrita', 'banida'].includes(b.status)) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Marcar como restrita', onclick: () => mark('restrita') }));
     if (b.review_at) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Tirar marcação de análise', onclick: () => post('r=gestao&a=review', { id: b.id, done: false }, 'PATCH').then(() => loadGestao()) }));
+    const full = async () => { if (!bmList.length) await loadBms().catch(() => {}); return bmList.find((x) => x.id === b.id) || b; };
+    acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Editar / trocar token', onclick: async () => { openBmForm(await full()); window.scrollTo({ top: 0, behavior: 'smooth' }); } }),
+      el('button', { type: 'button', class: 'btn ghost', text: 'Diagnóstico', onclick: () => diagBm(b) }));
+    if (b.last_error) box.append(el('div', {}, no(b.status === 'erro' ? 'Sem acesso à Meta' : 'Acesso parcial'), why(b.last_error)));
+    const rm = removeButton(b); rm.className = 'btn ghost'; rm.style.color = 'var(--bad)'; acts.append(rm);
     box.append(acts);
     const c = el('td', { colspan: '7' }); c.append(box);
     tb.append(el('tr', { class: 'gs-more' }, c));

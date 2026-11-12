@@ -274,7 +274,8 @@ async function gestao(sql, req, body, a) {
       manual: b.manual_status || null,
       wabas: ws.map((w) => ({ waba_id: w.waba_id, name: w.name, review_status: w.review_status, health: w.health })),
       numbers: ns.map((n) => ({ phone_number_id: n.phone_number_id, display_phone: n.display_phone, status: n.status, quality: n.quality, health: n.health,
-        limit_tier: n.limit_tier, test: isTestPhone(n.display_phone), instance_id: n.instance_id, inst_active: n.inst_active, waba_id: n.waba_id })),
+        limit_tier: n.limit_tier, test: isTestPhone(n.display_phone), instance_id: n.instance_id, inst_active: n.inst_active, waba_id: n.waba_id,
+        health_detail: n.health_detail, sent30: n.sent30, last_sent: n.last_sent })),
       templates: { counts: tc, list: ts.map((t) => ({ waba_id: t.waba_id, name: t.name, language: t.language, category: t.category, status: t.status, updated_at: t.updated_at })) }
     };
   }));
