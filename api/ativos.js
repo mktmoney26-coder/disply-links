@@ -261,7 +261,7 @@ async function gestao(sql, req, body, a) {
     else if (blocked && !pay && /Limite de mensagens atingido/i.test(details)) status = 'limite';
     else if (blocked && !pay && usable.length === 0 && real.length) status = 'restrita';
     else if (!real.length) status = 'sem_numero';
-    else if (pay) status = 'pagamento';
+    else if (pay && !usable.length) status = 'pagamento';
     else if (!usable.length) status = 'sem_numero';
     else if (limit && limit !== Infinity && usedN >= limit) status = 'limite';
     else status = 'apta';
@@ -271,6 +271,7 @@ async function gestao(sql, req, body, a) {
       status, limit: limit === Infinity ? 'ilimitado' : limit, used: usedN, used_source: source,
       free_from: first ? new Date(new Date(first).getTime() + 86400000).toISOString() : null,
       detail: [restrictedW && restrictedW.restriction, details].filter(Boolean).join('\n') || null,
+      payment_ok: !(pay && !usable.length),
       manual: b.manual_status || null,
       wabas: ws.map((w) => ({ waba_id: w.waba_id, name: w.name, review_status: w.review_status, health: w.health })),
       numbers: ns.map((n) => ({ phone_number_id: n.phone_number_id, display_phone: n.display_phone, status: n.status, quality: n.quality, health: n.health,

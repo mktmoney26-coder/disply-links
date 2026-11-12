@@ -3613,7 +3613,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   function gsRow(tb, b) {
     const real = b.numbers.filter((n) => !n.test);
     const okNum = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
-    const payBad = /pagamento|payment|cart[aã]o/i.test(b.detail || '');
+    const payBad = b.payment_ok === false || (b.payment_ok == null && /pagamento|payment|cart[aã]o/i.test(b.detail || ''));
     const lim = b.limit === 'ilimitado' ? Infinity : Number(b.limit) || 0;
     const ok = (b.templates.counts.APPROVED || 0); const pend = (b.templates.counts.PENDING || 0) + (b.templates.counts.IN_APPEAL || 0);
     const open = gs.open.has(b.id);
