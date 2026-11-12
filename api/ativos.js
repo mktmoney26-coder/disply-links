@@ -104,6 +104,18 @@ async function bms(sql, req, body, a) {
     const [bm] = await sql`select * from as_bms where id = ${id}`;
     if (!bm) throw new HttpError(404, 'BM não encontrada.');
     if (a === 'diag') return { bm: bm.name, etapas: await diagnose(bm) };
+    if (a === 'probe-add') {
+      // Teste de permissão para adicionar número (número inválido de propósito: a Meta recusa sem criar nada).
+      const token = decrypt(bm.token_enc);
+      const w = (await sql`select waba_id from as_wabas where bm_ref = ${bm.id} order by waba_id`).map((x) => x.waba_id);
+      const out = [];
+      for (const waba of w) {
+        try { const r = await graph(`/${waba}/phone_numbers?cc=55&phone_number=1&verified_name=Teste`, token, { method: 'POST', body: '{}' }); out.push({ waba, ok: r }); }
+        catch (e) { out.push({ waba, code: e.code, subcode: e.subcode, msg: e.message }); }
+      }
+      try { const me = await graph('/me?fields=id,name', token); out.push({ me }); } catch (e) {}
+      return out;
+    }
     // Troca a moeda de cobrança de uma conta do WhatsApp (API de migração de moeda da Meta).
     // step=start (cria a conta nova na moeda), status, complete (passa os números para a conta nova).
     if (a === 'currency') {
