@@ -402,29 +402,30 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   #tnPreviewBtns div{background:var(--bubble);border-radius:8px;padding:9px;text-align:center;color:#1F8FD8;font-weight:600;font-size:14px;box-shadow:0 1px 1px rgba(0,0,0,.12)}
   /* Gestão de BMs */
   .gs-filters{display:flex;flex-wrap:wrap;gap:8px}
-  .gs-filters button{font:inherit;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 14px;cursor:pointer;min-height:38px}
+  .gs-filters button{font:inherit;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:6px 14px;cursor:pointer;min-height:36px}
   .gs-filters button b{font-variant-numeric:tabular-nums}
-  .gs-filters button[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;font-weight:600}
+  .gs-filters button[aria-pressed=true]{background:var(--ink);color:var(--card);border-color:var(--ink)}
   .gs-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
-  .gs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;align-items:start}
-  .gs-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--gs-c,var(--line))}
-  .gs-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-  .gs-head h3{margin:0;font-size:15px;line-height:1.3}
-  .gs-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:99px;padding:4px 10px;white-space:nowrap;background:var(--gs-bg);color:var(--gs-c)}
-  .gs-use{display:flex;flex-direction:column;gap:6px}
-  .gs-use .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-  .gs-use .top b{font-size:22px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-  .gs-meter{height:8px;background:var(--soft);border-radius:99px;overflow:hidden}
+  .gs-wrap{overflow-x:auto}
+  .gs-table{min-width:860px}
+  .gs-table th{white-space:nowrap}
+  .gs-table td{vertical-align:middle;padding:12px 10px}
+  .gs-table tbody tr.gs-row{cursor:pointer}
+  .gs-table tbody tr.gs-row:hover td{background:var(--soft)}
+  .gs-name{font-weight:700;display:flex;align-items:center;gap:8px}
+  .gs-ok,.gs-no,.gs-mid{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap}
+  .gs-ok{color:#047857} .gs-no{color:#b91c1c} .gs-mid{color:#b45309}
+  .gs-ok::before,.gs-no::before,.gs-mid::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
+  .gs-av{display:flex;flex-direction:column;gap:4px;min-width:120px}
+  .gs-av b{font-variant-numeric:tabular-nums}
+  .gs-meter{height:5px;background:var(--soft);border-radius:99px;overflow:hidden}
   .gs-meter i{display:block;height:100%;border-radius:99px}
-  .gs-nums{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
-  .gs-nums li{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;background:var(--soft);border-radius:8px;padding:7px 10px}
-  .gs-tpl{display:flex;flex-wrap:wrap;gap:6px}
-  .gs-tpl button{font:inherit;font-size:12px;font-weight:600;border:0;border-radius:99px;padding:4px 10px;cursor:pointer}
-  .gs-tlist{border:1px solid var(--line);border-radius:8px;max-height:240px;overflow:auto}
-  .gs-tlist table{font-size:12.5px;min-width:0} .gs-tlist td{padding:6px 8px}
-  .gs-detail{font-size:12.5px;background:var(--soft);border-radius:8px;padding:8px 10px;white-space:pre-line;color:var(--ink)}
-  .gs-acts{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:10px}
-  .gs-acts .btn{min-height:36px;padding:6px 12px;font-size:13px}
+  .gs-more td{background:var(--soft);padding:12px 16px}
+  .gs-more .row{gap:6px}
+  .gs-more .btn{min-height:34px;padding:5px 12px;font-size:13px}
+  .gs-tl{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .gs-tl>span{font-size:12px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+  .gs-act{font-weight:700;font-size:13px;white-space:nowrap}
   /* Operações em cartões */
   .op-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
   .op-bar input{max-width:320px;flex:1;min-width:200px}
@@ -812,13 +813,13 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
       <!-- ================= ATIVOS: BMs ================= -->
       <div class="view" id="view-gestao" hidden>
-        <div class="row" style="justify-content:space-between;align-items:flex-start">
-          <p class="small muted" style="margin:0;max-width:640px">Situação de cada BM para disparo. O limite é do portfólio (BM) e conta as últimas 24 horas, não zera à meia-noite. Para incluir o que saiu por outras plataformas (ex.: Revenue), clique em "Conferir uso na Meta".</p>
-          <button class="btn ghost" type="button" id="gsMeta">Conferir uso na Meta</button>
-        </div>
         <div class="gs-filters" id="gsFilters" role="group" aria-label="Filtrar BMs"></div>
-        <div class="row"><input id="gsSearch" type="search" placeholder="Buscar BM, número ou template" aria-label="Buscar BM" style="min-width:240px;flex:1;max-width:360px"><select id="gsProfile" aria-label="Perfil" style="width:auto"><option value="">Todos os perfis</option></select><span class="small muted" id="gsInfo" role="status"></span></div>
-        <div class="gs-grid" id="gsGrid"><p class="muted">Carregando…</p></div>
+        <div class="row"><input id="gsSearch" type="search" placeholder="Buscar BM" aria-label="Buscar BM" style="flex:1;min-width:200px;max-width:320px"><select id="gsProfile" aria-label="Perfil" style="width:auto"><option value="">Todos os perfis</option></select><button class="btn ghost" type="button" id="gsMeta" title="Soma também o que saiu por outras plataformas, como a Revenue">Conferir uso na Meta</button></div>
+        <div class="card" style="padding:0"><div class="gs-wrap"><table class="gs-table">
+          <thead><tr><th>BM</th><th>Número</th><th>Pagamento</th><th>Conta</th><th>Templates</th><th>Disponível hoje</th><th></th></tr></thead>
+          <tbody id="gsGrid"><tr><td colspan="7" class="muted">Carregando…</td></tr></tbody>
+        </table></div></div>
+        <p class="small muted" id="gsInfo" style="margin:0" role="status"></p>
       </div>
 
       <div class="view" id="view-bms" hidden>
@@ -3401,9 +3402,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   async function loadGestao(withMeta) {
     if (withMeta) gs.meta = true;
     $('gsInfo').textContent = gs.meta ? 'Conferindo o uso na Meta…' : '';
+    if (!gs.list.length) $('gsGrid').innerHTML = '<tr><td colspan="7" class="muted">Carregando…</td></tr>';
     try { const d = await api('r=gestao' + (gs.meta ? '&meta=1' : '')); gs.list = d.bms; }
-    catch (err) { $('gsGrid').innerHTML = ''; $('gsGrid').append(el('p', { class: 'err', text: err.message })); return; }
-    $('gsInfo').textContent = gs.meta ? 'Uso conferido na Meta (inclui outras plataformas).' : 'Uso contado pelos disparos do Disply.';
+    catch (err) { $('gsGrid').innerHTML = ''; empty($('gsGrid'), 7, err.message); return; }
+    $('gsInfo').textContent = (gs.meta ? 'Disponível hoje conferido na Meta (inclui outras plataformas).' : 'Disponível hoje conta os disparos do Disply.') + ' O limite volta 24 h após cada envio. Clique numa BM para ver templates e ações.';
     const prof = $('gsProfile'); const cur = prof.value;
     prof.innerHTML = '<option value="">Todos os perfis</option>';
     [...new Set(gs.list.map((b) => b.profile).filter(Boolean))].sort().forEach((p) => prof.append(el('option', { value: p, text: p })));
@@ -3424,96 +3426,77 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     mk('', 'Todas', null, pool.length);
     for (const k of GS_ORDER) { const n = pool.filter((b) => b.status === k).length; if (n || k === 'apta') mk(k, GS[k][0], GS[k][1], n); }
     const q = $('gsSearch').value.trim().toLowerCase();
-    const list = pool.filter((b) => (!gs.filter || b.status === gs.filter) && (!q || [b.name, b.bm_id, ...b.numbers.map((n) => n.display_phone), ...b.templates.list.map((t) => t.name)].join(' ').toLowerCase().includes(q)))
+    const list = pool.filter((b) => (!gs.filter || b.status === gs.filter) && (!q || [b.name, b.bm_id, ...b.numbers.map((n) => n.display_phone)].join(' ').toLowerCase().includes(q)))
       .sort((a, b) => GS_ORDER.indexOf(a.status) - GS_ORDER.indexOf(b.status) || a.name.localeCompare(b.name));
-    const g = $('gsGrid'); g.innerHTML = '';
-    if (!list.length) g.append(el('p', { class: 'muted', text: gs.list.length ? 'Nenhuma BM neste filtro.' : 'Nenhuma BM cadastrada. Cadastre em Cadastro de BMs.' }));
-    for (const b of list) g.append(gsCard(b));
+    const tb = $('gsGrid'); tb.innerHTML = '';
+    if (!list.length) empty(tb, 7, gs.list.length ? 'Nenhuma BM neste filtro.' : 'Nenhuma BM cadastrada. Cadastre em Cadastro de BMs.');
+    for (const b of list) gsRow(tb, b);
   }
-  function gsCard(b) {
-    const [label, color, bg] = GS[b.status];
-    const card = el('article', { class: 'gs-card', style: `--gs-c:${color};--gs-bg:${bg}`, 'aria-label': b.name });
-    card.append(el('div', { class: 'gs-head' },
-      el('div', {}, el('h3', { text: b.name }), el('div', { class: 'small muted', text: [b.profile, 'BM ' + b.bm_id].filter(Boolean).join(' · ') })),
-      el('span', { class: 'gs-pill', text: label })));
-
-    // Uso do limite nas últimas 24 h
-    const lim = b.limit === 'ilimitado' ? Infinity : Number(b.limit) || 0;
-    const use = el('div', { class: 'gs-use' });
-    if (['apta', 'limite'].includes(b.status) || (lim && b.used)) {
-      const free = lim === Infinity ? null : Math.max(0, lim - b.used);
-      use.append(el('div', { class: 'top' },
-        el('span', {}, el('b', { text: lim === Infinity ? num(b.used) : num(free) }), el('span', { class: 'small muted', text: lim === Infinity ? ' enviadas em 24 h · limite ilimitado' : ' disponíveis agora' }))));
-      if (lim !== Infinity) use.append(el('span', { class: 'small muted', text: `${num(b.used)} de ${num(lim)} usados nas últimas 24 h` }));
-      if (lim && lim !== Infinity) {
-        const pct = Math.min(100, b.used / lim * 100);
-        use.append(el('div', { class: 'gs-meter', role: 'img', 'aria-label': `${Math.round(pct)}% do limite usado` }, el('i', { style: `width:${Math.max(pct, b.used ? 2 : 0)}%;background:${pct >= 100 ? '#b45309' : pct >= 70 ? '#d97706' : 'var(--accent)'}` })));
-      }
-      if (b.used && b.free_from) use.append(el('span', { class: 'small muted', text: `${b.status === 'limite' ? 'Começa a liberar' : 'As vagas usadas voltam'} a partir de ${hhmm(b.free_from)}${b.used_source === 'meta' ? ' · dados da Meta' : ''}` }));
-      card.append(use);
-    }
-
-    // Números
+  const yes = (t) => el('span', { class: 'gs-ok', text: t });
+  const no = (t) => el('span', { class: 'gs-no', text: t });
+  const mid = (t) => el('span', { class: 'gs-mid', text: t });
+  function gsRow(tb, b) {
     const real = b.numbers.filter((n) => !n.test);
-    const ul = el('ul', { class: 'gs-nums' });
-    if (!real.length) ul.append(el('li', {}, el('span', { class: 'muted', text: b.numbers.length ? 'Só número de teste da Meta' : 'Nenhum número na conta' })));
-    const Q = { GREEN: ['#047857', 'Qualidade alta'], YELLOW: ['#d97706', 'Qualidade média'], RED: ['#b91c1c', 'Qualidade baixa'] };
-    for (const n of real) {
-      const q = Q[n.quality] || ['#94a3b8', 'Qualidade sem nota'];
-      const st = n.status === 'BANNED' ? badge('Banido', 'bad') : n.health === 'BLOCKED' ? badge('Bloqueado', 'bad') : n.status !== 'CONNECTED' ? badge(n.status === 'PENDING' ? 'Pendente' : n.status || '—', 'warn') : n.instance_id && n.inst_active ? badge('No Disply', 'ok') : badge('Fora do Disply', 'off');
-      ul.append(el('li', {}, el('span', { style: 'display:flex;align-items:center;gap:8px' }, el('span', { class: 'gs-dot', style: 'background:' + q[0], title: q[1], 'aria-label': q[1] }), el('span', { text: n.display_phone })), st));
-    }
-    card.append(ul);
-    if (b.detail && ['restrita', 'banida', 'pagamento', 'erro'].includes(b.status)) card.append(el('div', { class: 'gs-detail', text: String(b.detail).split('\n').slice(0, 3).join('\n') }));
-    if (b.status === 'erro' && b.last_error) card.append(el('div', { class: 'gs-detail', text: b.last_error }));
-
-    // Templates
-    const tc = b.templates.counts; const keys = Object.keys(tc).sort((x, y) => (x === 'APPROVED' ? -1 : y === 'APPROVED' ? 1 : 0));
-    const tw = el('div', { class: 'stack', style: 'gap:8px' });
-    const chips = el('div', { class: 'gs-tpl' });
-    chips.append(el('span', { class: 'small', style: 'font-weight:700;align-self:center', text: 'Templates:' }));
-    if (!keys.length) chips.append(el('span', { class: 'small muted', text: 'nenhum' }));
+    const okNum = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
+    const payBad = /pagamento|payment|cart[aã]o/i.test(b.detail || '');
+    const lim = b.limit === 'ilimitado' ? Infinity : Number(b.limit) || 0;
+    const ok = (b.templates.counts.APPROVED || 0); const pend = (b.templates.counts.PENDING || 0) + (b.templates.counts.IN_APPEAL || 0);
     const open = gs.open.has(b.id);
-    for (const k of keys) {
-      const t = TPL_PT[k] || [k.toLowerCase(), k.toLowerCase(), 'off'];
-      const c = el('button', { type: 'button', class: 'badge b-' + t[2], 'aria-expanded': String(open), text: `${tc[k]} ${tc[k] === 1 ? t[0] : t[1]}` });
-      c.onclick = () => { gs.open.has(b.id) ? gs.open.delete(b.id) : gs.open.add(b.id); renderGestao(); };
-      chips.append(c);
+    const tr = el('tr', { class: 'gs-row', tabindex: '0', 'aria-expanded': String(open) });
+    const toggle = () => { gs.open.has(b.id) ? gs.open.delete(b.id) : gs.open.add(b.id); renderGestao(); };
+    tr.onclick = (e) => { if (!e.target.closest('a,button')) toggle(); };
+    tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+    tr.append(tdn(el('div', { class: 'gs-name' }, el('span', { class: 'gs-dot', style: 'background:' + GS[b.status][1], title: GS[b.status][0] }), el('span', { text: b.name })),
+      el('div', { class: 'small muted', text: `${GS[b.status][0]}${b.profile ? ' · ' + b.profile : ''}` })));
+    tr.append(tdn(okNum.length ? yes(okNum[0].display_phone + (okNum.length > 1 ? ` +${okNum.length - 1}` : '')) : real.length ? no('Bloqueado') : no('Sem número')));
+    tr.append(tdn(payBad ? no('Falta cartão') : real.length || b.wabas.length ? yes('OK') : mid('—')));
+    tr.append(tdn(b.status === 'banida' ? no('Banida') : b.status === 'restrita' ? no('Restrita') : b.status === 'erro' ? no('Sem acesso') : yes('Ativa')));
+    tr.append(tdn(ok ? yes(`${ok} aprovado${ok > 1 ? 's' : ''}`) : pend ? mid(`${pend} em análise`) : no('Nenhum aprovado')));
+    const av = el('td');
+    if (!['apta', 'limite'].includes(b.status) || !lim) av.append(el('span', { class: 'muted', text: '—' }));
+    else if (lim === Infinity) av.append(el('b', { text: 'Ilimitado' }));
+    else {
+      const free = Math.max(0, lim - b.used); const pct = Math.min(100, b.used / lim * 100);
+      av.append(el('div', { class: 'gs-av' }, el('span', {}, el('b', { text: num(free) }), el('span', { class: 'small muted', text: ' de ' + num(lim) })),
+        el('div', { class: 'gs-meter' }, el('i', { style: `width:${100 - pct}%;background:${free === 0 ? '#b45309' : pct >= 70 ? '#d97706' : '#047857'}` })),
+        free === 0 && b.free_from ? el('span', { class: 'small muted', text: 'libera ' + hhmm(b.free_from) }) : null));
     }
-    tw.append(chips);
-    if (open && b.templates.list.length) {
-      const tb = el('tbody');
+    tr.append(av);
+    const act = el('td', { style: 'text-align:right' });
+    if (['restrita', 'banida'].includes(b.status)) {
+      const rv = el('a', { class: 'gs-act', href: `https://business.facebook.com/business-support-home/?business_id=${b.bm_id}`, target: '_blank', rel: 'noopener', text: b.review_at ? 'Análise pedida ↗' : 'Pedir análise ↗' });
+      rv.onclick = () => { if (!b.review_at) post('r=gestao&a=review', { id: b.id }, 'PATCH').then(() => loadGestao()).catch(() => {}); };
+      act.append(rv);
+    }
+    act.append(el('span', { class: 'muted', 'aria-hidden': 'true', style: 'margin-left:8px', text: open ? '▴' : '▾' }));
+    tr.append(act);
+    tb.append(tr);
+    if (!open) return;
+
+    // Detalhes (ao clicar na linha)
+    const box = el('div', { class: 'stack', style: 'gap:8px' });
+    if (b.templates.list.length) {
+      const tl = el('div', { class: 'gs-tl' });
       const ord = ['REJECTED', 'PAUSED', 'DISABLED', 'PENDING', 'IN_APPEAL', 'APPROVED'];
       for (const t of [...b.templates.list].sort((x, y) => ord.indexOf(x.status) - ord.indexOf(y.status) || x.name.localeCompare(y.name))) {
-        const t2 = TPL_PT[t.status] || [t.status, t.status, 'off'];
-        tb.append(el('tr', {}, el('td', {}, el('div', { style: 'font-weight:600', text: t.name }), el('div', { class: 'small muted', text: `${t.category === 'MARKETING' ? 'Marketing' : t.category === 'UTILITY' ? 'Utilidade' : t.category || ''} · ${t.language}` })),
-          el('td', { style: 'text-align:right' }, badge(t2[0][0].toUpperCase() + t2[0].slice(1), t2[2]))));
+        const c = t.status === 'APPROVED' ? '#047857' : ['PENDING', 'IN_APPEAL', 'PAUSED'].includes(t.status) ? '#b45309' : '#b91c1c';
+        tl.append(el('span', {}, el('span', { class: 'gs-dot', style: `background:${c};margin-right:5px;width:7px;height:7px` }), document.createTextNode(t.name)));
       }
-      tw.append(el('div', { class: 'gs-tlist' }, el('table', {}, tb)));
+      box.append(tl);
     }
-    card.append(tw);
-
-    if (b.manual) card.append(el('div', { class: 'small muted', text: 'Marcada como restrita por você (a Meta não informa essa restrição pela API).' }));
-    if (b.review_at) card.append(el('div', { class: 'small', style: 'font-weight:600;color:#b45309', text: `Análise pedida em ${hhmm(b.review_at)}. Aguardando a Meta.` }));
-
-    // Ações
-    const acts = el('div', { class: 'gs-acts' });
+    if (b.review_at) box.append(el('span', { class: 'small', text: 'Análise pedida em ' + hhmm(b.review_at) + '.' }));
+    const acts = el('div', { class: 'row' });
     const upd = el('button', { type: 'button', class: 'btn ghost', text: 'Atualizar' });
-    upd.onclick = async () => { upd.disabled = true; upd.textContent = 'Atualizando…'; try { await post('r=check', { id: b.id }); await loadGestao(); } catch (err) { alertBox(err.message); upd.disabled = false; upd.textContent = 'Atualizar'; } };
-    acts.append(upd);
-    acts.append(el('a', { class: 'btn ghost', href: metaUrl(b, 'message_templates'), target: '_blank', rel: 'noopener', text: 'Templates na Meta' }));
-    if (['restrita', 'banida'].includes(b.status)) {
-      const rv = el('a', { class: 'btn primary', href: `https://business.facebook.com/business-support-home/?business_id=${b.bm_id}`, target: '_blank', rel: 'noopener', text: b.review_at ? 'Abrir análise' : 'Pedir análise' });
-      rv.onclick = () => { if (!b.review_at) post('r=gestao&a=review', { id: b.id }, 'PATCH').then(() => loadGestao()).catch(() => {}); };
-      acts.append(rv);
-      if (b.review_at) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Tirar marcação', onclick: () => post('r=gestao&a=review', { id: b.id, done: false }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message)) }));
-    } else acts.append(el('a', { class: 'btn ghost', href: metaUrl(b, 'overview'), target: '_blank', rel: 'noopener', text: 'Abrir na Meta' }));
+    upd.onclick = async () => { upd.disabled = true; upd.textContent = 'Atualizando…'; try { await post('r=check', { id: b.id }); await loadGestao(); } catch (err) { alertBox(err.message); } };
+    acts.append(upd, el('a', { class: 'btn ghost', href: metaUrl(b, 'message_templates'), target: '_blank', rel: 'noopener', text: 'Templates na Meta' }),
+      el('a', { class: 'btn ghost', href: metaUrl(b, 'overview'), target: '_blank', rel: 'noopener', text: 'Abrir na Meta' }));
     const mark = (st) => post('r=gestao&a=mark', { id: b.id, status: st }, 'PATCH').then(() => loadGestao()).catch((e) => alertBox(e.message));
     if (b.manual) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Não está mais restrita', onclick: () => mark(null) }));
-    else if (!['restrita', 'banida'].includes(b.status)) acts.append(el('button', { type: 'button', class: 'btn ghost', title: 'Use quando a Meta mostrar "Conta restrita" no Gerenciador do WhatsApp', text: 'Marcar como restrita', onclick: () => mark('restrita') }));
-    card.append(acts);
-    if (b.last_check) card.append(el('span', { class: 'small muted', style: 'margin-top:-6px', text: 'Consultado na Meta em ' + fmt(b.last_check) }));
-    return card;
+    else if (!['restrita', 'banida'].includes(b.status)) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Marcar como restrita', onclick: () => mark('restrita') }));
+    if (b.review_at) acts.append(el('button', { type: 'button', class: 'btn ghost', text: 'Tirar marcação de análise', onclick: () => post('r=gestao&a=review', { id: b.id, done: false }, 'PATCH').then(() => loadGestao()) }));
+    box.append(acts);
+    const c = el('td', { colspan: '7' }); c.append(box);
+    tb.append(el('tr', { class: 'gs-more' }, c));
   }
   $('gsSearch').oninput = renderGestao;
   $('gsProfile').onchange = renderGestao;
