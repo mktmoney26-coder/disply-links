@@ -110,6 +110,7 @@ module.exports = async (req, res) => {
         if (!pnid) continue;
         const inst = (await sql`select id, app_secret_enc from wa_instances where phone_number_id = ${String(pnid)}`)[0];
         if (!inst) continue; // número que não é nosso
+        try { await sql`update wa_instances set webhook_at = now() where id = ${inst.id}`; } catch (e) { /* coluna ainda não criada */ }
         if (inst.app_secret_enc) {
           let secret = null;
           try { secret = decrypt(inst.app_secret_enc); } catch {}

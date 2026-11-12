@@ -216,6 +216,27 @@ async function metaSent24h(wabaId, token) {
 }
 
 async function gestao(sql, req, body, a) {
+  if (a === 'hooks') {
+    // Webhook das BMs prontas: app ligado a cada conta + último evento recebido por número.
+    try { await require('../lib/dispatch-db').getDispatchDb(); } catch (e) {}
+    const bms = await sql`select id, name, token_enc from as_bms where active and ready order by name`;
+    const out = [];
+    for (const b of bms) {
+      let token = null; try { token = decrypt(b.token_enc); } catch {}
+      const wabas = await sql`select waba_id from as_wabas where bm_ref = ${b.id}`;
+      const apps = [];
+      for (const w of wabas) {
+        try { const d = (await graph(`/${w.waba_id}/subscribed_apps`, token)).data || []; apps.push(...d.map((x) => (x.whatsapp_business_api_data || {}).name).filter(Boolean)); }
+        catch (e) { apps.push('erro: ' + e.message.slice(0, 80)); }
+      }
+      const nums = await sql`select i.id, i.display_phone, i.webhook_at,
+          (select count(*)::int from wa_outbound o where o.instance_id = i.id and o.status in ('delivered','read')) as out_ok,
+          (select count(*)::int from wa_recipients r join wa_operations op on op.id = r.operation_id where op.instance_id = i.id and r.status in ('delivered','read')) as op_ok
+        from wa_instances i join as_numbers n on n.phone_number_id = i.phone_number_id where n.bm_ref = ${b.id} and i.active`;
+      out.push({ id: b.id, name: b.name, apps: [...new Set(apps)], numbers: nums });
+    }
+    return { bms: out };
+  }
   if (req.method === 'PATCH' && a === 'ready') {
     // BMs prontas: só elas aparecem em Nova operação.
     const id = Number(body.id); if (!id) throw new HttpError(400, 'BM inválida.');
