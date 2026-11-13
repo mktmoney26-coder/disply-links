@@ -265,6 +265,8 @@ async function gestao(sql, req, body, a) {
     if ('restricted_until' in body) await sql`update as_bms set restricted_until = ${until} where id = ${id}`;
     if ('appeal' in body) await sql`update as_bms set appeal = ${ap}, review_at = case when ${ap}::text is null then review_at else coalesce(review_at, now()) end where id = ${id}`;
     if (body.review_at) await sql`update as_bms set review_at = ${new Date(body.review_at)} where id = ${id}`;
+    // Apelação aceita: a Meta reverteu a restrição, então o aviso guardado pelo webhook deixa de valer.
+    if (ap === 'aceita') { await sql`update as_wabas set restriction = null, restriction_at = now() where bm_ref = ${id}`; await sql`update as_bms set manual_status = null, restricted_until = null where id = ${id}`; }
     return { ok: true };
   }
   if (req.method === 'PATCH' && a === 'review') {
