@@ -280,6 +280,16 @@ async function lists(sql, req, body, a) {
 
 // ---------------- Mídia (imagem enviada pelo painel, servida por URL pública) ----------------
 async function media(sql, req, body) {
+  // Planilha de relatório (xlsx/csv) para o cliente baixar por link.
+  const x = /^data:(application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|text\/csv);base64,([A-Za-z0-9+/=]+)$/.exec(String(body.data || ''));
+  if (x) {
+    if (Buffer.byteLength(x[2], 'base64') > 3.2 * 1024 * 1024) bad('Planilha muito grande (máximo 3 MB).');
+    const id = crypto.randomBytes(12).toString('base64url');
+    const fname = String(body.filename || 'planilha').replace(/[^\w .-]+/g, '').slice(0, 80) || 'planilha';
+    await sql`alter table wa_media add column if not exists filename text`;
+    await sql`insert into wa_media (id, content_type, b64, filename) values (${id}, ${x[1]}, ${x[2]}, ${fname})`;
+    return { url: `https://${requestHost(req)}/m/${id}.${x[1] === 'text/csv' ? 'csv' : 'xlsx'}` };
+  }
   const m = /^data:(image\/(?:jpeg|png));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.data || ''));
   if (!m) bad('Envie uma imagem JPG ou PNG. Para vídeo, use um link público.');
   if (Buffer.byteLength(m[2], 'base64') > 3.5 * 1024 * 1024) bad('Imagem muito grande (máximo 3,5 MB).');
