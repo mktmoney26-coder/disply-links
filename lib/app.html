@@ -3813,11 +3813,18 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     limite: ['Limite do dia usado', '#b45309', 'rgba(180,83,9,.13)'],
     pagamento: ['Pagamento pendente', '#b45309', 'rgba(180,83,9,.13)'],
     sem_numero: ['Sem número ativo', '#5b6b80', 'rgba(91,107,128,.14)'],
-    restrita: ['Restrita', '#b91c1c', 'rgba(185,28,28,.12)'],
-    banida: ['Banida', '#7f1d1d', 'rgba(127,29,29,.14)'],
+    restrita: ['Restrita (temporário)', '#ca8a04', 'rgba(202,138,4,.15)'],
+    banida: ['Desativada', '#7f1d1d', 'rgba(127,29,29,.14)'],
     erro: ['Erro de acesso', '#b91c1c', 'rgba(185,28,28,.12)']
   };
   const GS_ORDER = ['apta', 'limite', 'pagamento', 'sem_numero', 'restrita', 'banida', 'erro'];
+  const gsDay = (d) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  // Restrita mostra quando libera; desativada mostra o andamento da apelação.
+  function gsLabel(b) {
+    if (b.status === 'restrita' && b.restricted_until) return 'Restrita · libera ' + gsDay(b.restricted_until);
+    if (b.status === 'banida') return 'Desativada' + (b.appeal === 'negada' ? ' · apelação negada' : b.appeal === 'aceita' ? ' · apelação aceita' : b.review_at ? ' · apelação enviada ' + gsDay(b.review_at).slice(0, 5) : '');
+    return GS[b.status][0];
+  }
   const gs = { list: [], filter: '', meta: false, open: new Set() };
   const TPL_PT = { APPROVED: ['aprovado', 'aprovados', 'ok'], PENDING: ['em análise', 'em análise', 'warn'], IN_APPEAL: ['em recurso', 'em recurso', 'warn'], REJECTED: ['reprovado', 'reprovados', 'bad'], PAUSED: ['pausado', 'pausados', 'warn'], DISABLED: ['desativado', 'desativados', 'bad'] };
   const hhmm = (d) => new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -3871,11 +3878,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     tr.onclick = (e) => { if (!e.target.closest('a,button')) toggle(); };
     tr.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
     tr.append(tdn(el('div', { class: 'gs-name' }, el('span', { class: 'gs-dot', style: 'background:' + GS[b.status][1], title: GS[b.status][0] }), el('span', { text: b.name })),
-      el('div', { class: 'small muted', text: `${GS[b.status][0]}${b.profile ? ' · ' + b.profile : ''}` })));
+      el('div', { class: 'small muted', text: `${gsLabel(b)}${b.profile ? ' · ' + b.profile : ''}` })));
     const pendNum = real.find((n) => n.status === 'PENDING');
     tr.append(tdn(okNum.length ? yes(okNum[0].display_phone + (okNum.length > 1 ? ` +${okNum.length - 1}` : '')) : pendNum ? (pendNum.code_status === 'VERIFIED' ? mid(pendNum.auto_error ? 'Erro ao ativar' : 'Ativando…') : mid('Falta confirmar SMS')) : real.length ? no(real.some((n) => n.status === 'BANNED') ? 'Banido' : 'Bloqueado') : no('Sem número')));
     tr.append(tdn(payBad ? no('Falta cartão') : real.length || b.wabas.length ? yes('OK') : mid('—')));
-    tr.append(tdn(b.status === 'banida' ? no('Banida') : b.status === 'restrita' ? no('Restrita') : b.status === 'erro' ? no('Sem acesso') : yes('Ativa')));
+    tr.append(tdn(b.status === 'banida' ? no('Desativada') : b.status === 'restrita' ? mid(b.restricted_until ? 'Restrita até ' + gsDay(b.restricted_until).slice(0, 5) : 'Restrita') : b.status === 'erro' ? no('Sem acesso') : yes('Ativa')));
     tr.append(tdn(ok ? yes(`${ok} aprovado${ok > 1 ? 's' : ''}`) : pend ? mid(`${pend} em análise`) : no('Nenhum aprovado')));
     const av = el('td');
     if (!lim) av.append(el('span', { class: 'muted', text: '—' }));
@@ -3892,7 +3899,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (b.ready) act.append(el('span', { class: 'gs-ok', style: 'margin-right:10px', title: 'Está em BMs prontas', text: 'Pronta' }));
     else if (['apta', 'limite'].includes(b.status)) act.append(el('button', { type: 'button', class: 'btn primary', style: 'min-height:32px;padding:4px 12px;font-size:13px;margin-right:8px', text: '→ Prontas', onclick: (e) => { e.stopPropagation(); setReady(b, true); } }));
     if (['restrita', 'banida'].includes(b.status)) {
-      const rv = el('a', { class: 'gs-act', href: `https://business.facebook.com/business-support-home/?business_id=${b.bm_id}`, target: '_blank', rel: 'noopener', text: b.review_at ? 'Análise pedida ↗' : 'Pedir análise ↗' });
+      const rv = el('a', { class: 'gs-act', href: `https://business.facebook.com/business-support-home/?business_id=${b.bm_id}`, target: '_blank', rel: 'noopener', text: b.appeal === 'negada' ? 'Apelação negada ↗' : b.appeal === 'aceita' ? 'Apelação aceita ↗' : b.review_at ? 'Apelação enviada ↗' : 'Pedir análise ↗' });
+      if (b.appeal === 'negada') rv.style.color = '#b91c1c';
       rv.onclick = () => { if (!b.review_at) post('r=gestao&a=review', { id: b.id }, 'PATCH').then(() => loadGestao()).catch(() => {}); };
       act.append(rv);
     }

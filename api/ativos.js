@@ -254,6 +254,19 @@ async function gestao(sql, req, body, a) {
     if (b) await logActivity(sql, v ? `BM ${b.name} marcada como restrita` : `BM ${b.name} desmarcada como restrita`);
     return { ok: true };
   }
+  if (req.method === 'PATCH' && a === 'info') {
+    // Situação informada à mão: data em que a restrição acaba e andamento da apelação.
+    await sql`alter table as_bms add column if not exists restricted_until timestamptz`;
+    await sql`alter table as_bms add column if not exists appeal text`;
+    const id = Number(body.id); if (!id) throw new HttpError(400, 'BM inválida.');
+    const until = body.restricted_until ? new Date(body.restricted_until) : null;
+    if (until && isNaN(until)) throw new HttpError(400, 'Data inválida.');
+    const ap = ['enviada', 'negada', 'aceita'].includes(body.appeal) ? body.appeal : null;
+    if ('restricted_until' in body) await sql`update as_bms set restricted_until = ${until} where id = ${id}`;
+    if ('appeal' in body) await sql`update as_bms set appeal = ${ap}, review_at = case when ${ap}::text is null then review_at else coalesce(review_at, now()) end where id = ${id}`;
+    if (body.review_at) await sql`update as_bms set review_at = ${new Date(body.review_at)} where id = ${id}`;
+    return { ok: true };
+  }
   if (req.method === 'PATCH' && a === 'review') {
     const id = Number(body.id); if (!id) throw new HttpError(400, 'BM inválida.');
     await sql`update as_bms set review_at = ${body.done === false ? null : new Date()} where id = ${id}`;
@@ -261,7 +274,9 @@ async function gestao(sql, req, body, a) {
     if (b) await logActivity(sql, body.done === false ? `Análise da BM ${b.name} marcada como resolvida` : `Pedido de análise registrado para a BM ${b.name}`);
     return { ok: true };
   }
-  const bmsRows = await sql`select id, name, profile, bm_id, last_check, last_error, review_at, manual_status, limit_tier, ready, token_enc from as_bms where active order by name`;
+  await sql`alter table as_bms add column if not exists restricted_until timestamptz`;
+  await sql`alter table as_bms add column if not exists appeal text`;
+  const bmsRows = await sql`select id, name, profile, bm_id, last_check, last_error, review_at, manual_status, limit_tier, ready, token_enc, restricted_until, appeal from as_bms where active order by name`;
   const wabas = await sql`select * from as_wabas`;
   const nums = await sql`select n.*, i.id as instance_id, i.active as inst_active from as_numbers n left join wa_instances i on i.phone_number_id = n.phone_number_id`;
   const tpls = await sql`select bm_ref, waba_id, name, language, category, status, updated_at from as_templates order by name`;
@@ -299,7 +314,7 @@ async function gestao(sql, req, body, a) {
     let status;
     if (b.last_error && !String(b.last_error).startsWith('Parcial')) status = 'erro';
     else if (rejected || allBanned) status = 'banida';
-    else if (b.manual_status === 'restrita' || restrictedW) status = 'restrita';
+    else if (b.manual_status === 'restrita' || restrictedW || (b.restricted_until && new Date(b.restricted_until) > new Date())) status = 'restrita';
     else if (blocked && !pay && /Limite de mensagens atingido/i.test(details)) status = 'limite';
     // Restrita só com sinal real de restrição: status do número ou bloqueio por motivo que não seja
     // pagamento, número sem confirmar o SMS ou limite do dia.
@@ -317,6 +332,7 @@ async function gestao(sql, req, body, a) {
       detail: [restrictedW && restrictedW.restriction, details].filter(Boolean).join('\n') || null,
       payment_ok: !(pay && !usable.length),
       manual: b.manual_status || null, ready: Boolean(b.ready),
+      restricted_until: b.restricted_until && new Date(b.restricted_until) > new Date() ? b.restricted_until : null, appeal: b.appeal || null,
       wabas: ws.map((w) => ({ waba_id: w.waba_id, name: w.name, review_status: w.review_status, health: w.health })),
       numbers: ns.map((n) => ({ phone_number_id: n.phone_number_id, display_phone: n.display_phone, status: n.status, quality: n.quality, health: n.health,
         limit_tier: n.limit_tier, test: isTestPhone(n.display_phone), instance_id: n.instance_id, inst_active: n.inst_active, waba_id: n.waba_id,
