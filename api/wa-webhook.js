@@ -60,8 +60,10 @@ async function accountUpdate(sql, wabaId, v, raw, sig) {
   if (inst) { let secret = null; try { secret = decrypt(inst.app_secret_enc); } catch {} if (secret && !validSignature(raw, sig, secret)) return; }
   const ev = String(v.event || '');
   let text = null;
+  // A Meta manda a data como segundos, milissegundos ou texto ISO.
+  const expMs = (e) => (/^\d+$/.test(String(e)) ? Number(e) * (String(e).length > 11 ? 1 : 1000) : Date.parse(e));
   if (ev === 'ACCOUNT_RESTRICTION' && Array.isArray(v.restriction_info) && v.restriction_info.length) {
-    text = 'Conta restrita pela Meta: ' + v.restriction_info.map((r) => (RESTR_PT[r.restriction_type] || r.restriction_type) + (r.expiration ? ' até ' + new Date(Number(r.expiration) * 1000).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '')).join('; ') + '. → Peça análise na Página Inicial do Suporte.';
+    text = 'Conta restrita pela Meta: ' + v.restriction_info.map((r) => (RESTR_PT[r.restriction_type] || r.restriction_type) + (r.expiration && !isNaN(expMs(r.expiration)) ? ' até ' + new Date(expMs(r.expiration)).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '')).join('; ') + '. → Peça análise na Página Inicial do Suporte.';
   } else if (ev === 'ACCOUNT_VIOLATION') {
     text = 'A Meta registrou violação de política' + (v.violation_info && v.violation_info.violation_type ? ` (${v.violation_info.violation_type})` : '') + '. → Veja no Gerenciador do WhatsApp e peça análise se discordar.';
   } else if (ev === 'DISABLED_UPDATE' || (v.ban_info && /DISABLE|BAN/i.test(String(v.ban_info.waba_ban_state || '')))) {
