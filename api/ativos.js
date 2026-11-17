@@ -104,6 +104,24 @@ async function bms(sql, req, body, a) {
     const [bm] = await sql`select * from as_bms where id = ${id}`;
     if (!bm) throw new HttpError(404, 'BM não encontrada.');
     if (a === 'diag') return { bm: bm.name, etapas: await diagnose(bm) };
+    if (a === 'subscribe') {
+      // Liga o app do token a cada conta do WhatsApp da BM (necessário para receber entregas e leituras no webhook).
+      const token = decrypt(bm.token_enc);
+      let appName = null; try { const d = (await graph(`/debug_token?input_token=${encodeURIComponent(token)}`, token)).data || {}; appName = (await graph(`/${d.app_id}?fields=name`, token)).name || d.app_id; } catch (e) {}
+      const w = (await sql`select waba_id from as_wabas where bm_ref = ${bm.id} order by waba_id`).map((x) => x.waba_id);
+      const out = [];
+      for (const waba of w) {
+        const it = { waba };
+        try { it.antes = ((await graph(`/${waba}/subscribed_apps`, token)).data || []).map((x) => (x.whatsapp_business_api_data || {}).name); } catch (e) { it.antes = 'erro: ' + e.message.slice(0, 80); }
+        if (body.apply && Array.isArray(it.antes) && !it.antes.includes(appName)) {
+          try { await graph(`/${waba}/subscribed_apps`, token, { method: 'POST', body: '{}' }); it.ligado = true; } catch (e) { it.erro = e.message.slice(0, 120); }
+          try { it.depois = ((await graph(`/${waba}/subscribed_apps`, token)).data || []).map((x) => (x.whatsapp_business_api_data || {}).name); } catch (e) {}
+        }
+        out.push(it);
+      }
+      if (body.apply) await logActivity(sql, `App ligado às contas do WhatsApp da BM ${bm.name}`);
+      return { bm: bm.name, app: appName, contas: out };
+    }
     if (a === 'probe-add') {
       // Teste de permissão para adicionar número (número inválido de propósito: a Meta recusa sem criar nada).
       const token = decrypt(bm.token_enc);
