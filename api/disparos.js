@@ -234,6 +234,15 @@ async function lists(sql, req, body, a) {
     const tot = await sql`select count(*)::int as n from wa_contacts where list_id = ${id}`;
     return { sample: first[0] || null, available: avail[0].n, total: tot[0].n, blocked: tot[0].n - avail[0].n };
   }
+  if (req.method === 'GET' && a === 'remaining') {
+    // Contatos da lista que ainda não entraram na campanha (grupo de lotes), sem os descadastrados.
+    const id = int(req.query.id); const g = int(req.query.group);
+    const rows = await sql`select c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
+      where c.list_id = ${id} and o.phone is null and not exists (
+        select 1 from wa_recipients r join wa_operations op on op.id = r.operation_id where op.group_id = ${g} and r.phone = c.phone)
+      order by c.id`;
+    return { rows };
+  }
   if (req.method === 'GET') {
     const rows = await sql`select l.id, l.name, l.created_at, l.check_summary, count(c.id)::int as total,
         sum(case when o.phone is not null then 1 else 0 end)::int as blocked
