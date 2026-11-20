@@ -50,7 +50,17 @@ module.exports = async (req, res) => {
     const rajadas = await sql`select count(*)::int as n from (
         select id, created_at - lag(created_at) over (partition by user_agent order by created_at) as gap
         from clicks where slug = ${slug}) t where gap < interval '2 seconds'`;
-    res.status(200).json({ slug, total, porDia, porHora, porPais, porTipo, apps, topUas, picos,
+    // IP/cidade só existem para cliques registrados depois que essas colunas foram criadas.
+    let ips = null;
+    try {
+      const [r] = await sql`select count(ip)::int as com_ip, count(distinct ip)::int as ips_distintos from clicks where slug = ${slug}`;
+      const topIps = await sql`select ip, count(*)::int as n, count(distinct user_agent)::int as uas, min(country) as pais, min(city) as cidade
+        from clicks where slug = ${slug} and ip is not null group by ip order by 2 desc limit 30`;
+      const porCidade = await sql`select coalesce(city, '?') as cidade, coalesce(region, '') as uf, count(*)::int as n
+        from clicks where slug = ${slug} and ip is not null group by 1, 2 order by 3 desc limit 30`;
+      ips = { ...r, topIps, porCidade };
+    } catch {}
+    res.status(200).json({ slug, total, ips, porDia, porHora, porPais, porTipo, apps, topUas, picos,
       repetidosMesmoAparelhoEm2s: rajadas[0].n });
     return;
   }

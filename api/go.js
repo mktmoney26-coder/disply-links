@@ -74,8 +74,16 @@ module.exports = async (req, res) => {
   // Pessoa: redireciona na hora (302) e registra o clique depois da resposta.
   if (!isPreview) {
     if (sql) {
-      waitUntil(sql`insert into clicks (slug, contact, country, user_agent)
-        values (${slug}, ${contact}, ${req.headers['x-vercel-ip-country'] || null}, ${userAgent.slice(0, 300)})`
+      const country = req.headers['x-vercel-ip-country'] || null;
+      const ip = String(req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '').split(',')[0].trim().slice(0, 64) || null;
+      let city = null;
+      try { city = req.headers['x-vercel-ip-city'] ? decodeURIComponent(req.headers['x-vercel-ip-city']).slice(0, 80) : null; } catch {}
+      const region = String(req.headers['x-vercel-ip-country-region'] || '').slice(0, 20) || null;
+      const ua = userAgent.slice(0, 300);
+      // Grava IP, cidade e região; se as colunas ainda não existirem, grava como antes.
+      waitUntil(sql`insert into clicks (slug, contact, country, user_agent, ip, city, region)
+        values (${slug}, ${contact}, ${country}, ${ua}, ${ip}, ${city}, ${region})`
+        .catch(() => sql`insert into clicks (slug, contact, country, user_agent) values (${slug}, ${contact}, ${country}, ${ua})`)
         .catch((err) => console.error('Erro ao registrar clique:', err)));
     }
     res.statusCode = 302;
