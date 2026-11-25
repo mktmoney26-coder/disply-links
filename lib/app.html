@@ -520,6 +520,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         <button type="button" class="grp-h" aria-expanded="true" aria-controls="grp-ativos"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span class="lbl">Ativos Meta</span><span class="count" id="grpAtivCount" hidden></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="grp-items" id="grp-ativos">
           <a href="#gestao" data-view="gestao">Gestão de BMs <span class="count" id="restrBadge" hidden></span><span id="gsBadge" hidden></span></a>
+          <a href="#lote" data-view="lote">Importar BMs em lote</a>
           <a href="#prontas" data-view="prontas">BMs prontas <span class="count" id="prBadge" hidden></span></a>
           <a href="#nv" data-view="nv">Comprar números</a>
           <a href="#saude" data-view="saude">Templates <span class="count" id="tplBadge" hidden></span></a>
@@ -848,6 +849,83 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
           <tbody id="gsGrid"><tr><td colspan="7" class="muted">Carregando…</td></tr></tbody>
         </table></div></div>
         <p class="small muted" id="gsInfo" style="margin:0" role="status"></p>
+      </div>
+
+
+      <!-- ================= ATIVOS: IMPORTAR BMs EM LOTE ================= -->
+      <div class="view" id="view-lote" hidden>
+        <style>
+          #view-lote .lt-sm{min-height:34px;padding:5px 12px;font-size:13px}
+          #view-lote .lt-steps{margin:4px 0 0;padding-left:18px;font-size:13px;line-height:1.5}
+          #view-lote .lt-steps .ok{color:var(--ok)} #view-lote .lt-steps .no{color:var(--bad)}
+          #view-lote h2{margin:0 0 6px;font-size:17px}
+          #view-lote td{vertical-align:top}
+        </style>
+        <p class="small muted" style="margin:0;max-width:720px">Cada perfil (Rian, Julia, 94…) usa um app próprio, em que ele é admin. Com o token do perfil, o Disply encontra as BMs que ele administra e integra cada uma por API: cadastro, contas, números, webhook e PIN. Sem criar app por BM.</p>
+
+        <div class="card stack">
+          <div class="row" style="justify-content:space-between"><h2>1. Perfis</h2><button class="btn primary lt-sm" type="button" id="ltNewProfile">+ Perfil</button></div>
+          <form id="ltProfileForm" class="stack" hidden>
+            <input type="hidden" id="ltPId">
+            <div class="grid">
+              <div><label for="ltPName">Perfil</label><input id="ltPName" maxlength="80" placeholder="Ex.: Rian"></div>
+              <div><label for="ltPApp">App ID do app do perfil</label><input id="ltPApp" inputmode="numeric" maxlength="25" placeholder="Só números"></div>
+              <div><label for="ltPSecret">Chave secreta do app</label><input id="ltPSecret" type="password" autocomplete="off" placeholder="Configurações do app › Básico"></div>
+              <div><label for="ltPLimit">Limite de BMs por dia</label><input id="ltPLimit" type="number" min="1" max="500" value="30"></div>
+            </div>
+            <div><label for="ltPToken">Token do perfil</label><input id="ltPToken" type="password" autocomplete="off" placeholder="EAA... (o Disply troca por um de ~60 dias)"></div>
+            <details class="small muted"><summary style="cursor:pointer;font-weight:600">Como preparar o perfil (uma vez só)</summary>
+              <ol style="margin:8px 0 0;padding-left:20px;line-height:1.6">
+                <li>Logado no perfil, crie <b>um</b> app em developers.facebook.com (caso de uso "Conectar-se com clientes pelo WhatsApp"), na BM principal do perfil. Publique o app como já fazem hoje.</li>
+                <li>Copie o <b>App ID</b> e a <b>Chave secreta</b> (Configurações do app › Básico) para os campos acima.</li>
+                <li>Abra <b>developers.facebook.com/tools/explorer</b>, escolha esse app, em "Usuário ou página" deixe <b>Token de usuário</b> e marque <code>business_management</code>, <code>whatsapp_business_management</code> e <code>whatsapp_business_messaging</code>.</li>
+                <li>Clique em <b>Generate Access Token</b>, autorize e cole o token aqui. Depois de salvar, clique em <b>Configurar webhook</b> na linha do perfil.</li>
+                <li>A cada ~60 dias o token vence: é só gerar de novo e colar em "Atualizar token". Vale para todas as BMs do perfil.</li>
+              </ol></details>
+            <div class="row"><button class="btn primary" type="submit">Salvar perfil</button><button class="btn ghost" type="button" id="ltPCancel">Cancelar</button><span id="ltPMsg" class="err" role="alert"></span></div>
+          </form>
+          <div class="gs-wrap"><table class="gs-table">
+            <thead><tr><th>Perfil</th><th>Facebook</th><th>Token vence</th><th>Hoje</th><th>BMs</th><th></th></tr></thead>
+            <tbody id="ltProfiles"><tr><td colspan="6" class="muted">Carregando…</td></tr></tbody>
+          </table></div>
+          <p class="small" id="ltProfMsg" role="status" style="margin:0"></p>
+        </div>
+
+        <div class="card stack" id="ltImportCard" hidden>
+          <div class="row" style="justify-content:space-between"><h2 id="ltImportTitle">2. Importar</h2>
+            <div class="row"><span class="small muted" id="ltQuota"></span><button class="btn primary lt-sm" type="button" id="ltRun">Integrar selecionadas</button><button class="btn ghost lt-sm" type="button" id="ltStop" hidden>Parar</button></div></div>
+          <div class="row small"><label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" id="ltOnlyNew" checked style="width:auto"> Só BMs que ainda não estão no Disply</label><input id="ltSupplier" maxlength="120" placeholder="Fornecedor (opcional, vale para o lote)" style="flex:1;max-width:320px;font-size:14px"></div>
+          <div class="gs-wrap"><table class="gs-table">
+            <thead><tr><th style="width:32px"><input type="checkbox" id="ltAll" aria-label="Selecionar todas" style="width:auto"></th><th>BM</th><th>Criada em</th><th>Resultado</th></tr></thead>
+            <tbody id="ltBms"></tbody>
+          </table></div>
+          <p class="small" id="ltImportMsg" role="status" style="margin:0"></p>
+        </div>
+
+        <div class="card stack">
+          <div class="row" style="justify-content:space-between"><h2>3. Cartões por lote</h2><button class="btn ghost lt-sm" type="button" id="ltNewCard">+ Cartão</button></div>
+          <p class="small muted" style="margin:0">Cada BM importada recebe o primeiro cartão com vaga. Guarde só apelido e 4 últimos dígitos: o cartão em si é cadastrado na Meta por uma pessoa.</p>
+          <form id="ltCardForm" class="row" hidden>
+            <input type="hidden" id="ltCId">
+            <input id="ltCLabel" maxlength="60" placeholder="Apelido (ex.: Nubank Rian)" style="max-width:240px">
+            <input id="ltCLast4" maxlength="4" inputmode="numeric" placeholder="4 últimos" style="max-width:110px">
+            <input id="ltCMax" type="number" min="1" max="500" value="30" style="max-width:110px" aria-label="Máximo de BMs">
+            <button class="btn primary lt-sm" type="submit">Salvar</button><button class="btn ghost lt-sm" type="button" id="ltCCancel">Cancelar</button><span id="ltCMsg" class="err" role="alert"></span>
+          </form>
+          <div class="gs-wrap"><table class="gs-table">
+            <thead><tr><th>Cartão</th><th>BMs no cartão</th><th>Situação</th><th></th></tr></thead>
+            <tbody id="ltCards"></tbody>
+          </table></div>
+        </div>
+
+        <div class="card stack">
+          <div class="row" style="justify-content:space-between"><h2>4. Fila de pagamento</h2><span class="small muted" id="ltQueueInfo"></span></div>
+          <p class="small muted" style="margin:0">Abra a cobrança, cadastre o cartão indicado e clique em "Cadastrei". BMs pagas vão para o fim da lista.</p>
+          <div class="gs-wrap"><table class="gs-table">
+            <thead><tr><th>BM</th><th>Perfil</th><th>Cartão</th><th>Números</th><th></th></tr></thead>
+            <tbody id="ltQueue"></tbody>
+          </table></div>
+        </div>
       </div>
 
       <div class="view" id="view-prontas" hidden>
@@ -3263,7 +3341,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   // ---------- Navegação ----------
   const VIEWS = {
     inicio: ['Visão geral', ''], ops: ['Operações', 'Disparos'], inbox: ['Inbox', 'Disparos'], lists: ['Listas de contatos', 'Disparos'],
-    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], prontas: ['BMs prontas', 'Ativos Meta'], nv: ['Comprar números', 'Ativos Meta · Número Virtual'], numeros: ['Números', 'Ativos Meta'],
+    tpl: ['Templates', 'Disparos'], inst: ['Instâncias', 'Disparos'], bms: ['Cadastro de BMs', 'Ativos Meta'], gestao: ['Gestão de BMs', 'Ativos Meta'], prontas: ['BMs prontas', 'Ativos Meta'], lote: ['Importar BMs em lote', 'Ativos Meta'], nv: ['Comprar números', 'Ativos Meta · Número Virtual'], numeros: ['Números', 'Ativos Meta'],
     saude: ['Templates', 'Ativos Meta'], tplnovo: ['Criar template', 'Ativos Meta · Templates'], alertas: ['Alertas', 'Ativos Meta'], links: ['Links', 'Links'], dominios: ['Domínios', 'Links'],
     config: ['Configurações', 'Sistema'], historico: ['Histórico', 'Sistema']
   };
@@ -3288,6 +3366,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (view === 'bms') loadBms();
     if (view === 'gestao') loadGestao();
     if (view === 'prontas') loadProntas();
+    if (window.DisplyLote) window.DisplyLote.show(view === 'lote');
     if (view === 'nv') { (gs.list.length ? Promise.resolve() : api('r=gestao').then((d) => { gs.list = d.bms; }).catch(() => {})).then(loadNv); } else clearTimeout(nv.timer);
     if (view === 'numeros') loadNumbers();
     if (view === 'saude') loadSaude();
@@ -4452,6 +4531,197 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
   const saved = store.get();
   if (saved) login(saved); else { $('loginCard').hidden = false; $('key').focus(); }
+})();
+</script>
+<script>
+// Importar BMs em lote (perfis, importação, cartões e fila de pagamento).
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const key = () => { try { return sessionStorage.getItem('disply_key') || ''; } catch (e) { return ''; } };
+  async function api(path, options = {}) {
+    const r = await fetch('/api/ativos?r=lote&' + path, { ...options, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key() } });
+    let d = {}; try { d = await r.json(); } catch (e) {}
+    if (!r.ok) { const err = new Error(d.erro || 'Erro ' + r.status); err.status = r.status; throw err; }
+    return d;
+  }
+  const post = (a, body) => api('a=' + a, { method: 'POST', body: JSON.stringify(body || {}) });
+  function el(tag, attrs, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) { if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else if (k.startsWith('on')) e[k] = v; else e.setAttribute(k, v); }
+    for (const k of kids) if (k != null) e.append(k);
+    return e;
+  }
+  const td = (t, cls) => el('td', { text: String(t ?? ''), class: cls || '' });
+  const tdn = (...k) => el('td', {}, ...k);
+  const badge = (t, kind) => el('span', { class: 'badge b-' + kind, text: t });
+  const btn = (t, fn, kind) => el('button', { type: 'button', class: 'btn lt-sm ' + (kind || 'ghost'), text: t, onclick: fn });
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+  const msg = (id, t, ok) => { const m = $(id); m.textContent = t || ''; m.className = 'small ' + (t ? (ok ? 'okmsg' : 'err') : ''); };
+  const empty = (tb, cols, t) => { const c = td(t, 'muted'); c.colSpan = cols; tb.append(el('tr', {}, c)); };
+
+  const st = { data: null, profile: null, bms: [], running: false, stop: false };
+
+  async function load() {
+    try { st.data = await api('a=state'); } catch (e) { msg('ltProfMsg', e.message); return; }
+    paintProfiles(); paintCards(); paintQueue();
+  }
+
+  // ---------- Perfis ----------
+  function paintProfiles() {
+    const tb = $('ltProfiles'); tb.replaceChildren();
+    const list = st.data.profiles;
+    if (!list.length) return empty(tb, 6, 'Nenhum perfil ainda. Clique em "+ Perfil".');
+    for (const p of list) {
+      const days = p.token_expires ? Math.floor((new Date(p.token_expires) - Date.now()) / 86400000) : null;
+      const exp = !p.has_token ? badge('sem token', 'bad') : days == null ? badge('não vence', 'ok') : days < 0 ? badge('vencido', 'bad') : days <= 7 ? badge(`vence em ${days} d`, 'warn') : el('span', { text: fmtDate(p.token_expires) });
+      tb.append(el('tr', {},
+        tdn(el('b', { text: p.name }), el('div', { class: 'small muted', text: p.app_id ? 'App ' + p.app_id : 'sem app' })),
+        td(p.fb_user || '—'), tdn(exp), td(`${p.hoje} de ${p.daily_limit}`), td(p.bms),
+        tdn(el('div', { class: 'row', style: 'gap:6px' },
+          p.has_token ? btn('Buscar BMs', () => discover(p), 'primary') : null,
+          btn('Atualizar token', () => editProfile(p, true)),
+          p.has_secret ? btn('Configurar webhook', (e) => webhook(p, e.target)) : null,
+          btn('Editar', () => editProfile(p))))));
+    }
+  }
+  function editProfile(p, focusToken) {
+    $('ltProfileForm').hidden = false; msg('ltPMsg', '');
+    $('ltPId').value = p ? p.id : ''; $('ltPName').value = p ? p.name : ''; $('ltPApp').value = p ? (p.app_id || '') : '';
+    $('ltPSecret').value = ''; $('ltPSecret').placeholder = p && p.has_secret ? 'Já cadastrada (deixe vazio para manter)' : 'Configurações do app › Básico';
+    $('ltPLimit').value = p ? p.daily_limit : 30; $('ltPToken').value = '';
+    (focusToken ? $('ltPToken') : $('ltPName')).focus();
+  }
+  $('ltNewProfile').onclick = () => editProfile(null);
+  $('ltPCancel').onclick = () => { $('ltProfileForm').hidden = true; };
+  $('ltProfileForm').onsubmit = async (e) => {
+    e.preventDefault(); msg('ltPMsg', 'Salvando e conferindo o token na Meta…', true);
+    try {
+      const r = await post('profile-save', { id: $('ltPId').value || null, name: $('ltPName').value, app_id: $('ltPApp').value,
+        app_secret: $('ltPSecret').value, daily_limit: $('ltPLimit').value, token: $('ltPToken').value });
+      $('ltProfileForm').hidden = true;
+      msg('ltProfMsg', `Perfil salvo${r.fb_user ? ' · Facebook: ' + r.fb_user : ''}${r.expires ? ' · token vence em ' + fmtDate(r.expires) : ''}.`, true);
+      load();
+    } catch (err) { msg('ltPMsg', err.message); }
+  };
+  async function webhook(p, b) {
+    b.disabled = true; msg('ltProfMsg', 'Configurando o webhook do app…', true);
+    try { const r = await post('app-webhook', { id: p.id }); msg('ltProfMsg', `Webhook do app de ${p.name} configurado (${r.fields.length} campos assinados).`, true); }
+    catch (err) { msg('ltProfMsg', err.message); }
+    b.disabled = false;
+  }
+
+  // ---------- Importar ----------
+  async function discover(p) {
+    st.profile = p; $('ltImportCard').hidden = false; $('ltImportTitle').textContent = `2. Importar BMs do perfil ${p.name}`;
+    const tb = $('ltBms'); tb.replaceChildren(); empty(tb, 4, 'Buscando as BMs que o perfil administra…'); msg('ltImportMsg', '');
+    $('ltImportCard').scrollIntoView({ behavior: 'smooth' });
+    try {
+      const d = await api('a=discover&profile=' + p.id);
+      st.bms = d.bms; st.quota = d.profile; paintBms();
+    } catch (err) { tb.replaceChildren(); empty(tb, 4, err.message); }
+  }
+  function paintBms() {
+    const tb = $('ltBms'); tb.replaceChildren();
+    const only = $('ltOnlyNew').checked;
+    const list = st.bms.filter((b) => !only || !b.imported);
+    let free = st.quota.restante;
+    $('ltQuota').textContent = `Hoje: ${st.quota.hoje} de ${st.quota.daily_limit} · ${st.bms.filter((b) => !b.imported).length} BMs novas`;
+    if (!list.length) return empty(tb, 4, only ? 'Nenhuma BM nova neste perfil.' : 'O perfil não administra nenhuma BM.');
+    for (const b of list) {
+      const cb = el('input', { type: 'checkbox', style: 'width:auto', 'aria-label': 'Selecionar ' + b.name });
+      if (b.imported) cb.disabled = true; else if (free > 0) { cb.checked = true; free--; }
+      b._cb = cb; b._res = el('td', {}, b.imported ? badge('já no Disply', 'off') : el('span', { class: 'muted small', text: '—' }));
+      tb.append(el('tr', {}, tdn(cb), tdn(el('b', { text: b.name }), el('div', { class: 'small muted', text: b.bm_id })), td(fmtDate(b.created_time)), b._res));
+    }
+    updateRun();
+    tb.onchange = updateRun;
+  }
+  function updateRun() { const n = st.bms.filter((b) => b._cb && b._cb.checked).length; $('ltRun').textContent = `Integrar selecionadas (${n})`; $('ltRun').disabled = !n || st.running; }
+  $('ltOnlyNew').onchange = () => st.profile && paintBms();
+  $('ltAll').onchange = () => { st.bms.forEach((b) => { if (b._cb && !b._cb.disabled) b._cb.checked = $('ltAll').checked; }); updateRun(); };
+  $('ltStop').onclick = () => { st.stop = true; $('ltStop').disabled = true; };
+  $('ltRun').onclick = async () => {
+    const todo = st.bms.filter((b) => b._cb && b._cb.checked);
+    if (!todo.length) return;
+    st.running = true; st.stop = false; $('ltStop').hidden = false; $('ltStop').disabled = false; updateRun();
+    const t0 = Date.now(); let ok = 0; let fail = 0;
+    for (const b of todo) {
+      if (st.stop) break;
+      b._res.replaceChildren(el('span', { class: 'small muted', text: 'Integrando…' }));
+      try {
+        const r = await post('import-one', { profile: st.profile.id, bm_id: b.bm_id, name: b.name, supplier: $('ltSupplier').value });
+        const allOk = r.steps.every((s) => s.ok);
+        b._res.replaceChildren(badge(r.skipped ? 'já estava' : allOk ? 'integrada' : 'integrada com pendências', allOk ? 'ok' : 'warn'),
+          el('ul', { class: 'lt-steps' }, ...r.steps.map((s) => el('li', { class: s.ok ? 'ok' : 'no', text: (s.ok ? '✓ ' : '✗ ') + s.name + (s.detail ? ': ' + s.detail : '') }))));
+        b.imported = true; b._cb.checked = false; b._cb.disabled = true; ok++;
+      } catch (err) {
+        b._res.replaceChildren(badge('falhou', 'bad'), el('div', { class: 'small err', text: err.message }));
+        fail++;
+        if (err.status === 429) { msg('ltImportMsg', err.message); break; }
+      }
+      msg('ltImportMsg', `${ok + fail} de ${todo.length} · ${ok} ok · ${fail} com erro · ${Math.round((Date.now() - t0) / 1000)} s`, !fail);
+    }
+    st.running = false; $('ltStop').hidden = true; updateRun();
+    load();
+  };
+
+  // ---------- Cartões ----------
+  function paintCards() {
+    const tb = $('ltCards'); tb.replaceChildren();
+    const list = st.data.cards;
+    if (!list.length) return empty(tb, 4, 'Nenhum cartão. Sem cartão, as BMs entram na fila sem indicação.');
+    for (const c of list) {
+      const full = c.usadas >= c.max_bms;
+      tb.append(el('tr', {},
+        tdn(el('b', { text: c.label }), c.last4 ? el('span', { class: 'muted', text: ' · final ' + c.last4 }) : null),
+        td(`${c.usadas} de ${c.max_bms}`),
+        tdn(!c.active ? badge('desativado', 'off') : full ? badge('lote cheio', 'warn') : badge('recebendo BMs', 'ok')),
+        tdn(el('div', { class: 'row', style: 'gap:6px' },
+          btn('Editar', () => editCard(c)),
+          btn(c.active ? 'Desativar' : 'Reativar', async () => { await post('card-off', { id: c.id, active: !c.active }); load(); })))));
+    }
+  }
+  function editCard(c) {
+    $('ltCardForm').hidden = false; msg('ltCMsg', '');
+    $('ltCId').value = c ? c.id : ''; $('ltCLabel').value = c ? c.label : ''; $('ltCLast4').value = c ? (c.last4 || '') : ''; $('ltCMax').value = c ? c.max_bms : 30;
+    $('ltCLabel').focus();
+  }
+  $('ltNewCard').onclick = () => editCard(null);
+  $('ltCCancel').onclick = () => { $('ltCardForm').hidden = true; };
+  $('ltCardForm').onsubmit = async (e) => {
+    e.preventDefault();
+    try { await post('card-save', { id: $('ltCId').value || null, label: $('ltCLabel').value, last4: $('ltCLast4').value, max_bms: $('ltCMax').value }); $('ltCardForm').hidden = true; load(); }
+    catch (err) { msg('ltCMsg', err.message); }
+  };
+
+  // ---------- Fila de pagamento ----------
+  function payLink(b) {
+    const w = String(b.wabas || '').split(',').filter(Boolean)[0];
+    return w ? `https://business.facebook.com/billing_hub/payment_settings/?asset_id=${w}&business_id=${b.bm_id}`
+      : `https://business.facebook.com/billing_hub/accounts?business_id=${b.bm_id}`;
+  }
+  function paintQueue() {
+    const tb = $('ltQueue'); tb.replaceChildren();
+    const list = st.data.queue; const cards = st.data.cards.filter((c) => c.active);
+    const pend = list.filter((b) => !b.paid_at).length;
+    $('ltQueueInfo').textContent = `${pend} pendente(s) de ${list.length}`;
+    if (!list.length) return empty(tb, 5, 'Nenhuma BM importada em lote ainda.');
+    for (const b of list) {
+      const sel = el('select', { style: 'width:auto', 'aria-label': 'Cartão da BM ' + b.name, onchange: async () => { await post('card-assign', { bm_ref: b.id, card_ref: sel.value || null }); load(); } },
+        el('option', { value: '', text: 'Sem cartão' }), ...st.data.cards.filter((c) => c.active || c.id === b.card_ref).map((c) => el('option', { value: c.id, text: c.label + (c.last4 ? ' · ' + c.last4 : '') })));
+      sel.value = b.card_ref || '';
+      tb.append(el('tr', { style: b.paid_at ? 'opacity:.6' : '' },
+        tdn(el('b', { text: b.name }), el('div', { class: 'small muted', text: b.bm_id })),
+        td(b.profile || '—'), tdn(sel),
+        tdn(b.bloqueados ? badge(`${b.bloqueados} bloqueado(s)`, 'bad') : b.conectados ? badge(`${b.conectados} conectado(s)`, 'ok') : badge('sem número ativo', 'warn')),
+        tdn(el('div', { class: 'row', style: 'gap:6px' },
+          b.paid_at ? badge('cadastrado ' + fmtDate(b.paid_at), 'ok') : el('a', { class: 'btn primary lt-sm', href: payLink(b), target: '_blank', rel: 'noopener', text: 'Abrir cobrança' }),
+          btn(b.paid_at ? 'Desfazer' : 'Cadastrei', async () => { await post('pay-mark', { bm_ref: b.id, paid: !b.paid_at }); load(); })))));
+    }
+    if (!cards.length) $('ltQueueInfo').textContent += ' · cadastre um cartão para distribuir os lotes';
+  }
+
+  window.DisplyLote = { show(on) { if (on) load(); } };
 })();
 </script>
 </body>
