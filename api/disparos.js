@@ -271,7 +271,7 @@ async function lists(sql, req, body, a) {
   }
   if (a === 'delete') {
     const id = int(body.id);
-    const busy = await sql`select name from wa_operations where list_id = ${id} and status in ('running','paused') limit 1`;
+    const busy = await sql`select name from wa_operations where list_id = ${id} and status in ('running','paused','waiting') limit 1`;
     if (busy.length) bad(`Esta lista está em uso na operação “${busy[0].name}”. Finalize a operação antes de excluir.`);
     await sql`delete from wa_contacts where list_id = ${id}`;
     await sql`delete from wa_lists where id = ${id}`;
@@ -360,6 +360,17 @@ async function checkReady(sql, ids) {
   if (off.length) bad(`Só BMs prontas podem disparar. Mande para BMs prontas (Ativos Meta › Gestão de BMs): ${off.map((r) => r.bm || r.name).join(', ')}.`);
 }
 
+// Limite nominal da BM do número (ex.: 250), usado para desacelerar ao passar dele no modo "encher".
+async function nominalLimit(sql, instanceId) {
+  try {
+    const [r] = await sql`select n.limit_tier from wa_instances i join as_numbers n on n.phone_number_id = i.phone_number_id where i.id = ${instanceId}`;
+    const t = String((r && r.limit_tier) || '');
+    if (/^\d+$/.test(t)) return Number(t);
+    const m = /TIER_(\d+)(K)?/i.exec(t);
+    return m ? Number(m[1]) * (m[2] ? 1000 : 1) : 250;
+  } catch (e) { return 250; }
+}
+
 // Uma lista grande dividida entre vários números: cada número recebe um lote (A, B, C…) até o seu limite.
 const TAGS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 async function createSplit(sql, req, body) {
@@ -409,6 +420,35 @@ async function createSplit(sql, req, body) {
   const created = [];
   let offset = 0; let groupId = null;
   const mix = body.distribution === 'mix';
+  // "Encher cada BM": a BM A recebe a lista toda e envia até a Meta travar (ou até o "Enviar até");
+  // o restante passa sozinho para a B, depois C… As outras BMs ficam "na fila" até chegar a vez delas.
+  const fill = body.distribution === 'fill';
+  if (fill) {
+    const total = left;
+    try {
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i]; const tag = TAGS[i] || String(i + 1); const c = p.own || base;
+        const soft = await nominalLimit(sql, p.instance_id);
+        const [row] = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps, group_id, tag, status, fill_mode, fill_soft, fill_cap)
+          values (${base.name + ' · Lote ' + tag}, ${p.instance_id}, ${p.template_id}, ${c.header_value || null}, ${JSON.stringify(c.body_vars_obj)},
+                  ${c.button_param || null}, ${base.name_fallback}, ${base.list_id}, ${i === 0 ? total : 0}, ${base.tps}, ${groupId}, ${tag}, ${i === 0 ? 'paused' : 'waiting'}, true, ${soft}, ${p.limit})
+          returning id`;
+        if (!groupId) { groupId = row.id; await sql`update wa_operations set group_id = ${groupId} where id = ${row.id}`; }
+        created.push({ id: row.id, tag, quantity: i === 0 ? total : 0 });
+        if (i === 0) {
+          await sql`insert into wa_recipients (operation_id, name, phone)
+            select ${row.id}::int, c.name, c.phone from wa_contacts c left join wa_optouts o on o.phone = c.phone
+            where c.list_id = ${base.list_id}::int and (o.phone is null or ${incl}::boolean) order by c.id limit ${total}::int`;
+        }
+      }
+    } catch (err) {
+      for (const c of created) { await sql`delete from wa_recipients where operation_id = ${c.id}`; await sql`delete from wa_operations where id = ${c.id}`; }
+      throw err;
+    }
+    await sql`update wa_operations set status = 'running' where id = ${created[0].id}`;
+    kick(req, created[0].id);
+    return { id: created[0].id, group_id: groupId, lotes: created, quantity: total, avail, capacity, fill: true };
+  }
   const seed = crypto.randomBytes(6).toString('hex');
   try {
     for (let i = 0; i < parts.length && left > 0; i++) {
@@ -444,6 +484,7 @@ async function createSplit(sql, req, body) {
 function groupStatus(list) {
   if (list.includes('running')) return 'running';
   if (list.includes('paused')) return 'paused';
+  if (list.includes('waiting')) return 'running';
   if (list.includes('error')) return 'error';
   if (list.every((s) => s === 'canceled')) return 'canceled';
   return 'done';
@@ -620,6 +661,7 @@ async function ops(sql, req, body, a) {
     const id = int(body.id);
     const r = await runOperation(sql, id);
     if (r.more) kick(req, id);
+    if (r.next) kick(req, r.next);
     return r;
   }
   if (a === 'replace-lot') {
@@ -673,7 +715,7 @@ async function ops(sql, req, body, a) {
       // Campanha com vários números: aplica em todos os lotes que ainda não terminaram.
       const rows = await sql`update wa_operations set status = ${status},
           finished_at = case when ${status} = 'canceled' then now() else finished_at end
-        where group_id = ${id} and status in ('running','paused') returning id`;
+        where group_id = ${id} and (status in ('running','paused') or (status = 'waiting' and ${status} = 'canceled')) returning id`;
       if (!rows.length) bad('Esta campanha já terminou.');
       for (const r of rows) {
         if (status === 'canceled') await sql`update wa_recipients set status = 'skipped', updated_at = now() where operation_id = ${r.id} and status = 'pending'`;
@@ -837,7 +879,7 @@ async function inbox(sql, req, body, a) {
           sum(case when r.status = 'read' then 1 else 0 end)::int as lidas,
           sum(case when r.status = 'failed' then 1 else 0 end)::int as falhas
         from wa_operations o join wa_recipients r on r.operation_id = o.id
-        where o.status in ('running','paused') or o.finished_at > now() - interval '2 hours'
+        where o.status in ('running','paused','waiting') or o.finished_at > now() - interval '2 hours'
         group by o.id, o.name, o.status, o.instance_id order by o.id desc limit 5`;
       for (const o of live) {
         const [x] = await sql`select count(distinct i.phone)::int as n from wa_inbound i join wa_recipients r on r.phone = i.phone and r.operation_id = ${o.id}

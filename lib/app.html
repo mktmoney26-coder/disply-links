@@ -631,7 +631,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         <div class="grid">
           <div class="wz-field"><label for="opQty">Quantos leads enviar</label><input id="opQty" type="number" min="1"></div>
           <div class="wz-field"><label for="opDist">Como dividir os leads entre os números</label>
-            <select id="opDist"><option value="seq">Na ordem da planilha (A recebe os primeiros)</option><option value="mix">Misturado (sorteio, cada lote fica parecido)</option></select></div>
+            <select id="opDist"><option value="seq">Na ordem da planilha (A recebe os primeiros)</option><option value="mix">Misturado (sorteio, cada lote fica parecido)</option><option value="fill">Encher cada BM antes de passar para a próxima</option></select>
+            <p class="small muted" id="opDistHelp" hidden style="margin:6px 0 0">A BM A envia até a Meta começar a recusar por limite (ou até o "Enviar até" dela). O que faltar, incluindo os recusados por limite, passa sozinho para a B, depois para a C…</p></div>
         </div>
         <div class="wz-lots" id="opLots"></div>
         <select id="opInst" hidden aria-hidden="true"></select>
@@ -1750,7 +1751,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const wz = { step: 1, listMode: 'new' };
   function resetOpForm() {
     ['opName', 'opMediaUrl', 'opHeaderVar', 'opBtnParam', 'opQty', 'opTestPhone'].forEach((x) => { $(x).value = ''; });
-    $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40'; $('opDist').value = 'seq';
+    $('opMediaFile').value = ''; $('opFallback').value = 'cliente'; $('opTps').value = '40'; $('opDist').value = 'seq'; $('opDistHelp').hidden = true;
     state.testSkip = new Set(); state.tpl = null; state.perMode = false; state.per = {}; state.curInst = null; state.mediaUrl = ''; state.sample = null;
     $('opTplSame').setAttribute('aria-pressed', 'true'); $('opTplPer').setAttribute('aria-pressed', 'false'); state.leads = 0; state.inclOpt = false; state.listBlocked = 0; $('opVars').innerHTML = '';
     ['opMsg', 'opTestMsg', 'opMediaMsg', 'opLMsg'].forEach((x) => { $(x).textContent = ''; });
@@ -2023,7 +2024,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       } catch (err) { $('opMsg').textContent = 'Não consegui conectar o número: ' + err.message; return; }
     }
     if (split.sel.has(key)) split.sel.delete(key);
-    else split.sel.set(key, tierLimit((instById(key) || {}).limit_tier) || 1000);
+    else split.sel.set(key, $('opDist').value === 'fill' ? FILL_MAX : (tierLimit((instById(key) || {}).limit_tier) || 1000));
     syncMain(); renderNums();
   }
   function renderNums() {
@@ -2087,7 +2088,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const L = lots(); if (!L.length) return;
     const total = L.reduce((a, l) => a + l.n, 0);
     box.append(el('div', { class: 'wz-lots-head' }, el('b', { text: `${num(total)} leads em ${L.length} ${L.length > 1 ? 'lotes' : 'lote'}` }),
-      el('span', { class: 'small muted', text: $('opDist').value === 'mix' ? 'Leads sorteados entre os lotes' : 'Leads na ordem da planilha' })));
+      el('span', { class: 'small muted', text: $('opDist').value === 'mix' ? 'Leads sorteados entre os lotes' : $('opDist').value === 'fill' ? 'Enche cada BM antes de passar para a próxima (os números abaixo são o máximo de cada uma)' : 'Leads na ordem da planilha' })));
     for (const l of L) {
       const i = instById(l.instance_id) || {};
       const row = el('div', { class: 'wz-lot' }, el('span', { class: 'wz-num-tag', text: l.tag }),
@@ -2100,7 +2101,19 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (out > 0) box.append(el('p', { class: 'small', style: 'margin:6px 0 0;color:var(--warn)', text: `${num(out)} lead(s) ficam de fora desta operação.` }));
   }
   $('opQty').addEventListener('input', () => { split.qtyTouched = true; renderLots(); });
-  $('opDist').onchange = renderLots;
+  // Modo "encher": o "Enviar até" vira o máximo de cada BM (padrão 1.000; a troca de BM acontece antes se a Meta travar).
+  const FILL_MAX = 1000;
+  $('opDist').onchange = () => {
+    const fill = $('opDist').value === 'fill';
+    $('opDistHelp').hidden = !fill;
+    for (const [k, v] of split.sel) {
+      const tier = tierLimit((instById(k) || {}).limit_tier) || 1000;
+      if (fill && v === tier) split.sel.set(k, Math.max(FILL_MAX, tier));
+      else if (!fill && v === FILL_MAX) split.sel.set(k, tier);
+    }
+    if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || '';
+    renderNums();
+  };
   $('wzAuto').onclick = () => {
     // Sugestão: maiores limites primeiro, uma BM por vez (números da mesma BM dividem o limite).
     split.sel.clear(); const used = new Set(); let cap = 0;
@@ -2230,7 +2243,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       row('Quem pediu SAIR', state.listBlocked ? (state.inclOpt ? `incluídos (${num(state.listBlocked)})` : `fora (${num(state.listBlocked)})`) : 'ninguém na lista'),
       row('Vão receber agora', `${num(total)} leads`),
       row('Template', state.perMode && L.length > 1 ? 'um por BM (veja os lotes)' : state.tpl ? state.tpl.name : '—'),
-      row('Divisão', L.length > 1 ? `${L.length} lotes · ${$('opDist').value === 'mix' ? 'sorteio' : 'ordem da planilha'}` : 'um número só'));
+      row('Divisão', L.length > 1 ? `${L.length} lotes · ${({ mix: 'sorteio', fill: 'enche cada BM antes da próxima' })[$('opDist').value] || 'ordem da planilha'}` : 'um número só'));
     const lotsBox = el('div', { class: 'wz-lots', style: 'margin-top:10px' });
     for (const l of L) {
       const i = instById(l.instance_id) || {};
@@ -2476,7 +2489,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   };
 
   // ================= LISTA E DETALHE DE OPERAÇÕES =================
-  const opBadge = (s) => ({ running: badge('Enviando', 'info'), paused: badge('Pausada', 'warn'), done: badge('Concluída', 'ok'), canceled: badge('Cancelada', 'off'), error: badge('Erro', 'bad') })[s] || badge(s, 'off');
+  const opBadge = (s) => ({ running: badge('Enviando', 'info'), waiting: badge('Na fila', 'off'), paused: badge('Pausada', 'warn'), done: badge('Concluída', 'ok'), canceled: badge('Cancelada', 'off'), error: badge('Erro', 'bad') })[s] || badge(s, 'off');
   function bar(parts) { const b = el('div', { class: 'bar' }); for (const [w, c] of parts) b.append(el('span', { style: `width:${w}%;background:${c}` })); return b; }
   const opsView = { list: [], tab: 'all' };
   const OPS_TABS = [['all', 'Todas'], ['live', 'Em andamento'], ['done', 'Concluídas'], ['other', 'Canceladas / erro']];
