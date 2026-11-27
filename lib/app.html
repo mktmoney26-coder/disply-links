@@ -921,12 +921,33 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
         <div class="card stack">
           <div class="row" style="justify-content:space-between"><h2>4. Fila de pagamento</h2><span class="small muted" id="ltQueueInfo"></span></div>
-          <p class="small muted" style="margin:0">Abra a cobrança, cadastre o cartão indicado e clique em "Cadastrei". BMs pagas vão para o fim da lista.</p>
+          <p class="small muted" style="margin:0">Deixe o cartão salvo no Chrome (Configurações › Preenchimento automático › Formas de pagamento). No <b>modo sequência</b> o Disply abre a cobrança de cada BM numa janela ao lado: clique em "Adicionar forma de pagamento", deixe o Chrome preencher, confirme e aperte <b>Enter</b> aqui para ir para a próxima.</p>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <select id="ltQProfile" style="width:auto" aria-label="Filtrar por perfil"><option value="">Todos os perfis</option></select>
+            <select id="ltQShow" style="width:auto" aria-label="Quais BMs mostrar"><option value="pend">Só pendentes</option><option value="issue">Só com problema de pagamento na Meta</option><option value="all">Todas</option></select>
+            <span style="flex:1"></span>
+            <select id="ltQCard" style="width:auto" aria-label="Cartão para as selecionadas"><option value="">Cartão para as selecionadas…</option></select>
+            <button class="btn ghost lt-sm" type="button" id="ltQAssign">Atribuir</button>
+            <button class="btn primary lt-sm" type="button" id="ltSeqStart">▶ Modo sequência</button>
+          </div>
+          <div id="ltSeq" hidden style="position:sticky;top:8px;z-index:5;border:2px solid var(--accent, #0a84ff);border-radius:12px;padding:12px 14px;background:var(--card, #fff)">
+            <div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <div><div class="small muted" id="ltSeqPos"></div><div style="font-size:16px;font-weight:700" id="ltSeqName"></div><div class="small" id="ltSeqCard"></div></div>
+              <div class="row" style="gap:6px">
+                <button class="btn ghost lt-sm" type="button" id="ltSeqOpen">Abrir de novo</button>
+                <button class="btn ghost lt-sm" type="button" id="ltSeqSkip">Pular</button>
+                <button class="btn primary lt-sm" type="button" id="ltSeqDone">Cadastrei, próxima (Enter)</button>
+                <button class="btn ghost lt-sm" type="button" id="ltSeqStop">Parar</button>
+              </div>
+            </div>
+            <p class="small muted" id="ltSeqMsg" style="margin:6px 0 0"></p>
+          </div>
           <div class="gs-wrap"><table class="gs-table">
-            <thead><tr><th>BM</th><th>Perfil</th><th>Cartão</th><th>Números</th><th></th></tr></thead>
+            <thead><tr><th style="width:32px"><input type="checkbox" id="ltQAll" aria-label="Selecionar todas" style="width:auto"></th><th>BM</th><th>Perfil</th><th>Cartão</th><th>Meta</th><th></th></tr></thead>
             <tbody id="ltQueue"></tbody>
           </table></div>
         </div>
+      </div>
       </div>
 
       <div class="view" id="view-prontas" hidden>
@@ -4709,30 +4730,101 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
   // ---------- Fila de pagamento ----------
   function payLink(b) {
-    const w = String(b.wabas || '').split(',').filter(Boolean)[0];
+    const w = b.waba_pay || String(b.wabas || '').split(',').filter(Boolean)[0];
     return w ? `https://business.facebook.com/billing_hub/payment_settings/?asset_id=${w}&business_id=${b.bm_id}`
       : `https://business.facebook.com/billing_hub/accounts?business_id=${b.bm_id}`;
   }
+  const cardText = (c) => c ? c.label + (c.last4 ? ' · final ' + c.last4 : '') : 'sem cartão';
+  function queueList() {
+    const prof = $('ltQProfile').value; const show = $('ltQShow').value;
+    return st.data.queue.filter((b) => (!prof || (b.profile || '') === prof)
+      && (show === 'all' || (show === 'issue' ? b.pay_issue : !b.paid_at)));
+  }
   function paintQueue() {
     const tb = $('ltQueue'); tb.replaceChildren();
-    const list = st.data.queue; const cards = st.data.cards.filter((c) => c.active);
-    const pend = list.filter((b) => !b.paid_at).length;
-    $('ltQueueInfo').textContent = `${pend} pendente(s) de ${list.length}`;
-    if (!list.length) return empty(tb, 5, 'Nenhuma BM importada em lote ainda.');
+    const cards = st.data.cards.filter((c) => c.active);
+    // filtros e seletor de cartão em massa
+    const profs = [...new Set(st.data.queue.map((b) => b.profile || ''))].filter(Boolean).sort();
+    const pv = $('ltQProfile').value;
+    $('ltQProfile').replaceChildren(el('option', { value: '', text: 'Todos os perfis' }), ...profs.map((p) => el('option', { value: p, text: p })));
+    $('ltQProfile').value = pv;
+    const cv = $('ltQCard').value;
+    $('ltQCard').replaceChildren(el('option', { value: '', text: 'Cartão para as selecionadas…' }), ...cards.map((c) => el('option', { value: c.id, text: cardText(c) })), el('option', { value: 'none', text: 'Tirar o cartão' }));
+    $('ltQCard').value = cv;
+    const list = queueList();
+    const all = st.data.queue; const pend = all.filter((b) => !b.paid_at).length; const iss = all.filter((b) => b.pay_issue).length;
+    $('ltQueueInfo').textContent = `${pend} pendente(s) · ${iss} com problema de pagamento na Meta · ${all.length} BMs`;
+    st.qsel = st.qsel || new Set();
+    if (!list.length) return empty(tb, 6, 'Nenhuma BM neste filtro.');
     for (const b of list) {
+      const cb = el('input', { type: 'checkbox', style: 'width:auto', 'aria-label': 'Selecionar ' + b.name });
+      cb.checked = st.qsel.has(b.id); cb.onchange = () => { cb.checked ? st.qsel.add(b.id) : st.qsel.delete(b.id); };
       const sel = el('select', { style: 'width:auto', 'aria-label': 'Cartão da BM ' + b.name, onchange: async () => { await post('card-assign', { bm_ref: b.id, card_ref: sel.value || null }); load(); } },
-        el('option', { value: '', text: 'Sem cartão' }), ...st.data.cards.filter((c) => c.active || c.id === b.card_ref).map((c) => el('option', { value: c.id, text: c.label + (c.last4 ? ' · ' + c.last4 : '') })));
+        el('option', { value: '', text: 'Sem cartão' }), ...st.data.cards.filter((c) => c.active || c.id === b.card_ref).map((c) => el('option', { value: c.id, text: cardText(c) })));
       sel.value = b.card_ref || '';
+      b._meta = el('td', {}, b.pay_issue ? badge('pagamento com problema', 'bad') : b.conectados ? badge('ok', 'ok') : badge('sem número ativo', 'warn'));
       tb.append(el('tr', { style: b.paid_at ? 'opacity:.6' : '' },
-        tdn(el('b', { text: b.name }), el('div', { class: 'small muted', text: b.bm_id })),
-        td(b.profile || '—'), tdn(sel),
-        tdn(b.bloqueados ? badge(`${b.bloqueados} bloqueado(s)`, 'bad') : b.conectados ? badge(`${b.conectados} conectado(s)`, 'ok') : badge('sem número ativo', 'warn')),
+        tdn(cb), tdn(el('b', { text: b.name }), el('div', { class: 'small muted', text: b.bm_id })),
+        td(b.profile || '—'), tdn(sel), b._meta,
         tdn(el('div', { class: 'row', style: 'gap:6px' },
-          b.paid_at ? badge('cadastrado ' + fmtDate(b.paid_at), 'ok') : el('a', { class: 'btn primary lt-sm', href: payLink(b), target: '_blank', rel: 'noopener', text: 'Abrir cobrança' }),
+          el('a', { class: 'btn ghost lt-sm', href: payLink(b), target: 'displyPagamento', rel: 'noopener', text: 'Abrir cobrança' }),
           btn(b.paid_at ? 'Desfazer' : 'Cadastrei', async () => { await post('pay-mark', { bm_ref: b.id, paid: !b.paid_at }); load(); })))));
     }
-    if (!cards.length) $('ltQueueInfo').textContent += ' · cadastre um cartão para distribuir os lotes';
   }
+  $('ltQProfile').onchange = paintQueue; $('ltQShow').onchange = paintQueue;
+  $('ltQAll').onchange = () => { st.qsel = new Set($('ltQAll').checked ? queueList().map((b) => b.id) : []); paintQueue(); };
+  $('ltQAssign').onclick = async () => {
+    const ids = [...(st.qsel || [])]; const v = $('ltQCard').value;
+    if (!ids.length || !v) { msg('ltSeqMsg', ''); return alertBox('Selecione as BMs e o cartão.'); }
+    await post('card-assign', { bm_refs: ids, card_ref: v === 'none' ? null : v });
+    st.qsel = new Set(); $('ltQAll').checked = false; load();
+  };
+  function alertBox(t) { $('ltQueueInfo').textContent = t; }
+
+  // ---------- Modo sequência ----------
+  const seq = { list: [], i: 0, win: null, on: false };
+  function seqShow() {
+    const b = seq.list[seq.i];
+    if (!b) { seqStop(`Fim da sequência: ${seq.done} cadastrada(s), ${seq.skip} pulada(s).`); return; }
+    const card = st.data.cards.find((c) => c.id === b.card_ref);
+    $('ltSeqPos').textContent = `BM ${seq.i + 1} de ${seq.list.length} · ${b.profile || 'sem perfil'}`;
+    $('ltSeqName').textContent = b.name;
+    $('ltSeqCard').textContent = 'Cartão: ' + cardText(card);
+    $('ltSeqCard').style.color = card ? '' : 'var(--bad)';
+    seq.win = window.open(payLink(b), 'displyPagamento');
+    if (!seq.win) $('ltSeqMsg').textContent = 'O navegador bloqueou a janela: permita pop-ups do Disply e clique em "Abrir de novo".';
+  }
+  function seqStop(t) {
+    seq.on = false; $('ltSeq').hidden = true; $('ltSeqStart').disabled = false;
+    msg('ltQueueInfo', t || '', true); load();
+  }
+  $('ltSeqStart').onclick = () => {
+    const sel = st.qsel && st.qsel.size ? queueList().filter((b) => st.qsel.has(b.id)) : queueList().filter((b) => !b.paid_at);
+    if (!sel.length) return alertBox('Nenhuma BM pendente neste filtro.');
+    Object.assign(seq, { list: sel, i: 0, on: true, done: 0, skip: 0 });
+    $('ltSeq').hidden = false; $('ltSeqStart').disabled = true; $('ltSeqMsg').textContent = '';
+    $('ltSeq').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    seqShow();
+  };
+  $('ltSeqOpen').onclick = () => { const b = seq.list[seq.i]; if (b) seq.win = window.open(payLink(b), 'displyPagamento'); };
+  $('ltSeqSkip').onclick = () => { seq.skip++; seq.i++; seqShow(); };
+  $('ltSeqStop').onclick = () => seqStop(`Sequência parada: ${seq.done} cadastrada(s).`);
+  $('ltSeqDone').onclick = async () => {
+    const b = seq.list[seq.i]; if (!b) return;
+    $('ltSeqDone').disabled = true;
+    try { await post('pay-mark', { bm_ref: b.id }); } catch (e) { $('ltSeqMsg').textContent = e.message; $('ltSeqDone').disabled = false; return; }
+    seq.done++;
+    // Confere na Meta em segundo plano (leva alguns segundos); o resultado aparece aqui sem travar a sequência.
+    const name = b.name;
+    post('recheck', { bm_ref: b.id }).then((r) => {
+      $('ltSeqMsg').textContent = r.pay_issue ? `⚠ ${name}: a Meta ainda acusa problema de pagamento (a retenção pode levar alguns minutos).` : `✓ ${name}: pagamento sem pendência na Meta.`;
+    }).catch(() => {});
+    seq.i++; $('ltSeqDone').disabled = false; seqShow();
+  };
+  document.addEventListener('keydown', (e) => {
+    if (!seq.on || e.key !== 'Enter' || /input|select|textarea/i.test((e.target.tagName || ''))) return;
+    e.preventDefault(); $('ltSeqDone').click();
+  });
 
   window.DisplyLote = { show(on) { if (on) load(); } };
 })();
