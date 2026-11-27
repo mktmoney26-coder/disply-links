@@ -309,7 +309,9 @@ async function gestao(sql, req, body, a) {
   const out = await Promise.all(bmsRows.map(async (b) => {
     const ws = wabas.filter((w) => w.bm_ref === b.id);
     const ns = nums.filter((n) => n.bm_ref === b.id);
-    const real = ns.filter((n) => !isTestPhone(n.display_phone));
+    // Número de teste da Meta (+1 555) conta como número da BM: pode disparar (a Meta só entrega para os
+    // destinatários cadastrados no app; os demais voltam com erro 131030).
+    const real = ns;
     const ts = tpls.filter((t) => t.bm_ref === b.id);
     const usable = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
     const details = [...ws.map((w) => w.health_detail), ...ns.map((n) => n.health_detail)].filter(Boolean).join('\n');

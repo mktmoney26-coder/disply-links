@@ -3867,7 +3867,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (!list.length) empty(tb, 6, 'Nenhuma BM pronta. Em Gestão de BMs, clique em "→ Prontas" nas BMs que você quer usar nas operações.');
     let total = 0;
     for (const b of list) {
-      const real = b.numbers.filter((n) => !n.test);
+      const real = b.numbers;
       const okNum = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
       const lim = b.limit === 'ilimitado' ? Infinity : Number(b.limit) || 0;
       const free = lim === Infinity ? Infinity : Math.max(0, lim - b.used);
@@ -3946,7 +3946,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const no = (t) => el('span', { class: 'gs-no', text: t });
   const mid = (t) => el('span', { class: 'gs-mid', text: t });
   function gsRow(tb, b) {
-    const real = b.numbers.filter((n) => !n.test);
+    const real = b.numbers;
     const okNum = real.filter((n) => n.status === 'CONNECTED' && n.health !== 'BLOCKED');
     const payBad = b.payment_ok === false || (b.payment_ok == null && /pagamento|payment|cart[aã]o/i.test(b.detail || ''));
     const lim = b.limit === 'ilimitado' ? Infinity : Number(b.limit) || 0;
@@ -3990,7 +3990,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
 
     // Detalhes (ao clicar na linha)
     const box = el('div', { class: 'stack', style: 'gap:10px' });
-    const realNums = b.numbers.filter((n) => !n.test);
+    const realNums = b.numbers;
     if (realNums.length) {
       const nl = el('div', { class: 'gs-nlist' });
       const QD = { GREEN: ['#047857', 'Qualidade alta'], YELLOW: ['#d97706', 'Qualidade média'], RED: ['#b91c1c', 'Qualidade baixa'] };
@@ -4000,7 +4000,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
         const days = n.last_sent ? Math.floor((Date.now() - new Date(n.last_sent).getTime()) / 86400000) : null;
         const line = el('div', { class: 'gs-nline' },
           el('span', { class: 'gs-dot', style: 'background:' + q[0], title: q[1], 'aria-label': q[1] }),
-          el('b', { text: n.display_phone }),
+          el('b', { text: n.display_phone + (n.test ? ' (teste)' : '') }),
           okN ? yes('Envio ok') : no(n.status === 'BANNED' ? 'Banido' : n.status !== 'CONNECTED' ? (n.status === 'PENDING' ? 'Pendente' : n.status) : 'Bloqueado'),
           el('span', { class: 'small muted', text: `${num(n.sent30 || 0)} enviadas em 30 dias` + (days != null ? ` · último envio há ${days} dia${days === 1 ? '' : 's'}` : '') }));
         const wrap = el('div', {}, line);

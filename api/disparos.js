@@ -52,7 +52,7 @@ async function instances(sql, req, body, a) {
       available = await sql`select n.phone_number_id, n.display_phone, n.verified_name, n.waba_id, n.status, n.health, b.name as bm, b.ready as bm_ready
         from as_numbers n join as_bms b on b.id = n.bm_ref and b.active
         left join wa_instances i on i.phone_number_id = n.phone_number_id
-        where i.id is null and n.display_phone not like '+1 555%' and coalesce(n.status, '') not in ('BANNED')
+        where i.id is null and coalesce(n.status, '') not in ('BANNED')
         order by b.name, n.display_phone`;
     } catch (e) { available = []; }
     return { instances: rows, available };
