@@ -401,20 +401,42 @@ async function settings(sql, req, body, a) {
 // ---------------- Criar o mesmo template em várias contas ----------------
 const GRAPH = 'https://graph.facebook.com/' + (process.env.GRAPH_VERSION || 'v24.0');
 const appCache = new Map(); // bm_ref -> app_id (o envio de mídia é feito pelo app dono do token)
-async function appOf(bm) {
-  if (appCache.has(bm.id)) return appCache.get(bm.id);
-  const token = decrypt(bm.token_enc);
-  const d = await graph(`/debug_token?input_token=${encodeURIComponent(token)}`, token);
-  const app = (d.data && d.data.app_id) || null;
-  if (app) appCache.set(bm.id, app);
-  return app;
+// O app de cada BM, sem gastar chamada na Meta sempre que der:
+// BM importada por perfil → app do perfil; senão o app_id guardado na BM; só em último caso o debug_token (e guarda).
+async function appIds(sql, ids) {
+  const out = {};
+  const todo = ids.filter((id) => { if (appCache.has(id)) { out[id] = appCache.get(id); return false; } return true; });
+  if (!todo.length) return out;
+  try { await sql`alter table as_bms add column if not exists app_id text`; } catch (e) {}
+  let rows = [];
+  try {
+    rows = await sql`select b.id, b.token_enc, coalesce(p.app_id, b.app_id) as app_id from as_bms b
+      left join as_profiles p on p.id = b.profile_ref where b.id = any(${todo}::int[])`;
+  } catch (e) { rows = await sql`select id, token_enc, app_id from as_bms where id = any(${todo}::int[])`; }
+  for (const r of rows) {
+    let app = r.app_id || null;
+    if (!app) {
+      try {
+        const token = decrypt(r.token_enc);
+        const d = await graph(`/debug_token?input_token=${encodeURIComponent(token)}`, token);
+        app = (d.data && d.data.app_id) || null;
+        if (app) await sql`update as_bms set app_id = ${app} where id = ${r.id}`;
+      } catch (e) {}
+    }
+    if (app) appCache.set(r.id, app);
+    out[r.id] = app;
+  }
+  return out;
 }
+async function appOf(sql, bm) { return (await appIds(sql, [bm.id]))[bm.id] || null; }
+const isRateLimit = (err) => [4, 17, 32, 613, 80008].includes(Number(err && err.code)) || /request limit|too many calls|limite de solicita/i.test(String(err && err.message));
 function tplError(err) {
   const m = String(err.message || '');
   if (/already exists|já existe|2388023|2388024/i.test(m) || err.subcode === 2388023 || err.subcode === 2388024) return 'Já existe um template com esse nome e idioma nesta conta.';
   if (/content.*deleted|being deleted|2388025/i.test(m)) return 'Um template com esse nome foi excluído há pouco; a Meta só libera o nome depois de 30 dias. Use outro nome.';
   if (/handle/i.test(m)) return 'A Meta não aceitou a mídia do cabeçalho (envie de novo).';
   if (err.code === 190) return 'Token da BM expirado. Atualize o token em BMs.';
+  if (isRateLimit(err)) return 'Limite de chamadas do app na Meta atingido (o app do perfil faz no máximo ~200 por hora). Espere uns 30–60 min e envie de novo só para as que falharam.';
   if (err.code === 200 || err.code === 10) return 'O token não tem permissão de gerenciar templates nesta conta (whatsapp_business_management).';
   if (/limit/i.test(m) && /template/i.test(m)) return 'A conta atingiu o limite de templates.';
   return m || 'A Meta recusou o template.';
@@ -460,10 +482,7 @@ async function templatesBulk(sql, req, body, a) {
     const rows = await sql`select w.waba_id, w.name as waba_name, b.id as bm_ref, b.name as bm, b.profile, b.token_enc, b.last_error,
         (select count(*)::int from as_numbers n where n.waba_id = w.waba_id) as numeros
       from as_wabas w join as_bms b on b.id = w.bm_ref and b.active order by b.name, w.name`;
-    const apps = {};
-    await Promise.all([...new Map(rows.map((r) => [r.bm_ref, r])).values()].map(async (r) => {
-      try { apps[r.bm_ref] = await appOf({ id: r.bm_ref, token_enc: r.token_enc }); } catch (e) { apps[r.bm_ref] = null; }
-    }));
+    const apps = await appIds(sql, [...new Set(rows.map((r) => r.bm_ref))]);
     return rows.map(({ token_enc, ...r }) => ({ ...r, app_id: apps[r.bm_ref] || null }));
   }
   if (a === 'chunk') {
@@ -483,10 +502,12 @@ async function templatesBulk(sql, req, body, a) {
     const parts = await sql`select idx, data from as_uploads where upload_id = ${id} order by idx`;
     if (!parts.length || parts.length !== total) throw new HttpError(400, 'O arquivo não chegou inteiro. Envie de novo.');
     const buf = Buffer.concat(parts.map((p) => Buffer.from(p.data, 'base64')));
-    const token = decrypt(bm.token_enc); const app = await appOf(bm);
+    const token = decrypt(bm.token_enc); const app = await appOf(sql, bm);
     if (!app) throw new HttpError(400, 'Não consegui identificar o app do token desta BM.');
     const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'video/mp4': 'mp4', 'application/pdf': 'pdf' }[mime];
-    const session = await graph(`/${app}/uploads?file_length=${buf.length}&file_type=${encodeURIComponent(mime)}&file_name=cabecalho.${ext}`, token, { method: 'POST' });
+    let session;
+    try { session = await graph(`/${app}/uploads?file_length=${buf.length}&file_type=${encodeURIComponent(mime)}&file_name=cabecalho.${ext}`, token, { method: 'POST' }); }
+    catch (err) { throw new HttpError(400, isRateLimit(err) ? tplError(err) : 'A Meta recusou o arquivo: ' + err.message); }
     const r = await fetch(GRAPH + '/' + session.id, { method: 'POST', headers: { Authorization: 'OAuth ' + token, file_offset: '0' }, body: buf });
     let up = {}; try { up = await r.json(); } catch {}
     if (!r.ok || !up.h) throw new HttpError(400, 'A Meta recusou o arquivo: ' + ((up.error && (up.error.error_user_msg || up.error.message)) || r.status));
