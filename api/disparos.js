@@ -490,6 +490,38 @@ function groupStatus(list) {
   return 'done';
 }
 
+// Contagem oficial da Meta (WhatsApp Manager › Insights): enviadas e entregues por número no período da campanha.
+// Serve mesmo quando o webhook não registrou as entregas.
+async function metaCounts(sql, id, q) {
+  const op = (await sql`select * from wa_operations where id = ${id}`)[0];
+  if (!op) throw new HttpError(404, 'Operação não encontrada.');
+  const lots = op.group_id ? await sql`select o.id, o.tag, o.created_at, o.finished_at, o.instance_id from wa_operations o where o.group_id = ${op.group_id} order by o.id` : [op];
+  const start = Math.floor(new Date(q.from || Math.min(...lots.map((l) => new Date(l.created_at)))).getTime() / 1000) - 3600;
+  const end = Math.floor((q.to ? new Date(q.to).getTime() : Date.now()) / 1000) + 3600;
+  const out = [];
+  for (const l of lots) {
+    const inst = (await sql`select * from wa_instances where id = ${l.instance_id}`)[0];
+    const row = { id: l.id, tag: l.tag || null, number: inst ? inst.display_phone : null, name: inst ? inst.name : null, sent: null, delivered: null, error: null };
+    try {
+      const digits = String(inst.display_phone || '').replace(/\D/g, '');
+      const tok = decrypt(inst.token_enc);
+      const d = await meta.graph(`/${inst.waba_id}?fields=analytics.start(${start}).end(${end}).granularity(HALF_HOUR).phone_numbers(["${digits}"])`, tok);
+      const pts = (d.analytics && d.analytics.data_points) || [];
+      row.sent = pts.reduce((a, p) => a + (p.sent || 0), 0); row.delivered = pts.reduce((a, p) => a + (p.delivered || 0), 0);
+      // Mensagens cobradas pela Meta (entregues e cobráveis), por categoria.
+      try {
+        const pa = await meta.graph(`/${inst.waba_id}?fields=pricing_analytics.start(${start}).end(${end}).granularity(HALF_HOUR).phone_numbers(["${digits}"]).dimensions(["PRICING_CATEGORY","PRICING_TYPE"])`, tok);
+        const pp = ((pa.pricing_analytics && pa.pricing_analytics.data) || []).flatMap((x) => x.data_points || []);
+        row.billable = pp.reduce((a, p) => a + (p.volume || 0), 0);
+        row.cost = Math.round(pp.reduce((a, p) => a + (p.cost || 0), 0) * 100) / 100;
+      } catch (e2) { row.billable_error = e2.message; }
+    } catch (e) { row.error = e.message; }
+    out.push(row);
+  }
+  const sum = (k) => out.reduce((a, r) => a + (r[k] || 0), 0);
+  return { from: new Date(start * 1000), to: new Date(end * 1000), lots: out, sent: sum('sent'), delivered: sum('delivered') };
+}
+
 async function ops(sql, req, body, a) {
   if (req.method === 'POST' && a === 'delete') {
     // Exclui uma operação encerrada (ou o grupo inteiro de lotes), com os destinatários dela.
@@ -503,37 +535,27 @@ async function ops(sql, req, body, a) {
     await sql`delete from wa_operations where id = any(${list}::int[])`;
     return { ok: true, deleted: list.length };
   }
-  if (req.method === 'GET' && a === 'meta-delivered') {
-    // Contagem oficial da Meta (WhatsApp Manager › Insights): enviadas e entregues por número no período da campanha.
-    // Serve mesmo quando o webhook não registrou as entregas.
-    const id = int(req.query.id);
-    const op = (await sql`select * from wa_operations where id = ${id}`)[0];
-    if (!op) throw new HttpError(404, 'Operação não encontrada.');
-    const lots = op.group_id ? await sql`select o.id, o.tag, o.created_at, o.finished_at, o.instance_id from wa_operations o where o.group_id = ${op.group_id} order by o.id` : [op];
-    const start = Math.floor(new Date(req.query.from || Math.min(...lots.map((l) => new Date(l.created_at)))).getTime() / 1000) - 3600;
-    const end = Math.floor((req.query.to ? new Date(req.query.to).getTime() : Date.now()) / 1000) + 3600;
-    const out = [];
-    for (const l of lots) {
-      const inst = (await sql`select * from wa_instances where id = ${l.instance_id}`)[0];
-      const row = { id: l.id, tag: l.tag || null, number: inst ? inst.display_phone : null, name: inst ? inst.name : null, sent: null, delivered: null, error: null };
-      try {
-        const digits = String(inst.display_phone || '').replace(/\D/g, '');
-        const tok = decrypt(inst.token_enc);
-        const d = await meta.graph(`/${inst.waba_id}?fields=analytics.start(${start}).end(${end}).granularity(HALF_HOUR).phone_numbers(["${digits}"])`, tok);
-        const pts = (d.analytics && d.analytics.data_points) || [];
-        row.sent = pts.reduce((a, p) => a + (p.sent || 0), 0); row.delivered = pts.reduce((a, p) => a + (p.delivered || 0), 0);
-        // Mensagens cobradas pela Meta (entregues e cobráveis), por categoria.
-        try {
-          const pa = await meta.graph(`/${inst.waba_id}?fields=pricing_analytics.start(${start}).end(${end}).granularity(HALF_HOUR).phone_numbers(["${digits}"]).dimensions(["PRICING_CATEGORY","PRICING_TYPE"])`, tok);
-          const pp = ((pa.pricing_analytics && pa.pricing_analytics.data) || []).flatMap((x) => x.data_points || []);
-          row.billable = pp.reduce((a, p) => a + (p.volume || 0), 0);
-          row.cost = Math.round(pp.reduce((a, p) => a + (p.cost || 0), 0) * 100) / 100;
-        } catch (e2) { row.billable_error = e2.message; }
-      } catch (e) { row.error = e.message; }
-      out.push(row);
+  if (req.method === 'POST' && a === 'reconcile') {
+    // Confere a operação com a contagem oficial da Meta e corrige o que dá para corrigir com segurança:
+    // lote cujo número a Meta registra 0 envios → as "aceitas" dele viram falha (nunca saíram).
+    // A contagem oficial (enviadas/entregues) fica gravada por lote e aparece na tela.
+    const id = int(body.id);
+    const r = await metaCounts(sql, id, {});
+    const fixed = [];
+    for (const l of r.lots) {
+      if (l.error || l.sent == null) continue;
+      await sql`update wa_operations set meta_sent = ${l.sent}, meta_delivered = ${l.delivered}, meta_checked_at = now() where id = ${l.id}`;
+      if (l.sent === 0) {
+        const u = await sql`update wa_recipients set status = 'failed',
+            error = 'Não enviada: a Meta não registrou nenhum envio deste número (contagem oficial)'
+          where operation_id = ${l.id} and status = 'sent' returning id`;
+        if (u.length) fixed.push({ tag: l.tag, n: u.length });
+      }
     }
-    const sum = (k) => out.reduce((a, r) => a + (r[k] || 0), 0);
-    return { from: new Date(start * 1000), to: new Date(end * 1000), lots: out, sent: sum('sent'), delivered: sum('delivered') };
+    return { ...r, fixed };
+  }
+  if (req.method === 'GET' && a === 'meta-delivered') {
+    return metaCounts(sql, int(req.query.id), req.query);
   }
   if (req.method === 'GET' && a === 'test-status') {
     const ids = String(req.query.wamids || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 50);
@@ -573,7 +595,7 @@ async function ops(sql, req, body, a) {
         where o.group_id = ${op.group_id} group by r.status`;
       const ge = await sql`select r.error, count(*)::int as n from wa_recipients r join wa_operations o on o.id = r.operation_id
         where o.group_id = ${op.group_id} and r.status = 'failed' group by r.error order by count(*) desc limit 8`;
-      const gl = await sql`select o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, i.name as instance_name, i.display_phone, t.name as template_name,
+      const gl = await sql`select o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, o.meta_sent, o.meta_delivered, o.meta_checked_at, i.name as instance_name, i.display_phone, t.name as template_name,
           count(r.id)::int as total,
           sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
           sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as delivered,
@@ -583,7 +605,7 @@ async function ops(sql, req, body, a) {
           sum(case when r.status = 'skipped' then 1 else 0 end)::int as skipped
         from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
         left join wa_recipients r on r.operation_id = o.id
-        where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, i.name, i.display_phone, t.name order by o.id`;
+        where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, o.meta_sent, o.meta_delivered, o.meta_checked_at, i.name, i.display_phone, t.name order by o.id`;
       const now = new Date();
       const lots = gl.map((l) => ({ ...l, stalled: l.status === 'running' && (!l.lock_until || new Date(l.lock_until) < now) }));
       group = { id: op.group_id, name: String(op.name).replace(/\s·\sLote\s\S+$/, ''), status: groupStatus(lots.map((l) => l.status)),

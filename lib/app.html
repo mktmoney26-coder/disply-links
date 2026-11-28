@@ -2602,6 +2602,14 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0]]
       .forEach(([l, v]) => stats.append(el('div', { class: 'stat' }, el('span', { class: 'small muted', text: l }), el('b', { text: num(v) }))));
     box.append(stats);
+    const metaLots = g.lots.filter((l) => l.meta_checked_at);
+    if (metaLots.length) {
+      const ms = metaLots.reduce((a, l) => a + (l.meta_sent || 0), 0), md = metaLots.reduce((a, l) => a + (l.meta_delivered || 0), 0);
+      const last = metaLots.map((l) => l.meta_checked_at).sort().pop();
+      box.append(el('div', { class: 'small', style: 'margin-top:8px' },
+        el('b', { text: 'Contagem oficial da Meta: ' }), document.createTextNode(`${num(ms)} enviadas · ${num(md)} entregues`),
+        el('span', { class: 'muted', text: ` (conferido em ${fmt(last)}${metaLots.length < g.lots.length ? ', ' + metaLots.length + ' de ' + g.lots.length + ' lotes' : ''}). A diferença para "Entregues" acima são confirmações que não chegaram pelo webhook.` })));
+    }
     if (d.lotes && d.lotes.length > 1) {
       const lt = el('div', { class: 'row', style: 'gap:8px;margin-top:12px;flex-wrap:wrap' });
       lt.append(el('span', { class: 'small muted', style: 'font-weight:700', text: 'Lotes desta campanha:' }));
@@ -2640,6 +2648,15 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (g.lots.some((l) => l.status === 'running' || l.status === 'paused')) acts.append(el('button', { class: 'btn danger', type: 'button', text: 'Cancelar tudo', onclick: () => act('canceled') }));
     if (d.group_report_url) acts.append(el('a', { class: 'btn primary', href: d.group_report_url, target: '_blank', rel: 'noopener', text: 'Relatório da campanha' }));
     if (c.failed) acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Exportar falhas', onclick: () => exportFailures(g.id, g.name, true) }));
+    if (g.status !== 'running') {
+      const rc = el('button', { class: 'btn ghost', type: 'button', text: 'Conferir com a Meta', title: 'Busca a contagem oficial da Meta (enviadas e entregues por número) e corrige os lotes que a Meta não enviou' });
+      rc.onclick = async () => {
+        rc.disabled = true; rc.textContent = 'Conferindo…';
+        try { const r = await post('r=ops&a=reconcile', { id: g.id }); $('opMsg').textContent = ('Conferido com a Meta: ' + num(r.sent) + ' enviadas e ' + num(r.delivered) + ' entregues' + (r.fixed && r.fixed.length ? '. Lotes sem envio real corrigidos: ' + r.fixed.map((f) => f.tag + ' (' + f.n + ')').join(', ') : '') + '.'); openDetail(id); }
+        catch (err) { $('opMsg').textContent = err.message; rc.disabled = false; rc.textContent = 'Conferir com a Meta'; }
+      };
+      acts.append(rc);
+    }
     acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { box.hidden = true; state.detailId = null; clearTimeout(state.timer); } }));
     head.append(acts); box.append(head);
     const stats = el('div', { class: 'stats' });
@@ -2651,7 +2668,8 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     box.append(el('h3', { style: 'margin:16px 0 8px', text: 'Por BM' }));
     const wrap = el('div', { class: 'wrap', style: 'overflow-x:auto' });
     const t = el('table');
-    const hr = el('tr'); ['Lote', 'BM · número', 'Template', 'Total', 'Na fila', 'Aceitas', 'Entregues', 'Lidas', 'Falhas', 'Status', ''].forEach((h) => hr.append(el('th', { text: h })));
+    const hasMeta = g.lots.some((l) => l.meta_checked_at);
+    const hr = el('tr'); ['Lote', 'BM · número', 'Template', 'Total', 'Na fila', 'Aceitas', 'Entregues', 'Lidas', 'Falhas', ...(hasMeta ? ['Meta: env. / entr.'] : []), 'Status', ''].forEach((h) => hr.append(el('th', { text: h })));
     t.append(el('thead', {}, hr));
     const tb = el('tbody');
     const pct = (a, b) => b ? ` (${Math.round(a / b * 100)}%)` : '';
@@ -2659,6 +2677,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const lotBtn = el('button', { class: 'link', type: 'button', text: 'Falhas', onclick: () => exportFailures(l.id, g.name + ' Lote ' + l.tag) });
       tb.append(el('tr', {}, td(l.tag), td(`${(l.instance_name || '').split(' · ')[0]} · ${l.display_phone || ''}`), td(l.template_name || '—'), td(num(l.total)),
         td(num(l.queued)), td(num(l.sent)), td(num(l.delivered) + pct(l.delivered, l.sent)), td(num(l.read)), td(num(l.failed) + pct(l.failed, l.total)),
+        ...(hasMeta ? [td(l.meta_checked_at ? num(l.meta_sent) + ' / ' + num(l.meta_delivered) : '—')] : []),
         (() => { const x = el('td'); x.append(opBadge(l.status)); return x; })(), (() => {
           const x = el('td', { style: 'white-space:nowrap' }); if (l.failed) x.append(lotBtn);
           if (l.queued || l.failed) x.append(el('button', { class: 'link', type: 'button', style: 'margin-left:10px;font-weight:700', text: 'Substituir BM', onclick: () => replacePanel(l, g.lots, id) }));
