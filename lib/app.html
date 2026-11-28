@@ -1166,6 +1166,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
                 <h3 class="tn-h" style="margin:0"><span>3</span> Contas que vão receber</h3>
                 <div class="row"><input id="tnFilter" type="text" placeholder="Filtrar BM ou conta" style="min-width:200px"><button type="button" class="btn ghost" id="tnAll">Marcar todas</button></div>
               </div>
+              <div class="row" id="tnProfBox" style="gap:6px;flex-wrap:wrap;margin:10px 0 4px" hidden>
+                <span class="small muted">Perfis:</span>
+                <div id="tnProfs" class="row" style="gap:6px;flex-wrap:wrap" role="group" aria-label="Mostrar só as BMs destes perfis"></div>
+                <span class="small muted" id="tnProfHint">Nenhum marcado = todos os perfis.</span>
+              </div>
               <div class="wrap"><table>
                 <thead><tr><th style="width:36px"></th><th>BM</th><th>Conta do WhatsApp</th><th>Números</th><th>Resultado</th></tr></thead>
                 <tbody id="tnTargets"><tr><td colspan="5" class="muted">Carregando…</td></tr></tbody>
@@ -4181,12 +4186,43 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   async function loadTargets() {
     const tb = $('tnTargets');
     try { tn.targets = await api('r=tpl-bulk'); } catch (err) { tb.innerHTML = ''; empty(tb, 5, err.message); return; }
-    renderTargets(); tnPreview();
+    renderProfiles(); renderTargets(); tnPreview();
+  }
+  // Filtro por perfil (Rian, Lívia, Karen…): vários de uma vez; nenhum marcado = todos.
+  const TN_NOPROF = '(sem perfil)';
+  const tnProfOf = (t) => t.profile || TN_NOPROF;
+  if (!tn.profs) {
+    tn.profs = new Set();
+    try { JSON.parse(localStorage.getItem('disply_tn_profs') || '[]').forEach((p) => tn.profs.add(p)); } catch (e) {}
+  }
+  function renderProfiles() {
+    const names = [...new Set(tn.targets.map(tnProfOf))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    [...tn.profs].forEach((p) => { if (!names.includes(p)) tn.profs.delete(p); });
+    const box = $('tnProfs'); box.innerHTML = '';
+    $('tnProfBox').hidden = names.length < 2;
+    for (const p of names) {
+      const n = tn.targets.filter((t) => tnProfOf(t) === p).length;
+      const on = tn.profs.has(p);
+      const b = el('button', { type: 'button', class: 'btn ' + (on ? 'primary' : 'ghost'), style: 'min-height:32px;padding:4px 12px;font-size:13px', 'aria-pressed': String(on), text: p + ' (' + n + ')' });
+      b.onclick = () => {
+        if (tn.profs.has(p)) tn.profs.delete(p); else tn.profs.add(p);
+        try { localStorage.setItem('disply_tn_profs', JSON.stringify([...tn.profs])); } catch (e) {}
+        // Contas de perfis que saíram do filtro deixam de ficar marcadas (não vão no envio sem você ver).
+        if (tn.profs.size) tn.targets.forEach((t) => { if (!tn.profs.has(tnProfOf(t))) tn.sel.delete(t.waba_id); });
+        renderProfiles(); renderTargets();
+      };
+      box.append(b);
+    }
+    $('tnProfHint').textContent = tn.profs.size ? 'Mostrando só ' + [...tn.profs].join(', ') + '.' : 'Nenhum marcado = todos os perfis.';
+  }
+  function tnVisible() {
+    const q = $('tnFilter').value.trim().toLowerCase();
+    return tn.targets.filter((t) => (!tn.profs.size || tn.profs.has(tnProfOf(t)))
+      && (!q || (t.bm + ' ' + (t.waba_name || '') + ' ' + t.waba_id + ' ' + (t.profile || '')).toLowerCase().includes(q)));
   }
   function renderTargets() {
     const tb = $('tnTargets'); tb.innerHTML = '';
-    const q = $('tnFilter').value.trim().toLowerCase();
-    const list = tn.targets.filter((t) => !q || (t.bm + ' ' + (t.waba_name || '') + ' ' + t.waba_id + ' ' + (t.profile || '')).toLowerCase().includes(q));
+    const list = tnVisible();
     if (!list.length) empty(tb, 5, tn.targets.length ? 'Nenhuma conta com esse filtro.' : 'Nenhuma conta encontrada. Cadastre as BMs em Ativos Meta › BMs.');
     for (const t of list) {
       const cb = el('input', { type: 'checkbox', style: 'width:18px;height:18px', 'aria-label': 'Enviar para ' + t.bm });
@@ -4205,8 +4241,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   function tnCount() { $('tnSend').textContent = tn.sel.size ? `Enviar para aprovação em ${num(tn.sel.size)} conta(s)` : 'Enviar para aprovação'; $('tnSend').disabled = tn.busy || !tn.sel.size; }
   $('tnFilter').oninput = renderTargets;
   $('tnAll').onclick = () => {
-    const q = $('tnFilter').value.trim().toLowerCase();
-    const vis = tn.targets.filter((t) => !q || (t.bm + ' ' + (t.waba_name || '') + ' ' + t.waba_id + ' ' + (t.profile || '')).toLowerCase().includes(q));
+    const vis = tnVisible();
     const all = vis.every((t) => tn.sel.has(t.waba_id));
     vis.forEach((t) => (all ? tn.sel.delete(t.waba_id) : tn.sel.add(t.waba_id)));
     $('tnAll').textContent = all ? 'Marcar todas' : 'Desmarcar todas';
