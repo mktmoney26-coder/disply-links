@@ -491,6 +491,18 @@ function groupStatus(list) {
 }
 
 async function ops(sql, req, body, a) {
+  if (req.method === 'POST' && a === 'delete') {
+    // Exclui uma operação encerrada (ou o grupo inteiro de lotes), com os destinatários dela.
+    const id = int(body.id);
+    const op = (await sql`select id, group_id, status from wa_operations where id = ${id}`)[0];
+    if (!op) throw new HttpError(404, 'Operação não encontrada.');
+    const ids = op.group_id ? (await sql`select id, status from wa_operations where group_id = ${op.group_id}`) : [op];
+    if (ids.some((o) => ['running', 'paused', 'waiting'].includes(o.status))) bad('Finalize ou cancele a operação antes de excluir.');
+    const list = ids.map((o) => o.id);
+    await sql`delete from wa_recipients where operation_id = any(${list}::int[])`;
+    await sql`delete from wa_operations where id = any(${list}::int[])`;
+    return { ok: true, deleted: list.length };
+  }
   if (req.method === 'GET' && a === 'meta-delivered') {
     // Contagem oficial da Meta (WhatsApp Manager › Insights): enviadas e entregues por número no período da campanha.
     // Serve mesmo quando o webhook não registrou as entregas.
