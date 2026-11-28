@@ -126,6 +126,11 @@ module.exports = async (req, res) => {
             const msg = `(#${e.code || '?'}) ${e.error_data && e.error_data.details || e.message || e.title || 'Falha na entrega'}`.slice(0, 400);
             await sql`update wa_recipients set status = 'failed', error = ${msg}, updated_at = now()
               where wamid = ${s.id} and status in ('sending','sent','delivered')`;
+            // Lote já parado por BM com problema: falha da BM que chega depois também volta para a reserva.
+            if (!/\(#(131026|131009|131021|131049|131050)\)/.test(msg)) {
+              await sql`update wa_recipients r set status = 'skipped', error = ${'Devolvido para a reserva (' + msg.slice(0, 120) + ')'}, updated_at = now()
+                from wa_operations o where r.wamid = ${s.id} and r.status = 'failed' and o.id = r.operation_id and o.stop_reason is not null`;
+            }
             await sql`update wa_outbound set status = 'failed', error = ${msg} where wamid = ${s.id}`;
           } else if (RANK[status] !== undefined) {
             const lower = Object.keys(RANK).filter((k) => RANK[k] < RANK[status]);
