@@ -13,6 +13,9 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${rows[0].filename}.${ext}"`);
     res.setHeader('X-Robots-Tag', 'noindex');
   }
-  res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+  // O conteúdo de cada id nunca muda: o CDN da Vercel guarda por 1 ano e a Meta (que baixa a imagem
+  // a cada mensagem do disparo) passa a ser servida pelo cache, sem ler o banco de novo.
+  res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=31536000, immutable');
+  res.setHeader('CDN-Cache-Control', 'public, max-age=31536000, immutable');
   res.status(200).end(Buffer.from(rows[0].b64, 'base64'));
 };
