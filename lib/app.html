@@ -483,6 +483,16 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   .gs-buy input[type=text]{width:auto;min-width:160px;padding:7px 10px}
   .gs-buy select{width:auto;padding:7px 10px}
 </style>
+<script>
+// Alguém usando a Disply agora? (aba visível e mexeu no mouse/teclado nos últimos 10 min)
+// As consultas periódicas só rodam assim; senão o banco (Neon) nunca dorme e gasta a cota.
+(function () {
+  let last = Date.now();
+  ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach((e) => window.addEventListener(e, () => { last = Date.now(); }, { passive: true, capture: true }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) last = Date.now(); });
+  window.displyAtivo = () => !document.hidden && Date.now() - last < 10 * 60000;
+})();
+</script>
 </head>
 <body>
 
@@ -2522,7 +2532,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const { operations } = await api('r=ops');
     opsView.list = operations; renderOps();
     clearTimeout(opsView.timer);
-    if (operations.some((o) => o.status === 'running') && !state.detailId) opsView.timer = setTimeout(() => { if (!$('tab-ops').closest('.view') || !$('tab-ops').closest('.view').hidden) loadOps().catch(() => {}); }, 8000);
+    if (operations.some((o) => o.status === 'running') && !state.detailId) opsView.timer = setTimeout(() => { if ((!$('tab-ops').closest('.view') || !$('tab-ops').closest('.view').hidden) && window.displyAtivo()) loadOps().catch(() => {}); }, window.displyAtivo() ? 8000 : 60000);
   }
   function renderOps() {
     const inTab = (o, t) => t === 'all' || (t === 'live' ? ['running', 'paused', 'queued'].includes(o.status) : t === 'done' ? o.status === 'done' : ['canceled', 'error'].includes(o.status));
@@ -2888,7 +2898,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if (ib.filter === 'replied') qs.set('replied', '1');
     if (pins.length) qs.set('keys', pins.slice(0, 200).join(','));
     const gen = ib.gen = (ib.gen || 0) + 1;
-    let d; try { d = await api(qs.toString()); } catch (err) { if (gen === ib.gen && state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, 5000); return; }
+    let d; try { d = await api(qs.toString()); } catch (err) { if (gen === ib.gen && state.tab === 'inbox') ib.listTimer = setTimeout(loadConvs, window.displyAtivo() ? 5000 : 60000); return; }
     if (gen !== ib.gen) return;
     setUnread(d.unread);
     if (ib.sound && ib.lastUnread !== null && d.unread > ib.lastUnread) ding();
@@ -3008,7 +3018,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     $('ibText').disabled = !open; $('ibSend').disabled = !open;
     $('ibText').placeholder = open ? 'Digite uma mensagem' : 'Janela de 24h fechada: para falar com ele, use um template numa operação.';
     $('ibMsg').textContent = open && d.window_closes_at ? 'Você pode responder até ' + new Date(d.window_closes_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + '.' : '';
-    if (state.tab === 'inbox') ib.threadTimer = setTimeout(() => loadThread(false), 3000);
+    if (state.tab === 'inbox') ib.threadTimer = setTimeout(() => { if (window.displyAtivo()) loadThread(false); else ib.threadTimer = setTimeout(() => loadThread(false), 60000); }, 3000);
   }
   const grow = () => { const t = $('ibText'); t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; };
   $('ibText').addEventListener('input', grow);
@@ -3022,7 +3032,10 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     finally { $('ibSend').disabled = false; }
   };
   paintTools();
-  setInterval(() => { if (key && state.tab !== 'inbox') refreshUnread(); }, 30000);
+  // Economia de banco (Neon dorme após 5 min sem consultas): nada de consulta periódica com a aba escondida
+  // ou sem ninguém mexendo há 10 min. Ao voltar para a aba, atualiza uma vez.
+  setInterval(() => { if (key && state.tab !== 'inbox' && window.displyAtivo()) refreshUnread(); }, 120000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && key && state.tab !== 'inbox') refreshUnread(); });
 
   window.DisplyDisparos = { start, show: showTab, reload: () => loadInstances().catch(() => {}) };
 })();
@@ -3487,11 +3500,11 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (r.last_run) lastRun = r.last_run; else lastRun = new Date().toISOString();
     } catch (e) { $('checkInfo').textContent = 'Falha na consulta: ' + e.message; }
     finally {
-      checking = false; $('btnCheck').disabled = false; nextAt = Date.now() + 5 * 60000; paintCheck();
+      checking = false; $('btnCheck').disabled = false; nextAt = Date.now() + 60 * 60000; paintCheck();
       if (ATIVOS.includes(current)) go(current); else refreshBadges();
     }
   }
-  function autoCheck() { runCheck('auto'); setInterval(() => { if (Date.now() >= nextAt) runCheck('auto'); else paintCheck(); }, 30000); }
+  function autoCheck() { runCheck('auto'); setInterval(() => { if (Date.now() >= nextAt && window.displyAtivo()) runCheck('auto'); else paintCheck(); }, 30000); }
   $('btnCheck').onclick = () => runCheck('now');
 
   // ---------- Visão geral ----------

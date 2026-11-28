@@ -565,8 +565,8 @@ module.exports = async (req, res) => {
     else if (r === 'alerts') out = await alerts(sql, req, body, a);
     else if (r === 'check' && req.method === 'POST') {
       const last = await getSetting(sql, 'last_run');
-      // "auto": só consulta se a última consulta tem mais de 5 minutos (várias abas abertas não multiplicam chamadas).
-      if (a === 'auto' && last && Date.now() - new Date(last).getTime() < 4.5 * 60000) out = { skipped: true, last_run: last };
+      // "auto": só consulta se a última consulta tem mais de 55 minutos (economia do banco) (várias abas abertas não multiplicam chamadas).
+      if (a === 'auto' && last && Date.now() - new Date(last).getTime() < 55 * 60000) out = { skipped: true, last_run: last };
       else out = await runCheck(sql, body.id ? Number(body.id) : null);
     }
     else if (r === 'settings') out = await settings(sql, req, body, a);
