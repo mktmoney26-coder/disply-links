@@ -416,7 +416,10 @@ async function createSplit(sql, req, body) {
     where c.list_id = ${base.list_id} and (o.phone is null or ${incl}::boolean)`)[0].n;
   if (!avail) bad('A lista não tem contatos disponíveis.');
   const capacity = parts.reduce((s, p) => s + p.limit, 0);
-  let left = Math.min(avail, capacity, base.quantity && base.quantity > 0 ? base.quantity : avail);
+  // A operação aceita a lista toda (ou o "Enviar até"), mesmo acima da soma dos limites: o que sobra vira reserva
+  // e completa as BMs quando algum contato falha (número sem WhatsApp, inválido…).
+  const wanted = Math.min(avail, base.quantity && base.quantity > 0 ? base.quantity : avail);
+  let left = wanted;
   const created = [];
   let offset = 0; let groupId = null;
   const mix = body.distribution === 'mix';
@@ -475,9 +478,15 @@ async function createSplit(sql, req, body) {
     for (const c of created) { await sql`delete from wa_recipients where operation_id = ${c.id}`; await sql`delete from wa_operations where id = ${c.id}`; }
     throw err;
   }
+  // Reserva: leads além da soma dos limites. Cada lote ganha a cota do seu limite e completa com a reserva.
+  const reserve = Math.max(0, wanted - created.reduce((s, c) => s + c.quantity, 0));
+  if (reserve > 0) {
+    await sql`update wa_operations set reserve_cap = ${wanted}, reserve_seed = ${mix ? seed : null}, reserve_incl = ${incl} where id = ${groupId}`;
+    for (let i = 0; i < created.length; i++) await sql`update wa_operations set quota = ${parts[i].limit} where id = ${created[i].id}`;
+  }
   // Só começa depois que todos os lotes estão montados.
   for (const c of created) { await sql`update wa_operations set status = 'running' where id = ${c.id}`; kick(req, c.id); }
-  return { id: created[0].id, group_id: groupId, lotes: created, quantity: created.reduce((s, c) => s + c.quantity, 0), avail, capacity };
+  return { id: created[0].id, group_id: groupId, lotes: created, quantity: created.reduce((s, c) => s + c.quantity, 0), avail, capacity, reserve };
 }
 
 // Status de uma campanha a partir dos lotes: enviando se algum envia; pausada se algum pausado; senão concluída/cancelada.
@@ -611,7 +620,17 @@ async function ops(sql, req, body, a) {
       group = { id: op.group_id, name: String(op.name).replace(/\s·\sLote\s\S+$/, ''), status: groupStatus(lots.map((l) => l.status)),
         counts: Object.fromEntries(gc.map((c) => [c.status, c.n])), errors: ge, lots };
     }
-    return { operation: op, group, lotes, group_report_url: op.group_id ? `/relatorio/${op.group_id}?t=${reportKey(op.group_id)}&grupo=1` : null, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
+    // Reserva: leads da campanha que ainda não foram para nenhum lote (entram quando contatos falham).
+    let reserve = null;
+    const head = op.group_id || op.id;
+    const [hd] = await sql`select reserve_cap from wa_operations where id = ${head}`;
+    if (hd && hd.reserve_cap != null) {
+      const [a] = await sql`select count(*)::int as n from wa_recipients r join wa_operations g on g.id = r.operation_id
+        where (g.id = ${head} or g.group_id = ${head}) and not (r.status = 'skipped' and coalesce(r.error,'') like 'Transferido para o lote %')`;
+      reserve = Math.max(0, hd.reserve_cap - a.n);
+    }
+    if (group) group.reserve = reserve;
+    return { operation: op, group, reserve, lotes, group_report_url: op.group_id ? `/relatorio/${op.group_id}?t=${reportKey(op.group_id)}&grupo=1` : null, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
   }
   if (req.method === 'GET') {
     const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.started_at, o.finished_at, o.group_id, o.tag, o.meta_delivered, i.name as instance_name, i.display_phone, t.name as template_name, l.name as list_name,
@@ -778,10 +797,15 @@ async function ops(sql, req, body, a) {
     const avail = (await sql`select count(*)::int as n from wa_contacts c left join wa_optouts o on o.phone = c.phone
       where c.list_id = ${op.list_id} and (o.phone is null or ${incl}::boolean)`)[0].n;
     if (!avail) bad('A lista não tem contatos disponíveis.');
-    const qty = Math.min(avail, op.quantity && op.quantity > 0 ? op.quantity : avail);
-    const rows = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps)
+    const wanted = Math.min(avail, op.quantity && op.quantity > 0 ? op.quantity : avail);
+    // Com o limite do número informado, o que passar dele fica de reserva para cobrir as falhas de contato.
+    const quota = int(body.quota);
+    const useReserve = quota > 0 && quota < wanted;
+    const qty = useReserve ? quota : wanted;
+    const rows = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps, quota, reserve_cap, reserve_incl)
       values (${op.name}, ${op.instance_id}, ${op.template_id}, ${op.header_value || null}, ${JSON.stringify(op.body_vars_obj)},
-              ${op.button_param || null}, ${op.name_fallback}, ${op.list_id}, ${qty}, ${op.tps}) returning id`;
+              ${op.button_param || null}, ${op.name_fallback}, ${op.list_id}, ${qty}, ${op.tps},
+              ${useReserve ? quota : null}, ${useReserve ? wanted : null}, ${useReserve ? incl : null}) returning id`;
     const id = rows[0].id;
     try {
       await sql`insert into wa_recipients (operation_id, name, phone)
@@ -792,7 +816,7 @@ async function ops(sql, req, body, a) {
       throw err;
     }
     kick(req, id);
-    return { id, quantity: qty };
+    return { id, quantity: qty, reserve: wanted - qty };
   }
   throw new HttpError(405, 'Método não permitido.');
 }

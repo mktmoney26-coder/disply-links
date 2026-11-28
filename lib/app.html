@@ -2037,7 +2037,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   const instById = (id) => state.instances.find((i) => String(i.id) === String(id));
   const selParts = () => [...split.sel.entries()].map(([id, limit]) => ({ instance_id: Number(id), limit: Number(limit) || 0 }));
   const capacity = () => selParts().reduce((a, p) => a + p.limit, 0);
-  const planned = () => Math.min(Number($('opQty').value) || state.leads || 0, state.leads || Infinity, capacity());
+  // A operação leva a lista toda (ou o "Enviar até"); o que passar da soma dos limites fica de reserva.
+  const planned = () => Math.min(Number($('opQty').value) || state.leads || 0, state.leads || Infinity);
+  const reserveOf = () => { if ($('opDist').value === 'fill') return 0; const t = lots().reduce((a, l) => a + l.n, 0); return Math.max(0, planned() - t); };
   function lots() {
     let left = planned();
     return selParts().map((p, i) => { const n = Math.max(0, Math.min(p.limit, left)); left -= n; return { ...p, tag: LETTERS[i], n }; });
@@ -2047,7 +2049,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     if ($('opInst').value !== id) {
       $('opInst').value = id; state.tpl = null; split.tplLists.clear();
     }
-    if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || '';
+    if (!split.qtyTouched) $('opQty').value = state.leads || '';
   }
   async function toggleNum(key) {
     $('opMsg').textContent = '';
@@ -2070,7 +2072,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     const maxLim = Math.max(1000, ...state.instances.filter((i) => i.active).map((i) => tierLimit(i.limit_tier) || 0));
     need.append(
       el('div', { class: 'wz-need-top' }, el('div', {}, el('strong', { text: num(leads) }), el('span', { text: ' leads na lista' })),
-        el('div', { class: 'wz-need-cap ' + (ok ? 'ok' : 'warn'), text: ok ? `Capacidade ${num(cap)} · suficiente` : `Capacidade ${num(cap)} · faltam ${num(Math.max(0, leads - cap))}` })),
+        el('div', { class: 'wz-need-cap ' + (ok ? 'ok' : 'warn'), text: ok ? `Capacidade ${num(cap)} · suficiente` : `Capacidade ${num(cap)} · ${num(Math.max(0, leads - cap))} ficam de reserva` })),
       el('div', { class: 'wz-meter' }, el('i', { style: `width:${pct}%` })),
       el('p', { class: 'small muted', style: 'margin:6px 0 0', text: ok ? 'Pode seguir. Se quiser, ajuste quantos leads enviar abaixo.'
         : `Com números de ${num(maxLim)}/dia, você precisa de ${Math.ceil(leads / maxLim)} número(s) no total. Escolha mais números ou envie só parte da lista.` }));
@@ -2106,7 +2108,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (!c.n) body.append(el('button', { type: 'button', class: 'linkbtn small', style: 'align-self:flex-start', text: 'Prévia do perfil', onclick: (e) => { e.stopPropagation(); profileCard(i.id); } }));
       if (on) {
         const inp = el('input', { type: 'number', min: '1', value: String(split.sel.get(c.key)), 'aria-label': 'Limite deste número', title: 'Limite de envios deste número' });
-        inp.oninput = () => { split.sel.set(c.key, Number(inp.value) || 0); if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || ''; renderLots(); renderNeedOnly(); };
+        inp.oninput = () => { split.sel.set(c.key, Number(inp.value) || 0); if (!split.qtyTouched) $('opQty').value = state.leads || ''; renderLots(); renderNeedOnly(); };
         card.append(el('label', { class: 'wz-num-lim' }, el('span', { text: 'Enviar até' }), inp));
       }
       box.append(card);
@@ -2115,7 +2117,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   }
   function renderNeedOnly() { const keep = document.activeElement; const id = keep && keep.closest('.wz-num') ? null : null; /* evita redesenhar os cartões enquanto digita */
     const leads = state.leads || 0, cap = capacity(); const ok = cap >= leads && leads > 0;
-    const capEl = document.querySelector('#wzNeed .wz-need-cap'); if (capEl) { capEl.className = 'wz-need-cap ' + (ok ? 'ok' : 'warn'); capEl.textContent = ok ? `Capacidade ${num(cap)} · suficiente` : `Capacidade ${num(cap)} · faltam ${num(Math.max(0, leads - cap))}`; }
+    const capEl = document.querySelector('#wzNeed .wz-need-cap'); if (capEl) { capEl.className = 'wz-need-cap ' + (ok ? 'ok' : 'warn'); capEl.textContent = ok ? `Capacidade ${num(cap)} · suficiente` : `Capacidade ${num(cap)} · ${num(Math.max(0, leads - cap))} ficam de reserva`; }
     const m = document.querySelector('#wzNeed .wz-meter i'); if (m) m.style.width = (leads ? Math.min(100, Math.round((Math.min(cap, leads) / leads) * 100)) : 0) + '%';
   }
   function renderLots() {
@@ -2133,7 +2135,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       box.append(row);
     }
     const out = (state.leads || 0) - total;
-    if (out > 0) box.append(el('p', { class: 'small', style: 'margin:6px 0 0;color:var(--warn)', text: `${num(out)} lead(s) ficam de fora desta operação.` }));
+    const res = reserveOf(), fora = out - res;
+    if (res > 0) box.append(el('p', { class: 'small', style: 'margin:6px 0 0', text: `+ ${num(res)} lead(s) na reserva: quando um contato falhar (sem WhatsApp, número inválido…), a BM puxa outro da reserva até usar o limite todo.` }));
+    if (fora > 0) box.append(el('p', { class: 'small', style: 'margin:6px 0 0;color:var(--warn)', text: `${num(fora)} lead(s) ficam de fora desta operação.` }));
   }
   $('opQty').addEventListener('input', () => { split.qtyTouched = true; renderLots(); });
   // Modo "encher": o "Enviar até" vira o máximo de cada BM (padrão 1.000; a troca de BM acontece antes se a Meta travar).
@@ -2146,7 +2150,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       if (fill && v === tier) split.sel.set(k, Math.max(FILL_MAX, tier));
       else if (!fill && v === FILL_MAX) split.sel.set(k, tier);
     }
-    if (!split.qtyTouched) $('opQty').value = Math.min(state.leads || 0, capacity()) || '';
+    if (!split.qtyTouched) $('opQty').value = state.leads || '';
     renderNums();
   };
   $('wzAuto').onclick = () => {
@@ -2277,6 +2281,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       row('Lista', `${listName} · ${num(state.leads)} leads`),
       row('Quem pediu SAIR', state.listBlocked ? (state.inclOpt ? `incluídos (${num(state.listBlocked)})` : `fora (${num(state.listBlocked)})`) : 'ninguém na lista'),
       row('Vão receber agora', `${num(total)} leads`),
+      ...(reserveOf() > 0 ? [row('Reserva', `${num(reserveOf())} leads · completam as BMs quando um contato falha`)] : []),
       row('Template', state.perMode && L.length > 1 ? 'um por BM (veja os lotes)' : state.tpl ? state.tpl.name : '—'),
       row('Divisão', L.length > 1 ? `${L.length} lotes · ${({ mix: 'sorteio', fill: 'enche cada BM antes da próxima' })[$('opDist').value] || 'ordem da planilha'}` : 'um número só'));
     const lotsBox = el('div', { class: 'wz-lots', style: 'margin-top:10px' });
@@ -2415,7 +2420,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       header_value: t && t.info.needsMedia ? (state.mediaUrl || $('opMediaUrl').value) : $('opHeaderVar').value,
       body_vars: collectVars(), button_param: $('opBtnParam').value, name_fallback: $('opFallback').value,
       list_id: Number($('opList').value), quantity: planned(), tps: Number($('opTps').value),
-      split: selParts().length > 1 ? selParts() : undefined, distribution: $('opDist').value, include_optouts: Boolean(state.inclOpt)
+      split: selParts().length > 1 ? selParts() : undefined, quota: selParts().length === 1 ? selParts()[0].limit : undefined, distribution: $('opDist').value, include_optouts: Boolean(state.inclOpt)
     };
   }
   // Escolha de quais números recebem o teste (todos marcados por padrão).
@@ -2599,7 +2604,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     head.append(acts); box.append(head);
     box.append(el('div', { id: 'replaceBox' }));
     const stats = el('div', { class: 'stats' });
-    [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0]]
+    [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0], ...(d.reserve != null ? [['Na reserva', d.reserve]] : [])]
       .forEach(([l, v]) => stats.append(el('div', { class: 'stat' }, el('span', { class: 'small muted', text: l }), el('b', { text: num(v) }))));
     box.append(stats);
     const metaLots = g.lots.filter((l) => l.meta_checked_at);
@@ -2662,7 +2667,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
     acts.append(el('button', { class: 'btn ghost', type: 'button', text: 'Fechar', onclick: () => { box.hidden = true; state.detailId = null; clearTimeout(state.timer); } }));
     head.append(acts); box.append(head);
     const stats = el('div', { class: 'stats' });
-    [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0]]
+    [['Total', total], ['Na fila', (c.pending || 0) + (c.sending || 0)], ['Aceitas pela Meta', sent], ['Entregues', delivered], ['Lidas', c.read || 0], ['Falhas', c.failed || 0], ['Canceladas', c.skipped || 0], ...(d.reserve != null ? [['Na reserva', d.reserve]] : [])]
       .forEach(([l, v]) => stats.append(el('div', { class: 'stat' }, el('span', { class: 'small muted', text: l }), el('b', { text: num(v) }))));
     box.append(stats);
     box.append(el('div', { style: 'margin:14px 0 6px' }, bar([[total ? sent / total * 100 : 0, 'var(--accent)'], [total ? (c.failed || 0) / total * 100 : 0, 'var(--bad)']])));
