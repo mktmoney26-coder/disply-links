@@ -479,11 +479,10 @@ async function createSplit(sql, req, body) {
     throw err;
   }
   // Reserva: leads além da soma dos limites. Cada lote ganha a cota do seu limite e completa com a reserva.
+  // Sempre fica configurada: também recebe os leads devolvidos por um lote parado (BM com problema).
   const reserve = Math.max(0, wanted - created.reduce((s, c) => s + c.quantity, 0));
-  if (reserve > 0) {
-    await sql`update wa_operations set reserve_cap = ${wanted}, reserve_seed = ${mix ? seed : null}, reserve_incl = ${incl} where id = ${groupId}`;
-    for (let i = 0; i < created.length; i++) await sql`update wa_operations set quota = ${parts[i].limit} where id = ${created[i].id}`;
-  }
+  await sql`update wa_operations set reserve_cap = ${wanted}, reserve_seed = ${mix ? seed : null}, reserve_incl = ${incl} where id = ${groupId}`;
+  for (let i = 0; i < created.length; i++) await sql`update wa_operations set quota = ${parts[i].limit} where id = ${created[i].id}`;
   // Só começa depois que todos os lotes estão montados.
   for (const c of created) { await sql`update wa_operations set status = 'running' where id = ${c.id}`; kick(req, c.id); }
   return { id: created[0].id, group_id: groupId, lotes: created, quantity: created.reduce((s, c) => s + c.quantity, 0), avail, capacity, reserve };
@@ -601,10 +600,10 @@ async function ops(sql, req, body, a) {
     let group = null;
     if (op.group_id) {
       const gc = await sql`select r.status, count(*)::int as n from wa_recipients r join wa_operations o on o.id = r.operation_id
-        where o.group_id = ${op.group_id} group by r.status`;
+        where o.group_id = ${op.group_id} and not (r.status = 'skipped' and coalesce(r.error,'') like 'Devolvido para a reserva%') group by r.status`;
       const ge = await sql`select r.error, count(*)::int as n from wa_recipients r join wa_operations o on o.id = r.operation_id
         where o.group_id = ${op.group_id} and r.status = 'failed' group by r.error order by count(*) desc limit 8`;
-      const gl = await sql`select o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, o.meta_sent, o.meta_delivered, o.meta_checked_at, i.name as instance_name, i.display_phone, t.name as template_name,
+      const gl = await sql`select o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, o.meta_sent, o.meta_delivered, o.meta_checked_at, o.stop_reason, i.name as instance_name, i.display_phone, t.name as template_name,
           count(r.id)::int as total,
           sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
           sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as delivered,
@@ -614,7 +613,7 @@ async function ops(sql, req, body, a) {
           sum(case when r.status = 'skipped' then 1 else 0 end)::int as skipped
         from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
         left join wa_recipients r on r.operation_id = o.id
-        where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, o.meta_sent, o.meta_delivered, o.meta_checked_at, i.name, i.display_phone, t.name order by o.id`;
+        where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, o.meta_sent, o.meta_delivered, o.meta_checked_at, o.stop_reason, i.name, i.display_phone, t.name order by o.id`;
       const now = new Date();
       const lots = gl.map((l) => ({ ...l, delivered_webhook: l.delivered, delivered: l.meta_delivered != null && l.meta_delivered > l.delivered ? l.meta_delivered : l.delivered, stalled: l.status === 'running' && (!l.lock_until || new Date(l.lock_until) < now) }));
       group = { id: op.group_id, name: String(op.name).replace(/\s·\sLote\s\S+$/, ''), status: groupStatus(lots.map((l) => l.status)),
@@ -626,7 +625,7 @@ async function ops(sql, req, body, a) {
     const [hd] = await sql`select reserve_cap from wa_operations where id = ${head}`;
     if (hd && hd.reserve_cap != null) {
       const [a] = await sql`select count(*)::int as n from wa_recipients r join wa_operations g on g.id = r.operation_id
-        where (g.id = ${head} or g.group_id = ${head}) and not (r.status = 'skipped' and coalesce(r.error,'') like 'Transferido para o lote %')`;
+        where (g.id = ${head} or g.group_id = ${head}) and not (r.status = 'skipped' and (coalesce(r.error,'') like 'Transferido para o lote %' or coalesce(r.error,'') like 'Devolvido para a reserva%'))`;
       reserve = Math.max(0, hd.reserve_cap - a.n);
     }
     if (group) group.reserve = reserve;
@@ -800,8 +799,8 @@ async function ops(sql, req, body, a) {
     const wanted = Math.min(avail, op.quantity && op.quantity > 0 ? op.quantity : avail);
     // Com o limite do número informado, o que passar dele fica de reserva para cobrir as falhas de contato.
     const quota = int(body.quota);
-    const useReserve = quota > 0 && quota < wanted;
-    const qty = useReserve ? quota : wanted;
+    const useReserve = quota > 0;
+    const qty = useReserve ? Math.min(quota, wanted) : wanted;
     const rows = await sql`insert into wa_operations (name, instance_id, template_id, header_value, body_vars, button_param, name_fallback, list_id, quantity, tps, quota, reserve_cap, reserve_incl)
       values (${op.name}, ${op.instance_id}, ${op.template_id}, ${op.header_value || null}, ${JSON.stringify(op.body_vars_obj)},
               ${op.button_param || null}, ${op.name_fallback}, ${op.list_id}, ${qty}, ${op.tps},

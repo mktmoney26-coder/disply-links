@@ -2685,7 +2685,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       tb.append(el('tr', {}, td(l.tag), td(`${(l.instance_name || '').split(' · ')[0]} · ${l.display_phone || ''}`), td(l.template_name || '—'), td(num(l.total)),
         td(num(l.queued)), td(num(l.sent)), td(num(l.delivered) + pct(l.delivered, l.sent)), td(num(l.read)), td(num(l.failed) + pct(l.failed, l.total)),
         ...(hasMeta ? [td(l.meta_checked_at ? num(l.meta_sent) + ' / ' + num(l.meta_delivered) : '—')] : []),
-        (() => { const x = el('td'); x.append(opBadge(l.status)); return x; })(), (() => {
+        (() => { const x = el('td'); x.append(opBadge(l.status)); if (l.stop_reason) x.append(el('div', { class: 'small', style: 'color:var(--warn);max-width:240px;white-space:normal;margin-top:4px', text: 'Parado: ' + l.stop_reason + '. Os leads voltaram para a reserva.' })); return x; })(), (() => {
           const x = el('td', { style: 'white-space:nowrap' }); if (l.failed) x.append(lotBtn);
           if (l.queued || l.failed) x.append(el('button', { class: 'link', type: 'button', style: 'margin-left:10px;font-weight:700', text: 'Substituir BM', onclick: () => replacePanel(l, g.lots, id) }));
           return x; })()));
