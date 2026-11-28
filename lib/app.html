@@ -2608,7 +2608,7 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
       const last = metaLots.map((l) => l.meta_checked_at).sort().pop();
       box.append(el('div', { class: 'small', style: 'margin-top:8px' },
         el('b', { text: 'Contagem oficial da Meta: ' }), document.createTextNode(`${num(ms)} enviadas · ${num(md)} entregues`),
-        el('span', { class: 'muted', text: ` (conferido em ${fmt(last)}${metaLots.length < g.lots.length ? ', ' + metaLots.length + ' de ' + g.lots.length + ' lotes' : ''}). A diferença para "Entregues" acima são confirmações que não chegaram pelo webhook.` })));
+        el('span', { class: 'muted', text: ` (conferido em ${fmt(last)}${metaLots.length < g.lots.length ? ', ' + metaLots.length + ' de ' + g.lots.length + ' lotes' : ''}). "Entregues" já usa a contagem oficial onde ela é maior (confirmações que não chegaram pelo webhook).` })));
     }
     if (d.lotes && d.lotes.length > 1) {
       const lt = el('div', { class: 'row', style: 'gap:8px;margin-top:12px;flex-wrap:wrap' });
@@ -2636,7 +2636,9 @@ try { if (localStorage.getItem('disply_theme') === 'dark') document.documentElem
   function renderGroup(d, id) {
     const g = d.group, c = g.counts, o = d.operation;
     const total = Object.values(c).reduce((a, b) => a + b, 0);
-    const sent = (c.sent || 0) + (c.delivered || 0) + (c.read || 0), delivered = (c.delivered || 0) + (c.read || 0);
+    const sent = (c.sent || 0) + (c.delivered || 0) + (c.read || 0);
+    // Entregues por lote já vem com a contagem oficial da Meta quando ela é maior (conferida).
+    const delivered = Math.max((c.delivered || 0) + (c.read || 0), g.lots.reduce((t, l) => t + (l.delivered || 0), 0));
     const box = $('opDetail'); box.hidden = false; box.innerHTML = '';
     const head = el('div', { class: 'row', style: 'justify-content:space-between;margin-bottom:12px' });
     head.append(el('div', {}, el('h2', { style: 'margin:0', text: g.name }),

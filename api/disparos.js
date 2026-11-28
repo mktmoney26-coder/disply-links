@@ -607,14 +607,14 @@ async function ops(sql, req, body, a) {
         left join wa_recipients r on r.operation_id = o.id
         where o.group_id = ${op.group_id} group by o.id, o.tag, o.status, o.quantity, o.lock_until, o.instance_id, o.header_value, o.body_vars, o.button_param, o.meta_sent, o.meta_delivered, o.meta_checked_at, i.name, i.display_phone, t.name order by o.id`;
       const now = new Date();
-      const lots = gl.map((l) => ({ ...l, stalled: l.status === 'running' && (!l.lock_until || new Date(l.lock_until) < now) }));
+      const lots = gl.map((l) => ({ ...l, delivered_webhook: l.delivered, delivered: l.meta_delivered != null && l.meta_delivered > l.delivered ? l.meta_delivered : l.delivered, stalled: l.status === 'running' && (!l.lock_until || new Date(l.lock_until) < now) }));
       group = { id: op.group_id, name: String(op.name).replace(/\s·\sLote\s\S+$/, ''), status: groupStatus(lots.map((l) => l.status)),
         counts: Object.fromEntries(gc.map((c) => [c.status, c.n])), errors: ge, lots };
     }
     return { operation: op, group, lotes, group_report_url: op.group_id ? `/relatorio/${op.group_id}?t=${reportKey(op.group_id)}&grupo=1` : null, counts: Object.fromEntries(counts.map((c) => [c.status, c.n])), errors, stalled, report_url: `/relatorio/${id}?t=${reportKey(id)}` };
   }
   if (req.method === 'GET') {
-    const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.started_at, o.finished_at, o.group_id, o.tag, i.name as instance_name, i.display_phone, t.name as template_name, l.name as list_name,
+    const rows = await sql`select o.id, o.name as name, o.status, o.quantity, o.created_at, o.started_at, o.finished_at, o.group_id, o.tag, o.meta_delivered, i.name as instance_name, i.display_phone, t.name as template_name, l.name as list_name,
         sum(case when r.status in ('sent','delivered','read') then 1 else 0 end)::int as sent,
         sum(case when r.status in ('delivered','read') then 1 else 0 end)::int as delivered,
         sum(case when r.status = 'read' then 1 else 0 end)::int as read,
@@ -623,8 +623,11 @@ async function ops(sql, req, body, a) {
       from wa_operations o left join wa_instances i on i.id = o.instance_id left join wa_templates t on t.id = o.template_id
       left join wa_lists l on l.id = o.list_id
       left join wa_recipients r on r.operation_id = o.id
-      group by o.id, o.name, o.status, o.quantity, o.created_at, o.started_at, o.finished_at, o.group_id, o.tag, i.name, i.display_phone, t.name, l.name
+      group by o.id, o.name, o.status, o.quantity, o.created_at, o.started_at, o.finished_at, o.group_id, o.tag, o.meta_delivered, i.name, i.display_phone, t.name, l.name
       order by o.created_at desc limit 300`;
+    // Entregues: se a operação foi conferida com a Meta e a contagem oficial é maior (confirmações que não
+    // chegaram pelo webhook), vale a oficial.
+    for (const r of rows) if (r.meta_delivered != null && r.meta_delivered > r.delivered) r.delivered = r.meta_delivered;
     // Campanhas com vários números aparecem como uma operação só (os lotes ficam dentro dela).
     const out = []; const groups = new Map();
     for (const r of rows) {
